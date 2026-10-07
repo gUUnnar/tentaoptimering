@@ -1,0 +1,131 @@
+{
+  "generated_at_utc": "2026-10-07T12:59:40.416736+00:00",
+  "datasets": {
+    "Bokningsplaceringar": {
+      "metrics": {
+        "rows": 8466,
+        "normalized_columns": 40,
+        "unique_non_missing_prefixes": 5498,
+        "missing_prefix_rows": 8,
+        "repeated_non_missing_prefixes": 2468,
+        "rows_in_repeated_non_missing_prefixes": 5428,
+        "exact_duplicate_rows": 0,
+        "scheduled_date_min": "2025-09-01",
+        "scheduled_date_max": "2026-08-29",
+        "status_counts": {
+          "Klar": 8089,
+          "Avbokad": 364,
+          "Under behandling": 10,
+          "Andring begard": 3
+        },
+        "missing_room": 3461,
+        "missing_address": 364
+      },
+      "findings": [
+        {
+          "code": "BOOKING_MIXED_GRAIN",
+          "dataset": "bookings",
+          "severity": "critical",
+          "title": "En bokningsrad är inte samma sak som ett tentamenstillfälle",
+          "evidence": "2468 icke-tomma prefix förekommer på flera rader och omfattar 5428 av 8466 placeringsrader.",
+          "impact": "Summering av deltagarantal eller platser per rad kan dubbelräkna efterfrågan.",
+          "remediation": "Fastställ prefixets definition och modellera beställning, salplacering och stödplacering som separata korn."
+        },
+        {
+          "code": "BOOKING_STATUS_NOT_ATTENDANCE",
+          "dataset": "bookings",
+          "severity": "high",
+          "title": "Bokningsstatus bevisar inte genomförande",
+          "evidence": "Statusfördelning: {'Klar': 8089, 'Avbokad': 364, 'Under behandling': 10, 'Andring begard': 3}.",
+          "impact": "En retrospektiv baslinje kan inkludera avbokade eller ej genomförda tillfällen.",
+          "remediation": "Definiera vilka statusvärden som ska ingå och verifiera genomförande separat."
+        }
+      ]
+    },
+    "Ladok-aktiviteter": {
+      "metrics": {
+        "rows": 1525,
+        "normalized_columns": 14,
+        "start_date_min": "2026-01-12",
+        "start_date_max": "2026-03-31",
+        "candidate_key_duplicate_rows": 162,
+        "missing": {
+          "total_count": 16,
+          "registered_count": 38,
+          "cancelled_count": 512,
+          "added_count": 1523,
+          "location": 5,
+          "start_time": 1
+        }
+      },
+      "findings": [
+        {
+          "code": "LADOK_NO_ATTENDANCE_MEASURE",
+          "dataset": "ladok",
+          "severity": "critical",
+          "title": "Faktisk närvaro saknar verifierat fält",
+          "evidence": "Fälten beskriver anmälan och antal men inget fält är uttryckligen faktisk närvaro.",
+          "impact": "Överdimensionering och realiserbar lokalminskning kan inte uppskattas säkert.",
+          "remediation": "Låt dataägaren definiera ANTAL_TOT och leverera verifierad faktisk närvaro."
+        },
+        {
+          "code": "LADOK_MISSING_COUNTS",
+          "dataset": "ladok",
+          "severity": "high",
+          "title": "Deltagarfält innehåller saknade värden",
+          "evidence": "Saknade värden: {'total_count': 16, 'registered_count': 38, 'cancelled_count': 512, 'added_count': 1523, 'location': 5, 'start_time': 1}.",
+          "impact": "Tomt kan inte utan definition tolkas som noll.",
+          "remediation": "Fastställ betydelsen av tomma fält och komplettera eller flagga dem per rad."
+        },
+        {
+          "code": "LADOK_JOIN_KEY_AMBIGUITY",
+          "dataset": "ladok",
+          "severity": "high",
+          "title": "Gemensam stabil nyckel till bokningarna saknas",
+          "evidence": "Den provisoriska nyckeln kurskod, datum, tid och lokal markerar 162 rader som dubblettkandidater.",
+          "impact": "Kopplingen kan tappa eller dubblera samtentor och delade salplaceringar.",
+          "remediation": "Mät kopplingsgrad och tvetydighet samt inför ett stabilt aktivitets-ID."
+        }
+      ]
+    },
+    "Lokal- och kostnadsrader": {
+      "metrics": {
+        "rows": 41,
+        "normalized_columns": 17,
+        "lease_objects": 8,
+        "future_rows_after_booking_period": 32,
+        "missing_annual_internal_rent": 0,
+        "annual_internal_rent_prelim_2026_sek_sum": 16742718.12
+      },
+      "findings": [
+        {
+          "code": "LEASE_MIXED_OBJECT_TYPES",
+          "dataset": "leases",
+          "severity": "critical",
+          "title": "Lokalrapportens rader är inte ett salregister",
+          "evidence": "41 rader omfattar bland annat rum, förråd, korridor och parkering.",
+          "impact": "Rapporten kan inte ensam ge salarnas kapacitet eller avvecklingsbara kostnad.",
+          "remediation": "Komplettera med ett verifierat salregister och en typklassning per rad."
+        },
+        {
+          "code": "LEASE_COST_NOT_AVOIDABLE",
+          "dataset": "leases",
+          "severity": "critical",
+          "title": "Internhyra är inte samma sak som realiserbar besparing",
+          "evidence": "Källan redovisar preliminär internhyra men saknar avvecklingsbar avtalsenhet, uppsägningstid och engångskostnader.",
+          "impact": "En minskad salanvändning kan felaktigt beskrivas som en kostnadsbesparing.",
+          "remediation": "Koppla salar till avtal och klassificera fasta, rörliga och undvikbara kostnader."
+        },
+        {
+          "code": "LEASE_PERIOD_MISMATCH",
+          "dataset": "leases",
+          "severity": "high",
+          "title": "Lokalbeståndet och bokningsperioden avser olika tidpunkter",
+          "evidence": "32 lokalrader börjar gälla efter bokningsperiodens slut 2026-08-31.",
+          "impact": "Framtida lokaler kan annars behandlas som historiskt tillgängliga.",
+          "remediation": "Bygg ett tidsversionerat sal- och avtalsregister."
+        }
+      ]
+    }
+  }
+}

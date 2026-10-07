@@ -1,0 +1,137 @@
+version = 1
+description = "Parameterregister för Tentalokaler-PoC. Värden och tillåtna intervall fastställs senare med verksamheten."
+
+[[parameter]]
+id = "date_shift_earlier_days"
+area = "date_flexibility"
+name_sv = "Tillåten tidigareläggning"
+unit = "days"
+source = "business_decision"
+status = "to_be_defined"
+rule_status = "adjustable"
+
+[[parameter]]
+id = "date_shift_later_days"
+area = "date_flexibility"
+name_sv = "Tillåten senareläggning"
+unit = "days"
+source = "business_decision"
+status = "to_be_defined"
+rule_status = "adjustable"
+
+[[parameter]]
+id = "allowed_weekdays"
+area = "calendar"
+name_sv = "Tillåtna veckodagar"
+unit = "weekday_set"
+source = "business_and_legal_rules"
+status = "to_be_defined"
+rule_status = "requires_verification"
+
+[[parameter]]
+id = "earliest_start_time"
+area = "calendar"
+name_sv = "Tidigaste tillåtna starttid"
+unit = "time"
+source = "business_and_legal_rules"
+status = "to_be_defined"
+rule_status = "requires_verification"
+
+[[parameter]]
+id = "latest_end_time"
+area = "calendar"
+name_sv = "Senaste tillåtna sluttid"
+unit = "time"
+source = "business_and_legal_rules"
+status = "to_be_defined"
+rule_status = "requires_verification"
+
+[[parameter]]
+id = "turnaround_minutes"
+area = "room_turnaround"
+name_sv = "Ställtid mellan tentamenstillfällen"
+unit = "minutes"
+source = "business_decision"
+status = "to_be_defined"
+rule_status = "adjustable"
+
+[[parameter]]
+id = "demand_measure"
+area = "demand"
+name_sv = "Deltagarantal som dimensionerar"
+unit = "measure_id"
+source = "data_owner_definition"
+status = "blocked"
+rule_status = "requires_definition"
+
+[[parameter]]
+id = "capacity_safety_margin"
+area = "demand"
+name_sv = "Säkerhetsmarginal för platsbehov"
+unit = "ratio"
+source = "business_decision"
+status = "to_be_defined"
+rule_status = "adjustable"
+
+[[parameter]]
+id = "allowed_room_inventory"
+area = "room_inventory"
+name_sv = "Tillåtet lokalbestånd"
+unit = "room_id_set"
+source = "verified_room_register"
+status = "blocked"
+rule_status = "requires_source"
+
+[[parameter]]
+id = "digital_compatibility"
+area = "digital_format"
+name_sv = "Kompatibilitet mellan tentamensformat och sal"
+unit = "compatibility_matrix"
+source = "room_and_exam_metadata"
+status = "blocked"
+rule_status = "requires_source"
+
+[[parameter]]
+id = "co_location_rules"
+area = "co_location"
+name_sv = "Regler för att dela eller separera tentor"
+unit = "rule_set"
+source = "business_rules"
+status = "to_be_defined"
+rule_status = "adjustable"
+
+[[parameter]]
+id = "support_place_rules"
+area = "special_support"
+name_sv = "Krav för särskilt pedagogiskt stöd"
+unit = "rule_set"
+source = "business_rules_and_support_data"
+status = "blocked"
+rule_status = "requires_definition"
+
+[[parameter]]
+id = "travel_time_minutes"
+area = "geography"
+name_sv = "Tillåten restid mellan platser"
+unit = "minutes"
+source = "business_decision_and_travel_matrix"
+status = "to_be_defined"
+rule_status = "adjustable"
+
+[[parameter]]
+id = "minimum_invigilator_staffing"
+area = "staffing"
+name_sv = "Minsta bemanning per sal och deltagarantal"
+unit = "staffing_rule"
+source = "collective_agreement_and_operations"
+status = "blocked"
+rule_status = "requires_verification"
+
+[[parameter]]
+id = "avoidable_cost_definition"
+area = "economics"
+name_sv = "Kostnader som faktiskt kan undvikas"
+unit = "cost_component_set"
+source = "contracts_and_finance"
+status = "blocked"
+rule_status = "requires_source"

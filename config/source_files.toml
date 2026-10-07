@@ -1,0 +1,11 @@
+[bookings]
+filename = "Tentaplaceringar_Export_2025-09-01-2026-08-31.xlsx"
+sheet = "Data i systemet"
+
+[ladok]
+filename = "Utsökning Ladok tentander från tidigare termin.xlsx"
+
+[leases]
+filename = "2026 Tentamenslokaler.xlsx"
+sheet = "Rapport"
+header_row = 4

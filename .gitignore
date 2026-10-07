@@ -8,6 +8,10 @@ data/raw/
 data/staging/
 data/processed/
 output/
+.coverage
+dist/
+build/
+*.egg-info/
 
 *.xlsx
 *.xls
