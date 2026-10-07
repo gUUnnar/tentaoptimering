@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+data/raw/
+data/staging/
+data/processed/
+output/
+
+*.xlsx
+*.xls
+*.duckdb
+*.db
+*.sqlite
+*.parquet
