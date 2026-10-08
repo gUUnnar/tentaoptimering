@@ -28,7 +28,7 @@ Läs `docs/KONCEPTUELL_KRAVSPECIFIKATION.md`, `docs/GAP_ANALYS_MOT_KRAVSPECIFIKA
 - Anta inte att Ladoks `ANTAL_TOT` är faktisk närvaro utan verifierad definition.
 - Anta inte att preliminär internhyra är en realiserbar besparing.
 - Hårdkoda inte verksamhetsparametrar eller scenariointervall. Värden ska komma från det maskinläsbara parameterregistret eller en uttrycklig beställning.
-- Bygg ingen solver förrän datamodell, parameterregister och kostnadskoppling har godkänts eller användaren uttryckligen beställer nästa steg.
+- Aktuellt steg är endast kodinventering och designförslag. Ingen ny implementation förrän användaren godkänner förslaget. PoC ska därefter kunna köras med kvalificerade, redovisade och lätt utbytbara antaganden medan fler data inväntas.
 
 ## Verifiering
 
