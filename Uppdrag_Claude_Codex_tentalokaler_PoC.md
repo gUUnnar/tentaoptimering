@@ -1,5 +1,8 @@
 # Uppdrag: första leveransen för Tentalokaler-PoC
 
+> **HISTORISKT UPPDRAG – ERSATT 2026-10-08.** Detta beskriver endast projektets första datacheckpoint. Aktuella styrande instruktioner finns i [AGENTS.md](AGENTS.md), [konceptuell kravspecifikation](docs/KONCEPTUELL_KRAVSPECIFIKATION.md) och [nuvarande Codex-uppdrag](docs/KODGRANSKNING_OCH_CODEX_UPPDRAG_2026-10-08.md). Formuleringen «Bygg ingen solver ännu» nedan hör till den gamla leveransen, inte ett permanent förbud. För närvarande ska Codex inventera och analysera lokal solver, men avvakta godkännande före ändring. **Alla inom scope ingående tentander måste placeras; schemaläggning ska kunna ändras över hela terminen och inte bara några minuter.**
+
+
 PoC:n ska på sikt besvara:
 
 > Hur mycket kan lokalbehovet optimeras, och hur stor potentiell besparing i kronor kan åstadkommas?
