@@ -1,32 +1,27 @@
-# Tentaoptimering – PoC
+# Tentaoptimering – proof of concept
 
-## Uppdrag
-Undersök hur stor den **långsiktiga årliga besparingspotentialen** är vid **gemensam optimering av tentamensschema, lokaler och tentamensvakter** över minst en termin.
+## Syfte
+PoC:n ska uppskatta den långsiktiga **årliga besparingspotentialen** i Uppsala universitets tentamensverksamhet genom samordnad planering av **tentamenstillfällen, lokaler och tentamensvakter**.
 
-Det är **inte** en modell för att endast flytta starttider några minuter eller minimera antalet använda salar. **Alla ingående tentamina och tentander måste få plats.** Om det inte går inom valda ramar ska körningen redovisa att fullständig genomförbar lösning saknas, inte presentera partiell placering som en lyckad optimering.
+Målet är den lägsta **totala årskostnaden** för en fullt genomförbar verksamhet. Samtliga tentamina och tentander inom den angivna omfattningen ska få plats. Planeringsenheten är minst en termin. Tillåtna datum, tentamensperioder och pass är justerbara verksamhetsparametrar.
 
-### Styrande dokument – läs i denna ordning
-1. [AGENTS.md](AGENTS.md) – bindande arbetsinstruktioner för Codex.
-2. [Konceptuell kravspecifikation](docs/KONCEPTUELL_KRAVSPECIFIKATION.md) – verksamhetens aktuella krav och parametrar.
-3. [Gap-analys](docs/GAP_ANALYS_MOT_KRAVSPECIFIKATION.md) – kända skillnader mot målbilden.
-4. [Kodgranskning och aktuellt Codex-uppdrag](docs/KODGRANSKNING_OCH_CODEX_UPPDRAG_2026-10-08.md) – **nästa arbetssteg: inspektion av lokal kod, utan att ändra implementationen**.
+## Dokumentation
+- [Kravspecifikation](docs/KONCEPTUELL_KRAVSPECIFIKATION.md) – verksamhetskrav, kostnadsmodell, scenarioparametrar och förväntade resultat.
+- [AGENTS.md](AGENTS.md) – arbetsinstruktioner för Codex och aktuellt utvecklingssteg.
+- [Kodgranskning och arbetsuppdrag](docs/KODGRANSKNING_OCH_CODEX_UPPDRAG_2026-10-08.md) – kodinventering och leverans för nästa steg.
+- [Datamodell](docs/DATAMODELL.md), [kostnadsmodell](docs/KOSTNADSMODELL.md) och [datagap](docs/BLOCKERANDE_DATAGAP.md) – tekniska underlag som ska stämmas av mot kravspecifikationen.
 
-Övriga dokument i `docs/` beskriver datamodell, kostnadsstruktur eller kvalitetsbrister och är underlag, inte konkurrerande kravspecifikationer.
+## Källfiler
+Originalfilerna ligger i `C:\lokalt\tentalokaler\underlag` och ska hanteras skrivskyddat. Filnamn och ark finns i `config/source_files.toml`. Excellfiler och normaliserade datadumpar ska inte läggas i Git.
 
-## Källor och lokal utveckling
-Originaldata finns skrivskyddade utanför repot under `C:\lokalt\tentalokaler\underlag`. Lägg aldrig råa Excel-filer, personuppgifter eller återskapade CSV-filer från `data/processed` i Git.
-
-GitHub-`main` innehåller för närvarande den verifierade databaslinjen. En nyare lokal OR-Tools-version har rapporterats men är **inte kodgranskad i GitHub**. Undersök lokalt `C:\lokalt\tentalokaler\PoC` inklusive Git-status och opushade ändringar innan andra åtgärder.
-
-## Databaslinje på main
-Den befintliga implementationen importerar, normaliserar och validerar tre Excel-underlag och skapar rapporter. Den är **inte** den gemensamma optimeringsmotorn.
-
+## Körning av datainläsning på GitHub-main
 ```powershell
 python -m pip install -e .
 python -m tentaoptimering.cli
 python -m unittest discover -s tests -v
 ```
 
-Databaslinjen skriver `data/processed/bookings.csv`, `ladok_activities.csv`, `lease_rows.csv` samt `reports/baseline.md` och `reports/data_quality.json`.
+Kommandona i GitHub-main avser datainläsning, normalisering och kvalitetsrapporter. För den lokala arbetskatalogen `C:\lokalt\tentalokaler\PoC` ska faktisk kodversion, kommandon och eventuella lokala ändringar inventeras innan ytterligare utveckling.
 
-Kända osäkerheter: en bokningsrad är inte automatiskt en unik tenta; Ladoks `ANTAL_TOT` är inte verifierad faktisk närvaro; interna hyresbelopp är inte automatiskt besparingsbara. **PoC ska ändå kunna köras med kvalificerade, tydligt markerade och lätt ersättbara antaganden.**
+## Datakvalitet
+Bokningsrader, unika tentamensbehov och Ladokaktiviteter representerar olika informationsnivåer. Ladokfältet `ANTAL_TOT` är inte verifierad faktisk närvaro. Internhyra ger inte automatiskt en realiserbar besparing. Saknade uppgifter hanteras med kvalificerade, dokumenterade och utbytbara antaganden så att PoC:n är körbar innan kompletterande material levereras.
