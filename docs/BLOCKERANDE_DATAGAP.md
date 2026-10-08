@@ -1,6 +1,8 @@
 # Blockerande datagap
 
-Följande behöver lösas innan ett optimeringsresultat kan anses operativt tillförlitligt eller användas för en besparingsberäkning. De hindrar inte en tydligt märkt explorativ PoC:
+> **Historisk datakvalitetsinventering (första checkpointen).** Ordet ”blockerande” avser tillförlitliga/verifierade slutsatser – inte att den explorativa PoC:n måste stå stilla. Enligt [aktuella krav](KONCEPTUELL_KRAVSPECIFIKATION.md) ska optimeraren kunna köras med dokumenterade, kvalificerade och lätt utbytbara antaganden medan kompletterande uppgifter inväntas. Aktuell arbetsordning framgår av [Codex-uppdraget](KODGRANSKNING_OCH_CODEX_UPPDRAG_2026-10-08.md).
+
+Följande behöver lösas innan ett optimeringsresultat kan anses operativt tillförlitligt eller användas för en verifierad besparingsberäkning. De hindrar inte en tydligt märkt explorativ PoC:
 
 1. definition av bokningsexportens prefix, radkorn, samtentor och RPS-placeringar
 2. verifierat uttag av faktisk närvaro och definition av Ladoks deltagarfält

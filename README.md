@@ -1,112 +1,42 @@
-# Tentaoptimering – PoC
+# Tentaoptimering – proof of concept
 
-Detta repo innehåller en körbar, lokal PoC för analys och kapacitetsoptimering av tentamenslokaler. OR-Tools CP-SAT placerar provisorisk Ladokefterfrågan i scenariorum under en komplett, explicit körningskonfiguration. Resultaten är experimentella och utgör inte ett kalenderverifierat tentamensschema eller en beräkning av realiserbar besparing.
+## Syfte
 
-Se [filöversikten](docs/FILOVERSIKT.md) för ansvar per versionshanterad fil och för reglerna om kodfilers storlek.
+PoC:n ska uppskatta den långsiktiga **årliga besparingspotentialen** i Uppsala universitets tentamensverksamhet genom samordnad planering av **tentamenstillfällen, lokaler och tentamensvakter**.
 
-## Funktioner
+Målet är den lägsta **totala årskostnaden** för en fullt genomförbar verksamhet. Samtliga tentamina och tentander inom den uttryckligen valda omfattningen ska få plats. Planeringsenheten är minst en termin; datum, tentamensperioder och pass är justerbara verksamhetsparametrar.
 
-- projektstruktur och reproducerbar körning
-- läsning av de tre källfilerna utan att ändra dem
-- datavalidering med konkreta kvalitetsfynd
-- normaliserade CSV-tabeller för placeringar, Ladok-aktiviteter och lokal-/kostnadsrader
-- maskinläsbart parameterregister utan låsta värden
-- genererad baslinjerapport
-- struktur för kostnadsmodellen
-- lista över blockerande datagap
-- konfigurerbar kapacitetsoptimering med samlokalisering, uppdelning och tidsförskjutning
-- oberoende eftervalidering av kapacitet, tid, geografi och fullständig efterfrågetäckning
-- sparade körningar med unika ID:n, manifest, placeringar, oplacerad efterfrågan och rapport
-- maskinläsbar jämförelse mellan scenarier
+## Dokumentation
 
-## Källdata
+- [Kravspecifikation](docs/KONCEPTUELL_KRAVSPECIFIKATION.md) – verksamhetskrav, kostnadsmodell, scenarioparametrar och förväntade resultat.
+- [AGENTS.md](AGENTS.md) – arbetsinstruktioner för Codex och aktuellt utvecklingssteg.
+- [Kodgranskning och arbetsuppdrag](docs/KODGRANSKNING_OCH_CODEX_UPPDRAG_2026-10-08.md) – ursprunglig kodinventering och nästa leverans.
+- [Gemensam optimeringsdesign](docs/GEMENSAM_OPTIMERINGSDESIGN.md) – kanoniskt tentamensbehov, salstillfällen, bemanning och årskostnad.
+- [Datamodell](docs/DATAMODELL.md), [kostnadsmodell](docs/KOSTNADSMODELL.md) och [datagap](docs/BLOCKERANDE_DATAGAP.md) – tekniska underlag som stäms av mot kravspecifikationen.
 
-Originaldata ska ligga utanför repot och behandlas som skrivskyddad:
+## Källfiler
 
-```text
-C:\lokalt\tentalokaler\underlag\
-```
-
-Standardkörningen använder `..\underlag`. En annan sökväg kan anges med `--source-dir` eller miljövariabeln `TENTA_SOURCE_DIR`.
+Originalfilerna ligger i `C:\lokalt\tentalokaler\underlag` och ska hanteras skrivskyddat. Filnamn och ark finns i `config/source_files.toml`. Excellfiler och normaliserade datadumpar ska inte läggas i Git.
 
 ## Körning
 
-Med Python 3.11 eller senare:
+Med den lokala virtuella miljön:
 
 ```powershell
-python -m pip install -e .
-python -m tentaoptimering.cli
-python -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -m tentaoptimering.cli prepare
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-CLI:t använder JSON som standard för ChatGPT Work och andra lokala verktyg:
+`prepare` återskapar normaliserade underlag och rapporter, inklusive den aktivitetsspecifika `demand_scope.csv`. `status` läser senast genererade beredskapsstatus. CLI:t skriver JSON som standard.
 
-```powershell
-# Bygg om alla underlag och returnera strukturerat resultat
-python -m tentaoptimering.cli prepare
+## Aktuell implementation
 
-# Läs senaste beredskapsstatus utan att köra om pipelinen
-python -m tentaoptimering.cli status
+Projektet innehåller ett reproducerbart inläsnings- och analyslager, ett kanoniskt scope-/efterfrågelager och ett syntetiskt integrerat CP-SAT-bevisfall. Den äldre kapacitetsoptimeraren är explorativ och är inte ett kalenderverifierat schema eller en beräkning av realiserbar besparing.
 
-# Visa resurser eller parameterdefinitioner
-python -m tentaoptimering.cli resources
-python -m tentaoptimering.cli parameters
+Den aktuella scope-rapporten redovisar 1 258 tekniskt inkluderade aktiviteter och 267 oavgjorda. Resultat för den omfattningen får inte beskrivas som täckning av hela verksamheten förrän samtliga aktiviteter fått ett verksamhetsbeslut.
 
-# Validera och kör referensscenariot
-python -m tentaoptimering.cli validate-config --config config\scenarios\reference.toml
-python -m tentaoptimering.cli optimize --config config\scenarios\reference.toml
+## Datakvalitet
 
-# Hämta en sparad körning
-python -m tentaoptimering.cli result --run-id <run-id>
+Bokningsrader, unika tentamensbehov och Ladokaktiviteter representerar olika informationsnivåer. `ANTAL_TOT` är inte verifierad faktisk närvaro och internhyra är inte automatiskt en realiserbar besparing. Saknade uppgifter hanteras som kvalificerade, dokumenterade och ersättbara antaganden.
 
-# Jämför två eller flera körningar
-python -m tentaoptimering.cli compare --run-ids <run-id-1> <run-id-2>
-
-# Människoläsbar, kort utdata vid manuell körning
-python -m tentaoptimering.cli prepare --format text
-```
-
-Alla kommandon använder JSON som standard och har ett stabilt `schema_version`. Lyckade kommandon returnerar `status: "ok"`. Förväntade indata-, konfigurations- eller resultatfel ger exitkod 2 och ett JSON-objekt med `status: "error"`. Oväntade fel ger exitkod 1.
-
-Körningen skapar:
-
-```text
-data/processed/bookings.csv
-data/processed/ladok_activities.csv
-data/processed/lease_rows.csv
-data/processed/candidate_linkage.csv
-data/processed/exam_events.csv
-data/processed/activity_booking_candidates.csv
-data/processed/room_inventory.csv
-data/processed/optimization_rooms.csv
-data/processed/optimization_demands.csv
-data/processed/optimization_placements.csv
-data/processed/demand_scope.csv
-reports/baseline.md
-reports/data_quality.json
-reports/candidate_linkage.md
-reports/candidate_linkage.json
-reports/optimization_readiness.md
-reports/optimization_readiness.json
-reports/demand_scope.md
-reports/demand_scope.json
-reports/run_manifest.json
-runs/<run-id>/scenario.toml
-runs/<run-id>/input_manifest.json
-runs/<run-id>/result.json
-runs/<run-id>/assignments.csv
-runs/<run-id>/unplaced.csv
-runs/<run-id>/report.md
-```
-
-De normaliserade tabellerna och körningskatalogerna ignoreras av Git eftersom de kan återskapas från originaldata och versionshanterade scenarier. Rapporterna under `reports` versionshanteras som en granskningsbar baslinje.
-
-## Avgränsning
-
-Baslinjen beskriver källdata och risker. Den antar inte att en bokningsrad är en unik tentamen, att `ANTAL_TOT` är faktisk närvaro eller att preliminär internhyra är en realiserbar besparing. Dessa frågor måste lösas innan en optimerare får tolka resultaten i kronor.
-
-`candidate_linkage.csv` är en granskningsbar kandidatdiagnostik mellan bokningar och Ladok, baserad på kurskod, datum och starttid. Den skapar inte en verifierad sammanslagning och använder inte deltagarantal i analysen.
-
-`optimization_demands.csv` använder det konfigurerade provisoriska Ladokmåttet från parameterregistret, men innehåller bara entydiga tekniska kandidater. `optimization_rooms.csv` innehåller de rumsspecifika publicerade kapaciteter som uttryckligen får användas för explorativ PoC. Läs [optimeringsunderlaget](docs/OPTIMERINGSUNDERLAG.md): kapacitetsanalys får genomföras, men historisk giltighet och salarnas kalendertillgänglighet är inte verifierade.
-
-Referensscenariot behåller historiska datum och tider. Det alternativa scenariot tillåter ±60 minuters startförskjutning och är uttryckligen ett tekniskt experiment, inte en beslutad verksamhetsregel. Samlokalisering och uppdelning är aktiverade eftersom båda förekommer i historiska placeringar; särskilt stöd och digital kompatibilitet redovisas som ännu ej modellerade osäkerheter. Se [optimeringsmotorn](docs/OPTIMERINGSMOTOR.md) för modell, mål, CLI-kontrakt och resultattolkning.
+Se [filöversikten](docs/FILOVERSIKT.md) för ansvar per versionshanterad fil och filstorlekspolicyn.
