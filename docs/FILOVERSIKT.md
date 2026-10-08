@@ -37,18 +37,20 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `docs/KOSTNADSMODELL.md` | Avgränsning mellan resursbehov, intern kostnadsfördelning och realiserbar besparing. |
 | `docs/OPTIMERINGSUNDERLAG.md` | Korn, relationsregler och tillåten användning av det maskinläsbara underlaget före motorbygge. |
 | `docs/OPTIMERINGSMOTOR.md` | CP-SAT-modell, scenarier, mål, validering, CLI-kontrakt och resultattolkning. |
+| `docs/OBEROENDE_EFTERVALIDERING.md` | Regelvis och fristående kontroll av en sparad terminskörning samt betydelsen av de två statusmåtten. |
 
 ## Python-paket: `src/tentaoptimering`
 
 | Fil | Ansvar |
 |---|---|
 | `__init__.py` | Paketidentifiering och kort paketbeskrivning. |
-| `cli.py` | JSON-först-kommandon för förberedelse, resurser, parametrar, optimering, resultat och jämförelse. |
+| `cli.py` | JSON-först-kommandon för förberedelse, resurser, parametrar, optimering, eftervalidering, resultat och jämförelse. |
 | `canonical_demand.py` | Validerar fullständiga scope-beslut och explicita relationer från Ladokaktiviteter via delgrupper till unika tentamensbehov. |
 | `integrated_term.py` | Första CP-SAT-modellen för full täckning över terminskalendern med salstillfällen, lokalportfölj och anonym samtidig bemanning. |
 | `integrated_config.py` | Läser och validerar det integrerade terminscenariots kalender, ekonomi, bemanning och spårbara antaganden. |
 | `integrated_inputs.py` | Adapter från reproducerbara scope- och optimeringsunderlag till terminsmodellens behov, rum och källspårbarhet. |
 | `integrated_runs.py` | Skapar granskningsbara körningsartefakter för integrerade terminsresultat. |
+| `integrated_validation.py` | Läser en sparad terminskörning och kontrollerar regelvis täckning, kapacitet, intervall, ort, antaganden och bemanning. |
 | `cost_model.py` | Datatyper och spärrat resultat för kostnader tills verifierade avtalskopplingar finns. |
 | `linkage.py` | Kandidatdiagnostik mellan bokningsplaceringar och Ladok; gör inga verifierade kopplingar. |
 | `loaders.py` | Läsning och schemakontroll av de tre Excelkällorna. |
@@ -80,6 +82,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `tests/test_integrated_term.py` | Säkrar hård deltagartäckning och gemensam optimering av lokalportfölj samt anonym samtidig bemanning. |
 | `tests/test_integrated_config.py` | Säkrar att det versionshanterade terminscenariot har validerbar kalender och spårbara antaganden. |
 | `tests/test_integrated_inputs.py` | Säkrar adapterens källspårbarhet och synliga scope-fullständighet. |
+| `tests/test_integrated_validation.py` | Säkrar oberoende eftervalidering, inklusive passöverlappning, kapacitet, ort och ej verifierbar verksamhetsstatus. |
 | `tests/test_linkage.py` | Säkrar kurskodsextraktion och att kandidatmatchningens tvetydighet bevaras. |
 | `tests/test_model_inputs.py` | Säkrar kandidatrelationer, flera placeringar per efterfrågepost och behandling av saknat efterfrågevärde. |
 | `tests/test_normalize.py` | Säkrar central textnormalisering och synliggör blandat bokningskorn. |

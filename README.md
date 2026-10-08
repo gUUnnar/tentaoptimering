@@ -37,6 +37,14 @@ Den första integrerade terminskörningen använder en separat, versionshanterad
 
 Körningen sparar spårbarhets- och resultatfiler under `runs/`, som inte versionshanteras. Den är explorativ: rumstillgänglighet, digital kompatibilitet, kostnader och anonym bemanning är uttryckliga, ersättbara scenarioantaganden. Resultatet är inte ett operativt schema och den konstruktiva heltermsmetoden redovisar inget optimalitetsgap.
 
+Eftervalideringen läser en sparad körnings egna modellindata, scenario och placeringsrader, och kan köras utan att placeringsmetoden körs igen:
+
+```powershell
+.\.venv\Scripts\python.exe -m tentaoptimering.cli validate-term-run --run-id <körnings-id>
+```
+
+Den skriver `validation.json` och `validation.md` i körningsmappen. Full teknisk placering innebär inte verksamhetsmässig genomförbarhet: regler som bara täcks av antaganden eller saknar data/modellstöd redovisas separat och ger status `not_verified`.
+
 ## Aktuell implementation
 
 Projektet innehåller ett reproducerbart inläsnings- och analyslager, ett kanoniskt scope-/efterfrågelager och ett syntetiskt integrerat CP-SAT-bevisfall. Den äldre kapacitetsoptimeraren är explorativ och är inte ett kalenderverifierat schema eller en beräkning av realiserbar besparing.

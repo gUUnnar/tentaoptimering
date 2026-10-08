@@ -17,7 +17,7 @@ Bygg en PoC som uppskattar den lägsta långsiktiga årskostnaden för Uppsala u
 4. Vid behov: `docs/DATAMODELL.md`, `docs/KOSTNADSMODELL.md`, `docs/BLOCKERANDE_DATAGAP.md` och relevanta kod- och konfigurationsfiler.
 
 ## Aktuellt uppdrag
-Bygg och verifiera den första terminskörningen för den uttryckligen preliminära tekniska omfattningen. Arbetet ska omfatta adapter från kanoniskt efterfrågelager, versionshanterat terminscenario, spårbara antaganden, hård täckning av inkluderad efterfrågan och en rapport som skiljer modellens täckning från total källpopulation.
+Bygg och verifiera en fristående eftervaliderare för terminskörningen. Den ska läsa sparade modellindata, scenario och placeringsresultat, redovisa regelvis `pass`, `fail`, `not_evaluated` eller `not_applicable` och alltid skilja teknisk placeringsfullständighet från verksamhetsmässig genomförbarhet. Avsaknad av data eller modellstöd får aldrig bli ett godkänt krav.
 
 ## Leverans via feature-branch och PR
 

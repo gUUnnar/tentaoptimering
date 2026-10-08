@@ -10,6 +10,7 @@ from typing import Any
 
 from .optimization_runs import compare_runs, load_run_result, run_optimization
 from .integrated_runs import run_integrated_term
+from .integrated_validation import write_validation_report
 from .optimizer_config import load_scenario_config
 from .paths import REPO_ROOT, default_source_dir
 from .pipeline import PipelineOutputs, output_paths, run_pipeline
@@ -36,6 +37,7 @@ def build_parser() -> argparse.ArgumentParser:
             "result",
             "compare",
             "optimize-term",
+            "validate-term-run",
         ),
         default="prepare",
         help="prepare bygger om underlaget; status läser senast genererade resultat.",
@@ -219,6 +221,14 @@ def _command_payload(args: argparse.Namespace, outputs: PipelineOutputs) -> dict
             "status": "ok",
             "run": run_integrated_term(config_path, args.processed_dir, args.runs_dir),
         }
+    if args.command == "validate-term-run":
+        run_id = _require(args.run_id, "--run-id", args.command)
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "command": args.command,
+            "status": "ok",
+            "validation": write_validation_report(args.runs_dir / run_id),
+        }
     if args.command == "result":
         run_id = _require(args.run_id, "--run-id", args.command)
         return {
@@ -254,6 +264,12 @@ def _emit(payload: dict[str, Any], output_format: str, stream: Any | None = None
             print(f"Utfall: {run['result']['solution']['status']}", file=stream)
             print(f"Optimalitetsgap: {run['result']['solution']['optimality_gap']}", file=stream)
         print(f"Rapport: {run['artifacts']['report.md']}", file=stream)
+        return
+    if payload["command"] == "validate-term-run":
+        validation = payload["validation"]
+        print(f"Teknisk placering: {validation['report']['technical_placement_completeness']['status']}", file=stream)
+        print(f"Verksamhetsmässig genomförbarhet: {validation['report']['business_feasibility']['status']}", file=stream)
+        print(f"Rapport: {validation['artifacts']['validation.md']}", file=stream)
         return
     if payload["command"] not in {"prepare", "status"}:
         print(json.dumps(payload, ensure_ascii=False, indent=2), file=stream)
