@@ -17,7 +17,15 @@ Bygg en PoC som uppskattar den lägsta långsiktiga årskostnaden för Uppsala u
 4. Vid behov: `docs/DATAMODELL.md`, `docs/KOSTNADSMODELL.md`, `docs/BLOCKERANDE_DATAGAP.md` och relevanta kod- och konfigurationsfiler.
 
 ## Aktuellt uppdrag
-Inventera den **lokala** implementationen i `C:\lokalt\tentalokaler\PoC`, inklusive arbetskopians Git-status, opushade ändringar, solver, CLI, tester, parametrar och rapporter. Redovisa kodnära kravuppfyllnad, återanvändbara delar och föreslagen minimal gemensam optimeringsarkitektur. **Ingen ändring av programkod, källdata eller lokal Git-status utan nytt godkännande.**
+Bygg och verifiera den första terminskörningen för den uttryckligen preliminära tekniska omfattningen. Arbetet ska omfatta adapter från kanoniskt efterfrågelager, versionshanterat terminscenario, spårbara antaganden, hård täckning av inkluderad efterfrågan och en rapport som skiljer modellens täckning från total källpopulation.
+
+## Leverans via feature-branch och PR
+
+- All fortsatt utveckling sker på en feature-branch, aldrig direkt på `main`.
+- Inventera och bevara lokala ändringar innan branchbyte, synkning eller annan Git-mutation.
+- Commit, testa och pusha feature-branchen innan en pull request skapas mot `main`.
+- Pull request-beskrivningen ska redovisa syfte, kravuppfyllnad, begränsningar/datgap, testresultat och resultatpåverkande antaganden.
+- Mergning till `main` kräver granskning och uttryckligt användargodkännande.
 
 ## Hantering av data och Git
 - Originaldata ligger skrivskyddat i `C:\lokalt\tentalokaler\underlag`.

@@ -94,6 +94,15 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["status"], "error")
         self.assertIn("--config", payload["error"]["message"])
 
+    def test_optimize_term_requires_explicit_config(self) -> None:
+        stderr = StringIO()
+        with redirect_stderr(stderr):
+            exit_code = main(["optimize-term"])
+
+        payload = json.loads(stderr.getvalue())
+        self.assertEqual(exit_code, 2)
+        self.assertIn("--config", payload["error"]["message"])
+
 
 if __name__ == "__main__":
     unittest.main()

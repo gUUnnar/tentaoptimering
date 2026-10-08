@@ -29,6 +29,14 @@ Med den lokala virtuella miljön:
 
 `prepare` återskapar normaliserade underlag och rapporter, inklusive den aktivitetsspecifika `demand_scope.csv`. `status` läser senast genererade beredskapsstatus. CLI:t skriver JSON som standard.
 
+Den första integrerade terminskörningen använder en separat, versionshanterad scenariofil. Den placerar enbart de preliminärt inkluderade behoven och redovisar därför både täckning av modellens behov och täckning av hela källpopulationen:
+
+```powershell
+.\.venv\Scripts\python.exe -m tentaoptimering.cli optimize-term --config config\scenarios\integrated_term_exploratory.toml
+```
+
+Körningen sparar spårbarhets- och resultatfiler under `runs/`, som inte versionshanteras. Den är explorativ: rumstillgänglighet, digital kompatibilitet, kostnader och anonym bemanning är uttryckliga, ersättbara scenarioantaganden. Resultatet är inte ett operativt schema och den konstruktiva heltermsmetoden redovisar inget optimalitetsgap.
+
 ## Aktuell implementation
 
 Projektet innehåller ett reproducerbart inläsnings- och analyslager, ett kanoniskt scope-/efterfrågelager och ett syntetiskt integrerat CP-SAT-bevisfall. Den äldre kapacitetsoptimeraren är explorativ och är inte ett kalenderverifierat schema eller en beräkning av realiserbar besparing.
