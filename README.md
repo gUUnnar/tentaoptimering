@@ -1,5 +1,8 @@
 # Tentaoptimering – PoC
 
+> **Aktuellt uppdrag (2026-10-08):** Detta README dokumenterar den första databaslinjen, inte hela PoC:ns aktuella målbild. Läs **[AGENTS.md](AGENTS.md)** först och därefter **[konceptuell kravspecifikation](docs/KONCEPTUELL_KRAVSPECIFIKATION.md)**, **[gap-analys](docs/GAP_ANALYS_MOT_KRAVSPECIFIKATION.md)** och **[aktuellt Codex-uppdrag](docs/KODGRANSKNING_OCH_CODEX_UPPDRAG_2026-10-08.md)**. Äldre begränsningar i denna fil avser första checkpointen och ersätter inte de aktuella kraven. Codex ska i detta steg endast granska den lokala implementationen, inte skriva ny kod. **Noll oplacerade tentander och terminsövergripande gemensam kostnadsoptimering** är grundläggande krav.
+
+
 Detta repo innehåller den första, avgränsade leveransen för en PoC om tentamenslokaler. Målet är att skapa en verifierbar databaslinje inför senare optimering. Ingen solver och inga förutbestämda scenariointervall ingår ännu.
 
 ## Första leveransen
