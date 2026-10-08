@@ -1,0 +1,80 @@
+schema_version = 1
+scenario_id = "integrated_term_exploratory_2026"
+description = "Första reproducerbara terminskörningen för preliminärt inkluderade Ladokaktiviteter. Resultatet är en explorativ kapacitets- och kostnadsanalys, inte ett operativt schema eller en realiserbar besparing."
+
+[calendar]
+start_date = "2026-01-12"
+end_date = "2026-03-31"
+allowed_weekdays = [1, 2, 3, 4, 5, 6, 7]
+turnaround_minutes = 30
+
+[[calendar.passes]]
+pass_id = "day"
+start_time = "08:00"
+latest_end_time = "18:00"
+
+[compatibility]
+digital_compatibility_mode = "all_exploratory_candidate_rooms_assumed_compatible_with_observed_formats"
+
+[staffing]
+staff_per_room_session = 1
+annual_cost_ore_per_staff = 5000000
+
+[costs]
+annual_room_cost_ore_per_seat = 100000
+
+[[assumption]]
+id = "term_calendar_window"
+value = "2026-01-12 through 2026-03-31; all ISO weekdays; 08:00-18:00"
+unit = "date_window_and_time"
+source = "historical_period_in_generated_exploratory_demand_data"
+rationale = "Täcker samtliga observerade datum och längsta observerade skrivtid; ingen verifierad framtida kalender finns."
+status = "provisional_exploratory"
+
+[[assumption]]
+id = "room_turnaround"
+value = "30"
+unit = "minutes"
+source = "scenario_assumption_pending_business_rule"
+rationale = "Synlig ersättbar ställtid mellan salstillfällen."
+status = "unverified_replaceable"
+
+[[assumption]]
+id = "room_availability"
+value = "all selected candidate rooms available for every configured slot"
+unit = "availability_mode"
+source = "config.parameters.poc_room_availability_mode"
+rationale = "Källunderlaget saknar verifierad salbokningskalender."
+status = "provisional_exploratory_not_operational"
+
+[[assumption]]
+id = "digital_compatibility"
+value = "all selected rooms compatible with observed digital and non-digital demand"
+unit = "compatibility_mode"
+source = "optimization_rooms.digital_capability_status plus scenario assumption"
+rationale = "Ingen verifierad aktivitet-till-sal-kompatibilitetsmatris finns."
+status = "unverified_replaceable"
+
+[[assumption]]
+id = "aggregate_staffing"
+value = "1"
+unit = "anonymous staff per active room session"
+source = "scenario_assumption_pending_collective_agreement_and_operations"
+rationale = "Kopplar personalbehov till samtidiga salstillfällen utan att påstå individuella arbetspass."
+status = "unverified_replaceable"
+
+[[assumption]]
+id = "annual_staff_cost"
+value = "5000000"
+unit = "ore per anonymous staff resource per year"
+source = "scenario_assumption_not_contract_rate"
+rationale = "Kostnadsproxy för gemensam modelltestning; inte avtals- eller budgetdata."
+status = "unverified_replaceable"
+
+[[assumption]]
+id = "annual_room_cost"
+value = "100000"
+unit = "ore per candidate-room seat per year"
+source = "scenario_assumption_not_lease_rate"
+rationale = "Årlig kapacitetsproxy; representerar inte bekräftad undvikbar hyra."
+status = "unverified_replaceable"

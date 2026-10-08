@@ -81,7 +81,9 @@ Om ett sådant antagande saknas redovisas fast årskostnad och simulerad periodk
 
 Modellen löser hela terminen där lokalportfölj och personalvolym delas. Datumvis dekomponering är inte giltig för den gemensamma kostnadsfunktionen.
 
-För att hålla sökningen rimlig förgenereras endast giltiga pass- och rumskandidater, dominerade alternativ tas bort, symmetriska resurser bryts och historiska placeringar används som warm start. CP-SAT/LNS körs med tidsgräns och dokumenterad optimalitetslucka. Regioner får delas endast när kalender, lokaler och personal bevisligen är oberoende.
+För små och medelstora instanser förgenereras endast giltiga pass- och rumskandidater, dominerade alternativ tas bort, symmetriska resurser bryts och CP-SAT/LNS körs med tidsgräns och dokumenterad optimalitetslucka. Regioner får delas endast när kalender, lokaler och personal bevisligen är oberoende.
+
+För första terminskörningen i verklig datastorlek används dessutom en uttryckligen konstruktiv skalkörning: lokalportföljer prövas, varje portfölj placeras deterministiskt och kostnaden för lokalportfölj samt anonym samtidig bemanning jämförs gemensamt. Den får rapportera `constructive_feasible`, men aldrig `optimal`, och rapporterar därför inget numeriskt optimalitetsgap. Resultatet är en genomförbarhets- och arkitektursignal tills kandidatgenerering/CP-SAT kan skalas med samma fullständiga regelmängd.
 
 ## Implementationssteg
 
@@ -90,4 +92,4 @@ För att hålla sökningen rimlig förgenereras endast giltiga pass- och rumskan
 3. Konfigurerbara kalender- och antagandeobjekt.
 4. Terminsmotor med rum, salstillfällen och kostnadskomponenter.
 5. Bemanningsuppgifter, därefter individuella arbetstids- och resevillkor när de aktiveras.
-6. Först därefter terminskörning med verkliga data och tydligt vald omfattning.
+6. Terminskörning med verkliga data och tydligt vald omfattning, med separat täckningsmått för inkluderade behov respektive hela källpopulationen.

@@ -23,6 +23,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `config/source_files.toml` | Namn, blad och rubrikrad för de tre lästa källexporterna. |
 | `config/scenarios/reference.toml` | Komplett referensscenario med fasta historiska datum och tider. |
 | `config/scenarios/flexible_start_60m.toml` | Tekniskt jämförelsescenario med ±60 minuters startflexibilitet. |
+| `config/scenarios/integrated_term_exploratory.toml` | Versionshanterad explorativ terminskalender, kostnadsproxyer, bemanningsregel och fullständigt spårbara antaganden. |
 
 ## Dokumentation
 
@@ -32,6 +33,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `docs/DATAMODELL.md` | Korn, nycklar och gränser mellan beställning, placering, Ladokaktivitet och lokalrad. |
 | `docs/FILOVERSIKT.md` | Denna innehållsförteckning och filernas ansvar. |
 | `docs/GEMENSAM_OPTIMERINGSDESIGN.md` | Teknisk specifikation för kanoniskt tentamensbehov, salstillfällen, integrerad bemanning och konsekvent årskostnad. |
+| `docs/FORSTA_TERMSKORNING.md` | Reproducerbar redovisning av första explorativa fullskalekörningen, täckning, kostnadsproxyer och begränsningar. |
 | `docs/KOSTNADSMODELL.md` | Avgränsning mellan resursbehov, intern kostnadsfördelning och realiserbar besparing. |
 | `docs/OPTIMERINGSUNDERLAG.md` | Korn, relationsregler och tillåten användning av det maskinläsbara underlaget före motorbygge. |
 | `docs/OPTIMERINGSMOTOR.md` | CP-SAT-modell, scenarier, mål, validering, CLI-kontrakt och resultattolkning. |
@@ -43,6 +45,10 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `__init__.py` | Paketidentifiering och kort paketbeskrivning. |
 | `cli.py` | JSON-först-kommandon för förberedelse, resurser, parametrar, optimering, resultat och jämförelse. |
 | `canonical_demand.py` | Validerar fullständiga scope-beslut och explicita relationer från Ladokaktiviteter via delgrupper till unika tentamensbehov. |
+| `integrated_term.py` | Första CP-SAT-modellen för full täckning över terminskalendern med salstillfällen, lokalportfölj och anonym samtidig bemanning. |
+| `integrated_config.py` | Läser och validerar det integrerade terminscenariots kalender, ekonomi, bemanning och spårbara antaganden. |
+| `integrated_inputs.py` | Adapter från reproducerbara scope- och optimeringsunderlag till terminsmodellens behov, rum och källspårbarhet. |
+| `integrated_runs.py` | Skapar granskningsbara körningsartefakter för integrerade terminsresultat. |
 | `cost_model.py` | Datatyper och spärrat resultat för kostnader tills verifierade avtalskopplingar finns. |
 | `linkage.py` | Kandidatdiagnostik mellan bokningsplaceringar och Ladok; gör inga verifierade kopplingar. |
 | `loaders.py` | Läsning och schemakontroll av de tre Excelkällorna. |
@@ -59,6 +65,8 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `provenance.py` | Skapar ett deterministiskt körmanifest med SHA-256 och radantal för in- och utdata. |
 | `reporting.py` | Skriver baslinje-, kvalitets- och kandidatkopplingsrapporter. |
 | `synthetic_integrated.py` | Litet CP-SAT-bevisfall där salstillfällen skapar bemanningskostnad och lokal- samt personalkostnad optimeras gemensamt. |
+| `term_calendar.py` | Genererar scenariostyrda terminsdatum och skrivpass samt filtrerar pass som inte rymmer tentamenslängden. |
+| `term_run.py` | Genomför första skalbara, konstruktiva terminskörningen genom portföljurval och balanserad placering med integrerad kostnadsutvärdering. |
 | `validation.py` | Beräknar kvalitetsmått och kvalitetsfynd per datakälla. |
 
 ## Tester och utvecklingsverktyg
@@ -69,11 +77,15 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `tests/test_cli.py` | Säkrar JSON som standard, statuskontraktet och maskinläsbara fel. |
 | `tests/test_canonical_demand.py` | Säkrar scope-täckning och att flera källaktiviteter kan bilda ett tentamensbehov utan dubbelräkning. |
 | `tests/test_file_policy.py` | Säkrar filstorlekströsklarna och att ingen Python-fil passerat den obligatoriska delningsgränsen. |
+| `tests/test_integrated_term.py` | Säkrar hård deltagartäckning och gemensam optimering av lokalportfölj samt anonym samtidig bemanning. |
+| `tests/test_integrated_config.py` | Säkrar att det versionshanterade terminscenariot har validerbar kalender och spårbara antaganden. |
+| `tests/test_integrated_inputs.py` | Säkrar adapterens källspårbarhet och synliga scope-fullständighet. |
 | `tests/test_linkage.py` | Säkrar kurskodsextraktion och att kandidatmatchningens tvetydighet bevaras. |
 | `tests/test_model_inputs.py` | Säkrar kandidatrelationer, flera placeringar per efterfrågepost och behandling av saknat efterfrågevärde. |
 | `tests/test_normalize.py` | Säkrar central textnormalisering och synliggör blandat bokningskorn. |
 | `tests/test_optimizer.py` | Säkrar kapacitet, överlappning, samlokalisering, uppdelning, tidsflexibilitet, reproducerbarhet och eftervalidering. |
 | `tests/test_synthetic_integrated.py` | Säkrar att det integrerade syntetiska fallet väljer högre bemanning när lokalbesparingen är större och täcker samtliga deltagare. |
+| `tests/test_term_calendar.py` | Säkrar att terminskalendern respekterar konfigurerade veckodagar, pass och tentamenslängder. |
 | `tools/check_code_file_lengths.py` | Fristående kontroll: mål 500 rader, stark varning vid 800 och fel vid 1 000 rader. |
 
 ## Rapporter och genererade filer

@@ -9,6 +9,7 @@ import tomllib
 from typing import Any
 
 from .optimization_runs import compare_runs, load_run_result, run_optimization
+from .integrated_runs import run_integrated_term
 from .optimizer_config import load_scenario_config
 from .paths import REPO_ROOT, default_source_dir
 from .pipeline import PipelineOutputs, output_paths, run_pipeline
@@ -34,6 +35,7 @@ def build_parser() -> argparse.ArgumentParser:
             "optimize",
             "result",
             "compare",
+            "optimize-term",
         ),
         default="prepare",
         help="prepare bygger om underlaget; status läser senast genererade resultat.",
@@ -209,6 +211,14 @@ def _command_payload(args: argparse.Namespace, outputs: PipelineOutputs) -> dict
             "status": "ok",
             "run": run,
         }
+    if args.command == "optimize-term":
+        config_path = _require(args.config, "--config", args.command)
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "command": args.command,
+            "status": "ok",
+            "run": run_integrated_term(config_path, args.processed_dir, args.runs_dir),
+        }
     if args.command == "result":
         run_id = _require(args.run_id, "--run-id", args.command)
         return {
@@ -234,12 +244,16 @@ def _emit(payload: dict[str, Any], output_format: str, stream: Any | None = None
     if payload["status"] == "error":
         print(f"Fel: {payload['error']['message']}", file=stream)
         return
-    if payload["command"] == "optimize":
+    if payload["command"] in {"optimize", "optimize-term"}:
         run = payload["run"]
         print(f"Körning: {run['run_id']}", file=stream)
-        print(f"Utfall: {run['outcome']}", file=stream)
-        print(f"Solverstatus: {run['solver']['status']}", file=stream)
-        print(f"Rapport: {run['artifacts']['report']}", file=stream)
+        if payload["command"] == "optimize":
+            print(f"Utfall: {run['outcome']}", file=stream)
+            print(f"Solverstatus: {run['solver']['status']}", file=stream)
+        else:
+            print(f"Utfall: {run['result']['solution']['status']}", file=stream)
+            print(f"Optimalitetsgap: {run['result']['solution']['optimality_gap']}", file=stream)
+        print(f"Rapport: {run['artifacts']['report.md']}", file=stream)
         return
     if payload["command"] not in {"prepare", "status"}:
         print(json.dumps(payload, ensure_ascii=False, indent=2), file=stream)
