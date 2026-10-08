@@ -20,6 +20,15 @@ status = "to_be_defined"
 rule_status = "adjustable"
 
 [[parameter]]
+id = "start_time_shift_minutes"
+area = "time_flexibility"
+name_sv = "Tillåten förskjutning av starttid"
+unit = "minutes"
+source = "scenario_configuration"
+status = "required_per_run"
+rule_status = "adjustable"
+
+[[parameter]]
 id = "allowed_weekdays"
 area = "calendar"
 name_sv = "Tillåtna veckodagar"
@@ -60,9 +69,12 @@ id = "demand_measure"
 area = "demand"
 name_sv = "Deltagarantal som dimensionerar"
 unit = "measure_id"
-source = "data_owner_definition"
-status = "blocked"
-rule_status = "requires_definition"
+source = "user_instruction_2026-10-08_and_ladok_registration_data"
+status = "provisional_for_first_optimization_preparation"
+rule_status = "replaceable_when_data_owner_definition_exists"
+source_field = "registered_count"
+source_field_label = "VARAV_ANTAL_ANMALDA"
+definition_sv = "Provisoriskt mått på efterfrågan; inte faktisk närvaro och inte ett fastställt verksamhetsmått."
 
 [[parameter]]
 id = "capacity_safety_margin"
@@ -78,9 +90,23 @@ id = "allowed_room_inventory"
 area = "room_inventory"
 name_sv = "Tillåtet lokalbestånd"
 unit = "room_id_set"
-source = "verified_room_register"
-status = "blocked"
-rule_status = "requires_source"
+source = "official_public_room_register_and_user_instruction_2026-10-08"
+status = "provisional_for_exploratory_poc"
+rule_status = "explicit_poc_assumption"
+enabled = true
+selection_rule = "capacity_scope_room_and_capacity_seats_present"
+definition_sv = "Publicerade rumskapaciteter får användas för att undersöka möjligheter i PoC:n, men utgör inte verifierad historisk eller framtida tillgänglighet."
+
+[[parameter]]
+id = "poc_room_availability_mode"
+area = "room_inventory"
+name_sv = "Tillgänglighet i explorativ PoC"
+unit = "availability_mode"
+source = "user_instruction_2026-10-08"
+status = "provisional_for_exploratory_poc"
+rule_status = "explicit_poc_assumption"
+value = "candidate_inventory_without_calendar_guarantee"
+definition_sv = "Rummen är scenariokandidater för kapacitetsanalys. Underlaget påstår inte att de är lediga vid ett visst tillfälle."
 
 [[parameter]]
 id = "digital_compatibility"
@@ -99,6 +125,33 @@ unit = "rule_set"
 source = "business_rules"
 status = "to_be_defined"
 rule_status = "adjustable"
+
+[[parameter]]
+id = "allow_split"
+area = "room_assignment"
+name_sv = "Tillåt uppdelning mellan salar"
+unit = "boolean"
+source = "scenario_configuration"
+status = "required_per_run"
+rule_status = "adjustable"
+
+[[parameter]]
+id = "max_rooms_per_exam"
+area = "room_assignment"
+name_sv = "Högsta antal salar per tentamen"
+unit = "room_count"
+source = "scenario_configuration"
+status = "required_per_run"
+rule_status = "adjustable"
+
+[[parameter]]
+id = "optimization_objective_weights"
+area = "optimization_objective"
+name_sv = "Vikter för optimeringsmålen"
+unit = "integer_weight_map"
+source = "scenario_configuration"
+status = "required_per_run"
+rule_status = "explicit_and_adjustable"
 
 [[parameter]]
 id = "support_place_rules"

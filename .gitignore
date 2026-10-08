@@ -8,6 +8,7 @@ data/raw/
 data/staging/
 data/processed/
 output/
+runs/
 .coverage
 dist/
 build/

@@ -1,0 +1,185 @@
+version = 1
+source_url = "https://www.uu.se/medarbetare/stod-och-verktyg/lokaler/boka-tentamensplatser"
+source_last_updated = "2026-09-24"
+retrieved_date = "2026-10-08"
+temporal_status = "current_published_not_verified_for_booking_period_2025_2026"
+published_address_count = 5
+published_exam_room_count = 10
+published_total_places = 1446
+
+[[room]]
+reference_room_id = "uu-bergsbrunnagatan-15-sal-1"
+booking_location_key = "bergsbrunnagatan-15|sal-1"
+booking_room_key = "sal-1"
+address = "Bergsbrunnagatan 15"
+room_name = "Sal 1"
+city = "Uppsala"
+capacity_seats = 206
+capacity_scope = "room"
+published_availability_context = "common_exam_room"
+digital_capability_status = "all_places_support_e_exam"
+accessibility_status = "not_stated_on_source_page"
+special_support_status = "not_stated_on_source_page"
+
+[[room]]
+reference_room_id = "uu-bergsbrunnagatan-15-sal-2"
+booking_location_key = "bergsbrunnagatan-15|sal-2"
+booking_room_key = "sal-2"
+address = "Bergsbrunnagatan 15"
+room_name = "Sal 2"
+city = "Uppsala"
+capacity_seats = 229
+capacity_scope = "room"
+published_availability_context = "common_exam_room"
+digital_capability_status = "all_places_support_e_exam"
+accessibility_status = "not_stated_on_source_page"
+special_support_status = "not_stated_on_source_page"
+
+[[room]]
+reference_room_id = "uu-fyrislundsgatan-80-sal-1"
+booking_location_key = "fyrislundsgatan-80|sal-1"
+booking_room_key = "sal-1"
+address = "Fyrislundsgatan 80"
+room_name = "Sal 1"
+city = "Uppsala"
+capacity_seats = 200
+capacity_scope = "room"
+published_availability_context = "common_exam_room"
+digital_capability_status = "supports_e_exam"
+accessibility_status = "accessibility_adapted"
+special_support_status = "not_stated_on_source_page"
+
+[[room]]
+reference_room_id = "uu-fyrislundsgatan-80-sal-2"
+booking_location_key = "fyrislundsgatan-80|sal-2"
+booking_room_key = "sal-2"
+address = "Fyrislundsgatan 80"
+room_name = "Sal 2"
+city = "Uppsala"
+capacity_seats = 80
+capacity_scope = "room"
+published_availability_context = "common_exam_room"
+digital_capability_status = "supports_e_exam"
+accessibility_status = "accessibility_adapted"
+special_support_status = "overflow_alternative_to_klostergatan_when_full"
+
+[[room]]
+reference_room_id = "uu-rabyvagen-95-sal-1"
+booking_location_key = "råbyvägen-95|sal-1"
+booking_room_key = "sal-1"
+address = "Råbyvägen 95"
+room_name = "Sal 1"
+city = "Uppsala"
+capacity_seats = 96
+capacity_scope = "room"
+published_availability_context = "common_exam_room"
+digital_capability_status = "supports_e_exam"
+accessibility_status = "accessibility_adapted"
+special_support_status = "not_stated_on_source_page"
+
+[[room]]
+reference_room_id = "uu-rabyvagen-95-sal-2"
+booking_location_key = "råbyvägen-95|sal-2"
+booking_room_key = "sal-2"
+address = "Råbyvägen 95"
+room_name = "Sal 2"
+city = "Uppsala"
+capacity_seats = 128
+capacity_scope = "room"
+published_availability_context = "common_exam_room"
+digital_capability_status = "supports_e_exam"
+accessibility_status = "accessibility_adapted"
+special_support_status = "not_stated_on_source_page"
+
+[[room]]
+reference_room_id = "uu-rabyvagen-95-sal-3"
+booking_location_key = "råbyvägen-95|sal-3"
+booking_room_key = "sal-3"
+address = "Råbyvägen 95"
+room_name = "Sal 3"
+city = "Uppsala"
+capacity_seats = 180
+capacity_scope = "room"
+published_availability_context = "common_exam_room"
+digital_capability_status = "supports_e_exam"
+accessibility_status = "accessibility_adapted"
+special_support_status = "not_stated_on_source_page"
+
+[[room]]
+reference_room_id = "uu-campus-gotland-b40"
+booking_location_key = "campus-gotland|b40"
+booking_room_key = "b40"
+address = "Campus Gotland, hus B"
+room_name = "B40"
+city = "Visby"
+capacity_seats = 60
+capacity_scope = "room"
+published_availability_context = "campus_gotland_from_spring_2027"
+digital_capability_status = "all_places_support_e_exam"
+accessibility_status = "not_stated_on_source_page"
+special_support_status = "not_stated_on_source_page"
+
+[[room]]
+reference_room_id = "uu-klostergatan-3-specialtentamenscenter"
+booking_location_key = "klostergatan-3"
+address = "Klostergatan 3"
+room_name = "Specialtentamenscenter"
+city = "Uppsala"
+capacity_seats = 41
+capacity_scope = "facility_total_for_13_individual_rooms_and_2_small_halls"
+published_availability_context = "special_support_only"
+digital_capability_status = "specialized_exam_computers_available"
+accessibility_status = "individual_rooms_with_space_for_assistant_and_rest_furniture"
+special_support_status = "nais_certificate_required"
+
+[[room]]
+reference_room_id = "uu-fyrishov-hall-c"
+booking_location_key = "fyrishov|sal-c"
+booking_room_key = "sal-c"
+address = "Fyrishov"
+room_name = "Hall C"
+city = "Uppsala"
+capacity_scope = "room"
+published_availability_context = "temporary_hired_hall_last_week_of_term"
+digital_capability_status = "not_stated_on_source_page"
+accessibility_status = "not_stated_on_source_page"
+special_support_status = "not_stated_on_source_page"
+
+[[room]]
+reference_room_id = "uu-fyrishov-hall-d"
+booking_location_key = "fyrishov|sal-d"
+booking_room_key = "sal-d"
+address = "Fyrishov"
+room_name = "Hall D"
+city = "Uppsala"
+capacity_scope = "room"
+published_availability_context = "temporary_hired_hall_last_week_of_term"
+digital_capability_status = "not_stated_on_source_page"
+accessibility_status = "not_stated_on_source_page"
+special_support_status = "not_stated_on_source_page"
+
+[[room]]
+reference_room_id = "uu-fyrishov-hall-e"
+booking_location_key = "fyrishov|sal-e"
+booking_room_key = "sal-e"
+address = "Fyrishov"
+room_name = "Hall E"
+city = "Uppsala"
+capacity_scope = "room"
+published_availability_context = "temporary_hired_hall_last_week_of_term"
+digital_capability_status = "not_stated_on_source_page"
+accessibility_status = "not_stated_on_source_page"
+special_support_status = "not_stated_on_source_page"
+
+[[room]]
+reference_room_id = "uu-fyrishov-hall-f"
+booking_location_key = "fyrishov|sal-f"
+booking_room_key = "sal-f"
+address = "Fyrishov"
+room_name = "Hall F"
+city = "Uppsala"
+capacity_scope = "room"
+published_availability_context = "temporary_hired_hall_last_week_of_term"
+digital_capability_status = "not_stated_on_source_page"
+accessibility_status = "not_stated_on_source_page"
+special_support_status = "not_stated_on_source_page"

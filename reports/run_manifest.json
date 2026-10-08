@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "sources": {
+    "bookings": {
+      "filename": "Tentaplaceringar_Export_2025-09-01-2026-08-31.xlsx",
+      "bytes": 2519630,
+      "sha256": "b2cd52d010edcd2dbc23affa2662a45e64ffd3d429520089b8ce21663ed1c969"
+    },
+    "ladok": {
+      "filename": "Utsökning Ladok tentander från tidigare termin.xlsx",
+      "bytes": 114008,
+      "sha256": "8c943773a0af9a435bfb36439a0a20c917cc23be500d6eaf93308184b2ccc3b8"
+    },
+    "leases": {
+      "filename": "2026 Tentamenslokaler.xlsx",
+      "bytes": 14532,
+      "sha256": "e2800f21ca6554a5b9f919a5c27f670a7c08b5d105afb9928df7c84de4ab98cf"
+    }
+  },
+  "configuration": {
+    "parameters": {
+      "filename": "parameters.toml",
+      "sha256": "5642df6f09084acc26d3f66cab7ef19cd3392d777dcc2249cbad4ec17a6f15a1"
+    },
+    "room_register": {
+      "filename": "room_register.toml",
+      "sha256": "75385db32075bc87772a212cf9168d9a2d7f44b9d41217bcba821d9d5771a3c5"
+    }
+  },
+  "artifacts": {
+    "bookings": {
+      "filename": "bookings.csv",
+      "rows": 8466,
+      "sha256": "e2c718e36bc9f998ce0fb44b121fa96f1868ff3a0f5c932cdb07912c5af66541"
+    },
+    "ladok_activities": {
+      "filename": "ladok_activities.csv",
+      "rows": 1525,
+      "sha256": "5d950bf0dc9dbdece181ed66faebe4467ad10bdae1fcfed98667eeffddb1e67d"
+    },
+    "lease_rows": {
+      "filename": "lease_rows.csv",
+      "rows": 41,
+      "sha256": "a7d5dc64b3baeb5fd43d1aa4675aca8bc8e854b1332a1eb8aed69f2014cf74de"
+    },
+    "candidate_linkage": {
+      "filename": "candidate_linkage.csv",
+      "rows": 10250,
+      "sha256": "eb1ed48ea63af4b96f82c42167a2cf809f88d853ac749aa3ac837c62581e9e4f"
+    },
+    "exam_events": {
+      "filename": "exam_events.csv",
+      "rows": 5506,
+      "sha256": "afc9640502f443db1cd9ed521e13673fafceaa6a17ff0d383ea97c9721643e52"
+    },
+    "activity_booking_candidates": {
+      "filename": "activity_booking_candidates.csv",
+      "rows": 6487,
+      "sha256": "ae01d3d88911a47457390d49626f09358279c2c445260b2264c413b50b9d62b2"
+    },
+    "room_inventory": {
+      "filename": "room_inventory.csv",
+      "rows": 20,
+      "sha256": "b4b503cee174ae4d0865ab57b9bc5860af6dc45c0ffd0e10146c09d3e07047cf"
+    },
+    "optimization_rooms": {
+      "filename": "optimization_rooms.csv",
+      "rows": 8,
+      "sha256": "d315d464cf61ce3d96ca024d83ad3f4069675812ec4151dd1e35fbf9db79ded4"
+    },
+    "optimization_demands": {
+      "filename": "optimization_demands.csv",
+      "rows": 1283,
+      "sha256": "18ae7415ae93f983314a0d55e375d76e9fe774c9e27cab78bec67b1d68abe825"
+    },
+    "optimization_placements": {
+      "filename": "optimization_placements.csv",
+      "rows": 2214,
+      "sha256": "d330c81f53623b8d1070d4ce097d96e4b5543458c5fbab5a7051b617543f62ca"
+    },
+    "demand_scope": {
+      "filename": "demand_scope.csv",
+      "rows": 1525,
+      "sha256": "544942c81b1f2fd91f124b36957c7c06b2bcfc7d84d154a0bb586e89f40984e8"
+    }
+  }
+}

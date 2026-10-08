@@ -1,0 +1,14 @@
+{
+  "generated_at_utc": "2026-10-08T13:27:16.771992+00:00",
+  "metrics": {
+    "source_activity_count": 1525,
+    "included_activity_count": 1258,
+    "excluded_activity_count": 0,
+    "unresolved_activity_count": 267,
+    "scope_complete_for_whole_population": false,
+    "scope_decision_basis_counts": {
+      "technical_preparation": 1524,
+      "not_assessed": 1
+    }
+  }
+}

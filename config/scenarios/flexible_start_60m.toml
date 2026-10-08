@@ -1,0 +1,49 @@
+schema_version = 1
+scenario_id = "flexible_start_60m"
+description = "Explorativ jämförelse: datum behålls men starttiden får flyttas högst 60 minuter i steg om 60 minuter. Detta är ett tekniskt scenario, inte en beslutad verksamhetsregel."
+
+[time]
+date_shift_earlier_days = 0
+date_shift_later_days = 0
+start_time_shift_minutes = 60
+start_time_step_minutes = 60
+allowed_weekdays = [1, 2, 3, 4, 5, 6, 7]
+earliest_start_time = "08:00"
+latest_end_time = "21:00"
+turnaround_minutes = 0
+
+[placement]
+allowed_room_ids = [
+  "uu-bergsbrunnagatan-15-sal-1",
+  "uu-bergsbrunnagatan-15-sal-2",
+  "uu-fyrislundsgatan-80-sal-1",
+  "uu-fyrislundsgatan-80-sal-2",
+  "uu-rabyvagen-95-sal-1",
+  "uu-rabyvagen-95-sal-2",
+  "uu-rabyvagen-95-sal-3",
+  "uu-campus-gotland-b40",
+]
+capacity_safety_margin_ratio = 0.0
+allow_co_location = true
+allow_split = true
+max_rooms_per_exam = 7
+enforce_historical_city = true
+availability_mode = "scenario_rooms_assumed_available_without_calendar_guarantee"
+special_support_mode = "not_modeled_with_warning"
+digital_compatibility_mode = "not_modeled_with_warning"
+allow_unplaced = true
+
+[objective.weights]
+unplaced_participants = 1000000
+unplaced_exams = 100000000
+distinct_rooms = 100000
+room_open_minutes = 10
+unused_seat_minutes = 1
+rescheduled_exams = 1000
+room_reassignments = 100
+
+[solver]
+max_time_seconds = 120.0
+num_workers = 1
+random_seed = 20261008
+relative_gap_limit = 0.0
