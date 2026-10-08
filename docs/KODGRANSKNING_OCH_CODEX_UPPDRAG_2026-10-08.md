@@ -1,72 +1,40 @@
-# Kodnära granskning och nästa Codex-steg
-Datum: 2026-10-08  
-Status: verifierad granskning av GitHub `main`, **inte** revision av lokal OR-Tools-kod.
+# Uppdrag till Codex – teknisk inventering och arkitekturförslag
+**Datum:** 2026-10-08  
+**Omfattning:** Kodgranskning och förslag. Ingen implementation i detta steg.
 
-## OBLIGATORISK TOLKNING FÖR CODEX – LÄS FÖRST
+## Uppdragets syfte
+Undersök hur den lokala kodbasen kan användas för en PoC som optimerar **tentamensdatum/pass, lokaler och personal i en gemensam långsiktig årskostnadsmodell**. Den ska planera minst en termin och uppfylla all obligatorisk efterfrågan inom vald omfattning. Styrande verksamhetskrav finns i [kravspecifikationen](KONCEPTUELL_KRAVSPECIFIKATION.md).
 
-**PoC-frågan är hur stor den långsiktiga ÅRLIGA besparingspotentialen är om tentamensverksamhetens hela schemaläggning, lokalportfölj och personalresurser planeras tillsammans under minst en termin.**
+## Arbetsplats och säker hantering
+- Lokal arbetskatalog: `C:\lokalt\tentalokaler\PoC`.
+- Rådata: `C:\lokalt\tentalokaler\underlag` (skrivskyddade).
+- Börja med att kontrollera aktuell branch, remote, `git status`, opushade commits, ocommittade och ignorerade filer, installerade paket, aktuell CLI, rapporter och testsvit.
+- Bevara alla lokala ändringar. Inga kod-, data- eller Git-muteringar i detta uppdrag. Gör ingen reset, pull, checkout, merge eller rebase.
 
-- **Noll oplacerade tentander eller tentamina inom PoC-omfattningen.** Detta är ett acceptanskrav, inte en mjuk målsättning. Tidigare resultat med 12 oplacerade är endast diagnostik, inte en giltig kostnadsoptimering. Modellen ska antingen uppfylla hela ingående efterfrågan eller tydligt rapportera avsaknad av fullständigt genomförbar lösning och identifiera blockerande krav. Det får aldrig löna sig att lämna efterfrågan utanför.
-- **Inte några minuter hit eller dit.** Tidigare scenarier med fasta tider respektive `±60 minuter` undersöker inte huvudfrågan. Det viktiga är möjlighet att förändra fördelningen av tentamina över **hela terminen**: kalenderdatum, toppperioder, extra dagar, helger och flera möjliga provpass per dag, beroende på inställda verksamhetskrav. Historisk start ska bevaras när ingen verklig nytta uppstår av förändring.
-- **Ingen suboptimering.** Extra vakter och bomtid kan vara rätt om den strukturella lokalkostnaden minskar mer; antalet vakter är inte låst vid dagens bestånd. En kortare personalplan eller fler tomma salar är inte ett ekonomiskt resultat i sig.
-- **Antaganden får användas** för saknade data eftersom den körbara PoC:n behövs nu, men ska vara explicit märkta och lätt ersättas vid kompletterande leverans om några dagar.
+## Krav som granskningen ska mäta mot
+1. **Alla obligatoriska tentamina och tentander placeras.** Solverstatus och genomförbarhet måste spegla täckning; om fullständig lösning inte går att hitta ska programmet redovisa detta och ge diagnostik.
+2. **Kalenderbaserad planering över minst en termin.** Datum, tentamensperioder, extra dagar, helger och provpass ska kunna vara tillåtna eller otillåtna enligt justerbara regler. Ursprungsschema får vara fast, önskemål eller flexibelt.
+3. **Integrerad ekonomi.** Lokalportfölj, externa hyrperioder och anonymiserade vakters arbetsdagar, förflyttning och bomtid ska ingå i samma årskostnad. Bemanningsstorlek är en ekonomisk variabel.
+4. **Verksamhetsvillkor.** Absoluta kapacitetsgränser, digital kompatibilitet, Uppsala/Visby, kurs-/programkrockar, samtidig start vid samlokalisering, olika tillåtna sluttider, ingen löpande nyinsläppning, ställtid och arbetstidsregler.
+5. **Scenarier och kompletterande data.** Procentuell deltagarvariation, framtida digital andel, transparenta antaganden och stabilt gränssnitt för att senare ersätta uppskattningar med faktiska data.
 
-**Codex ska först redovisa hur dess lokala modell uppfyller dessa kriterier och föreslå den minsta nödvändiga ändringen. Codex får ännu inte implementera.**
+## Inventera särskilt
+- Representationen av en unik tenta och deltagarantal, relationer mellan bokningar/Ladok/salplaceringar och risker för dubbelräkning.
+- Solverns beslutsvariabler, hårda villkor, eventuella mjuka villkor, status och optimeringsmål.
+- Kalender- och tidsrepresentation, salernas beläggning, ställtid och digitalt format.
+- Personalkostnader, bemanningsregler, restider, raster, arbetsdagar och långsiktig personalvolym.
+- Hyreskostnader för fasta och externa lokaler; beräkningsmetod för långsiktig årskostnad och besparingspotential.
+- Antaganderegister, parametergränssnitt, rapportering, tester och möjlig beräkningskomplexitet på en hel termin.
 
-## Utgångspunkt
+GitHub-`main` har vid en tidigare fjärrinventering visat datainläsning, normalisering, validering och kostnadsstrukturer. Den lokala kodbasen kan innehålla ytterligare solvermoduler. Fastställ vad som faktiskt finns i arbetskatalogen innan designförslag lämnas.
 
-Styrande dokument: [KONCEPTUELL_KRAVSPECIFIKATION.md](KONCEPTUELL_KRAVSPECIFIKATION.md) och [GAP_ANALYS_MOT_KRAVSPECIFIKATION.md](GAP_ANALYS_MOT_KRAVSPECIFIKATION.md). Det finns vid kontroll endast en GitHub-gren, `main`. Den innehåller den tidigare databaslinjen och inga synliga OR-Tools-moduler. Lokal implementation i `C:\lokalt\tentalokaler\PoC` är **inte granskad**.
+## Leverans
+Lämna **ett kort tekniskt granskningsunderlag** med:
+1. Lokal revisionsstatus och verifierade moduler.
+2. Kravuppfyllnad per del: uppfyllt, delvis uppfyllt, saknas eller kan ännu inte verifieras.
+3. En minimal sammanhängande målarkitektur som separerar källdata, antaganden, scenariokonfiguration, gemensam solver och resultat.
+4. Prioriterade kodåtgärder, vad som kan behållas och uppskattade tekniska risker.
+5. Testförslag med kända förväntade resultat: full efterfrågetäckning, oförenliga toppar, kapacitetstak, kurskrock, digitalt format, blandade sluttider, ställtid, vakters arbetstid/förflyttning samt avvägningen mellan lokaler och personalkostnader.
+6. En plan för att kunna göra en första terminskörning med tydliga antaganden och senare ersätta dessa med verifierade uppgifter.
 
-## Verifierade kodfynd
-
-1. **`cli.py` + `pipeline.py`**: kör enbart import, normalisering, validering och skrivning av `bookings.csv`, `ladok_activities.csv`, `lease_rows.csv`, `baseline.md`, `data_quality.json`. Ingen solver, scenariokörning eller gemensam ekonomisk optimering på GitHub-`main`.
-2. **`normalize.py`**: `exam_order_id` härleds från normaliserat `prefix`, `placement_id` från radordning och `activity_id` från Ladokradordning. De är provisoriska identiteter. Radsummering får inte dubblera efterfrågan. Bygg vidare på gränsen mellan tentamensbehov och historisk fysisk placering; stabilisera identifiering vid bättre data.
-3. **`validation.py`**: hittar och beskriver viktiga datagap: bokningarnas blandade korn, otydlig Ladokdefinition för faktisk närvaro, tvetydig koppling mellan Ladok/bokning, lokalrader som inte är salregister, internhyra som inte automatiskt är undvikbar samt tidsförskjutning mellan data. Behåll denna validering.
-4. **`cost_model.py`**: `CostComponent` och `SavingsResult` finns, men `uncalculated_savings()` blockerar besparingsresultat. Det är rimligt för **verifierad realiserbar besparing**, men en separat **teoretisk långsiktig kostnadssimulering** krävs nu, med dokumenterade antaganden.
-5. **`parameters.toml`**: definitioner av förskjutning i dagar, vardagar, start/sluttid, turnaround, efterfrågemått, salbestånd, digital kompatibilitet, samlokalisering, transport, bemanning och kostnadsdefinition. Värden saknas på flera håll; registret saknar kalendermängder med valbara perioder, procentuell efterfrågeändring, digital andel, personalmix och övergripande ekonomisk planeringshorisont.
-6. **`README.md`, `AGENTS.md`**: anger uttryckligen att detta är en data-baslinje och att ingen solver ska byggas utan godkännande; det senare godkännandet avser nu **modellplanering**, inte att oreflekterat ändra kod. Käll-Excel under `underlag` ska aldrig ändras eller committas.
-7. **`pyproject.toml`**: deklarerar `pandas` och `openpyxl`, men inte OR-Tools i GitHub-main. Det visar att eventuellt rapporterad CP-SAT-motor inte är representerad här.
-8. GitHub har vid kontroll endast grenen `main`; det finns ingen alternativ gren att jämföra med.
-
-## Viktig konsekvens
-
-Den tidigare rapporterade lokala PoC:n gav vid två körningar 1 246 placerade av 1 258 behov, med 12 oplacerade poster. Det är uppgifter från användarens lokala körning, **inte verifierat genom granskning av koden**. En modell som får lämna obligatorisk efterfrågan utanför kan inte ge ett giltigt minimikostnadsresultat för hela efterfrågan.
-
-## Rekommenderad minimal arkitektur
-
-```
-rådata (skrivskyddade)
-    ↓
-normaliserad källdatamodell + kvalitetsrapport
-    ↓
-verksamhetsmodell: unika tentamensbehov, lokaler, vakttyper, kalender
-    ↕
-antaganderegister + scenario med värden, källa, osäkerhet
-    ↓
-EN gemensam kostnadsoptimering (tid + rum + personal)
-    ↓
-validerat schema + årskostnad + solverstatus + revisionsspår
-```
-
-Minimalt nödvändiga beslut:
-- datum/pass per tenta inom explicit tillåten kalender; historik som valbart fast krav/preferens;
-- fördelning av dimensionerande tentander över lämpliga salar, med absolut platsgräns och ingen successiv insläppning;
-- samtidiga vakttimmar/pass, arbetstid, transport och bemanningsminimum;
-- val av långsiktig salportfölj och tillfälliga hyrperioder;
-- en gemensam långsiktig årskostnad som målfunktion. Alla tentander inom deklarerad omfattning måste få plats eller körningen vara ej fullständigt genomförbar.
-
-Innan större solverarbete: avgör om en integrerad CP-SAT/MIP-modell är beräkningsbar på hel termin med tillgänglig hårdvara och vald granularitet. Det är ett **arkitekturbeslut att testa**, inte ett skäl att låsa verksamhetsregler eller förenkla bort kostnader. Små syntetiska fall först.
-
-## Första avgränsade uppdraget till Codex (ENBART INSPEKTION OCH FÖRSLAG)
-
-1. Läs de tre dokumenten i `docs/`. Läs `README.md` och `AGENTS.md`.
-2. Inventera lokala `C:\lokalt\tentalokaler\PoC`: `git status`, branch, remotes, ocommittade/ignorerade filer, opushade commits, installerat solverpaket, faktisk CLI, rapporter och tester. Skriv **inga** ändringar till kod, data eller repository utan nytt godkännande. Gör ingen reset, checkout, merge, rebase eller pull som kan skriva över lokalt arbete.
-3. Beskriv den faktiska lokala solverns variabler, hårda/soft constraints, målfunktion, kostnadsmappning och orsaken till att vissa tentamina blev oplacerade; avgör vad som kan återanvändas.
-4. Jämför varje princip i kravspecifikationen mot lokal kod och klassificera: redan implementerat/verifierat, delvis implementerat, saknas, okänt p.g.a. data.
-5. Föreslå **minsta rimliga omstrukturering** för en integrerad terminssimulering, utan tre separata suboptimerare, och specificera antagandelagret så att inkommande data kan ersätta uppskattningar utan solverombyggnad.
-6. Föreslå konkreta tester med kända utfall: 100 % tentandtäckning eller ej godkänd körning; peak-kapacitetsbrist; kurs-/programkrock; digitalt format; kapacitetstak; gemensam start/olika sluttider; ställtid; personaltransport/vila; dyrare personal som möjliggör större lokalbesparing.
-7. Leverera en kodnära gap-tabell, prioriterad genomförandeplan och risker/beräkningskomplexitet. **Invänta användarens godkännande innan implementation**.
-
-## Leveranskriterium för denna fas
-
-Codex kan visa exakt hur och var den lokala implementationen avviker från målbilden; användaren kan ta ställning till föreslagen arkitektur innan ytterligare programmering. Vi ska inte uppge optimeringsresultat förrän alla ingående behov är täckta och både kostnader och antaganden är spårbara.
+**Arbetet avslutas med förslag för användarens godkännande, innan implementation inleds.**
