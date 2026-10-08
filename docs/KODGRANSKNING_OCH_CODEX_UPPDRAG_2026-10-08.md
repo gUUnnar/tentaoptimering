@@ -2,6 +2,17 @@
 Datum: 2026-10-08  
 Status: verifierad granskning av GitHub `main`, **inte** revision av lokal OR-Tools-kod.
 
+## OBLIGATORISK TOLKNING FÖR CODEX – LÄS FÖRST
+
+**PoC-frågan är hur stor den långsiktiga ÅRLIGA besparingspotentialen är om tentamensverksamhetens hela schemaläggning, lokalportfölj och personalresurser planeras tillsammans under minst en termin.**
+
+- **Noll oplacerade tentander eller tentamina inom PoC-omfattningen.** Detta är ett acceptanskrav, inte en mjuk målsättning. Tidigare resultat med 12 oplacerade är endast diagnostik, inte en giltig kostnadsoptimering. Modellen ska antingen uppfylla hela ingående efterfrågan eller tydligt rapportera avsaknad av fullständigt genomförbar lösning och identifiera blockerande krav. Det får aldrig löna sig att lämna efterfrågan utanför.
+- **Inte några minuter hit eller dit.** Tidigare scenarier med fasta tider respektive `±60 minuter` undersöker inte huvudfrågan. Det viktiga är möjlighet att förändra fördelningen av tentamina över **hela terminen**: kalenderdatum, toppperioder, extra dagar, helger och flera möjliga provpass per dag, beroende på inställda verksamhetskrav. Historisk start ska bevaras när ingen verklig nytta uppstår av förändring.
+- **Ingen suboptimering.** Extra vakter och bomtid kan vara rätt om den strukturella lokalkostnaden minskar mer; antalet vakter är inte låst vid dagens bestånd. En kortare personalplan eller fler tomma salar är inte ett ekonomiskt resultat i sig.
+- **Antaganden får användas** för saknade data eftersom den körbara PoC:n behövs nu, men ska vara explicit märkta och lätt ersättas vid kompletterande leverans om några dagar.
+
+**Codex ska först redovisa hur dess lokala modell uppfyller dessa kriterier och föreslå den minsta nödvändiga ändringen. Codex får ännu inte implementera.**
+
 ## Utgångspunkt
 
 Styrande dokument: [KONCEPTUELL_KRAVSPECIFIKATION.md](KONCEPTUELL_KRAVSPECIFIKATION.md) och [GAP_ANALYS_MOT_KRAVSPECIFIKATION.md](GAP_ANALYS_MOT_KRAVSPECIFIKATION.md). Det finns vid kontroll endast en GitHub-gren, `main`. Den innehåller den tidigare databaslinjen och inga synliga OR-Tools-moduler. Lokal implementation i `C:\lokalt\tentalokaler\PoC` är **inte granskad**.
