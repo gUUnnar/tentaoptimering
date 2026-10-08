@@ -1,42 +1,36 @@
 # Arbetsinstruktioner för Codex
 
-## Omfattning
+## Projektets mål
+Bygg en PoC som uppskattar den lägsta långsiktiga årskostnaden för Uppsala universitets tentamensverksamhet genom **gemensam optimering av schemaläggning, lokalbestånd, externhyror och tentamensvakter**. Minsta planeringsenhet är en hel termin. Modellen ska kunna justera kalenderdatum, tentamensperioder, dagar och skrivpass inom valda verksamhetsregler.
 
-Detta repo är en PoC för analys och senare optimering av tentamenslokaler.
+## Obligatoriska acceptanskriterier
+1. **Fullständig efterfrågetäckning.** Varje tentamen och varje dimensionerande tentand inom uttryckligen vald omfattning ska placeras. En lösning med oplacerad obligatorisk efterfrågan är inte godkänd. Vid brist på fullständig genomförbarhet redovisas status och blockerande krav; en partiell placering får endast förekomma i separat diagnostik.
+2. **Terminsövergripande planering.** Optimeraren ska kunna fördela tentamina över tillåtna kalenderperioder och skrivpass, inklusive justerbara verksamhetsvillkor om helger och tentamensperioder. Ursprungligt schema bevaras när förändring saknar tillräcklig nytta.
+3. **Gemensam totalkostnad.** Datum, salar och bemanning optimeras tillsammans. Personalkostnader, bomtid och transporter får öka om lägre lokalkostnader mer än kompenserar. Bemanningsstyrkans storlek är en kostnadsvariabel.
+4. **Hårda villkor.** Fysisk sal-/formatkapacitet; digital kompatibilitet; skilda planeringsområden Uppsala och Visby; kurs- och programkrockar; tillämpliga lagar, avtal och arbetstidsvillkor.
+5. **Spårbara data.** Använd kvalificerade antaganden när data saknas. Alla antaganden ska deklareras och kunna ersättas genom kompletterande data utan större kodändringar. Håll isär faktisk kostnad, teoretisk årlig potential och verifierad realiserbar besparing.
 
-## Överordnade acceptanskriterier – får inte kompromissas bort
+## Läsordning
+1. `README.md`
+2. `docs/KONCEPTUELL_KRAVSPECIFIKATION.md`
+3. `docs/KODGRANSKNING_OCH_CODEX_UPPDRAG_2026-10-08.md`
+4. Vid behov: `docs/DATAMODELL.md`, `docs/KOSTNADSMODELL.md`, `docs/BLOCKERANDE_DATAGAP.md` och relevanta kod- och konfigurationsfiler.
 
-**1. NOLL OPLACERADE TENTANDER.** Alla tentamina och tentander inom den uttryckligt definierade PoC-omfattningen är obligatorisk efterfrågan. Optimeraren får INTE minska kostnaden genom att avstå från att placera en tenta, en grupp eller en deltagare. En rapport med t.ex. 1 246 av 1 258 placerade poster är **inte ett giltigt eller lyckat optimeringsresultat**, även om lösaren tekniskt returnerar `FEASIBLE` för en relaxerad modell. Om kraven inte går att uppfylla ska resultatet rapporteras som *ingen fullständig genomförbar lösning inom valda villkor*, med tydlig förklaring av vilka villkor som orsakar konflikten och vilka verksamhetsparametrar som kan ändras. Partiell placering får endast användas som **diagnostik**, aldrig som bas för påstådd besparing. Redovisa vilka stödbehov som explicit ligger utanför PoC, utan att tyst stryka dem.
+## Aktuellt uppdrag
+Inventera den **lokala** implementationen i `C:\lokalt\tentalokaler\PoC`, inklusive arbetskopians Git-status, opushade ändringar, solver, CLI, tester, parametrar och rapporter. Redovisa kodnära kravuppfyllnad, återanvändbara delar och föreslagen minimal gemensam optimeringsarkitektur. **Ingen ändring av programkod, källdata eller lokal Git-status utan nytt godkännande.**
 
-**2. OPTIMERA TENTAMENSKALENDERN, INTE MINUTFÖRSKJUTNINGAR.** Huvudproblemet är när under minst en **hel termin** tentamina genomförs, hur topparna fördelas över olika dagar/perioder, vilka skrivpass som används, hur salar samutnyttjas och vad denna planering innebär för långsiktiga lokalkostnader och personal. Historiska starttider med `±60 minuter` är **inte** en lämplig huvudmodell eller den flexibilitet verksamheten efterfrågar. Tillåtna dagar, perioder, eventuella helger, antal pass per dag och andra verksamhetsparametrar ska vara konfigurerbara utan godtyckligt snäva intervall. De gamla minut-/dag-offsetparametrarna får inte styra lösningens arkitektur. En tenta kan byta dag eller pass om scenariot tillåter det; behåll ursprungsläget när ändring inte är motiverad.
-
-**3. EN GEMENSAM ÅRSKOSTNAD – INGEN SUBOPTIMERING.** Optimera datum, pass, lokaler och tentamensvakter tillsammans. Det kan vara rationellt att anlita fler vakter eller acceptera mer bomtid om lokalkostnaden sjunker mer. Dagens 86 vakter är en nulägesreferens, inte ett tak. All obligatorisk efterfrågan och alla hårda lag-/kapacitets-/format-/ortskrav måste uppfyllas.
-
-**4. VÄNTA MED KODÄNDRING.** Aktuellt uppdrag till Codex är enbart lokal inventering, kodnära gap-analys och förslag till minimal korrekt integrerad modell; ingen refaktorering/implementation förrän användaren godkänt förslaget. Den lokala OR-Tools-koden kan avvika från GitHub-`main`; kontrollera och skydda lokala ändringar.
-
-Läs `docs/KONCEPTUELL_KRAVSPECIFIKATION.md`, `docs/GAP_ANALYS_MOT_KRAVSPECIFIKATION.md` och `docs/KODGRANSKNING_OCH_CODEX_UPPDRAG_2026-10-08.md` innan något förslag ges.
-
-## Källdata
-
-- Originaldata finns i `C:\lokalt\tentalokaler\underlag` och är alltid read-only.
-- Lägg aldrig Excel-, CSV- eller databasexporter från källmappen i Git.
-- Normaliserade tabeller under `data/processed` är reproducerbara och ska inte versionshanteras.
-
-## Modellregler
-
-- Skilj beställning/tentamenstillfälle, fysisk salplacering och särskilt stöd.
-- Anta inte att Ladoks `ANTAL_TOT` är faktisk närvaro utan verifierad definition.
-- Anta inte att preliminär internhyra är en realiserbar besparing.
-- Hårdkoda inte verksamhetsparametrar eller scenariointervall. Värden ska komma från det maskinläsbara parameterregistret eller en uttrycklig beställning.
-- Aktuellt steg är endast kodinventering och designförslag. Ingen ny implementation förrän användaren godkänner förslaget. PoC ska därefter kunna köras med kvalificerade, redovisade och lätt utbytbara antaganden medan fler data inväntas.
+## Hantering av data och Git
+- Originaldata ligger skrivskyddat i `C:\lokalt\tentalokaler\underlag`.
+- Lägg inte original-Excel, personuppgifter eller genererade `data/processed`-filer i Git.
+- Hantera beställning/tentamensbehov, salplacering och Ladokaktivitet som olika datakorn.
+- Kontrollera lokala ocommittade filer och commits före synkning; ingen okontrollerad reset, pull, merge eller rebase.
+- Verksamhetsparametrar och antaganden ska vara konfigurerade och versionsspårade.
 
 ## Verifiering
-
-Använd Python 3.11 eller senare och kör före leverans:
-
+För databaslinjen på GitHub-main:
 ```powershell
 python -m tentaoptimering.cli
 python -m unittest discover -s tests -v
 ```
 
-Kontrollera att källdata förblir oförändrade och att genererade radantal stämmer mot baslinjen.
+Kontrollera att rådata inte förändras. Validera dessutom alla hårda regler och full efterfrågetäckning i solverns separata testsvit när den lokala implementationen har inventerats.
