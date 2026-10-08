@@ -1,78 +1,98 @@
-TENTALOKALER – KONCEPTUELL KRAVSPECIFIKATION
-Verksamhetsmässig målbild efter intervju, 2026-10-08
-Status: arbetsdokument för PoC, inte fastställd produktionsspecifikation.
+# Kravspecifikation – optimering av tentamensverksamhet
 
-1. UPPDRAG OCH EKONOMISKT MÅL
-Undersök den långsiktiga besparingspotentialen i Uppsala universitets tentamensverksamhet genom GEMENSAM optimering av tre kopplade beslut: när tentamina skrivs, i vilka lokaler och med vilken bemanning. Minimera verksamhetens totala kostnad, inte respektive delkostnad. Fler vakter, längre transport eller mer betald väntetid (bomtid) får vara ekonomiskt motiverat om större lokalbesparing uppstår; omvänt kan dyrare lokaler vara värda att behålla för att minska personal- och transportkostnader.
+**Projekt:** Tentaoptimering, Uppsala universitet  
+**Version:** 2026-10-08  
+**Status:** Konceptuell verksamhetskravspecifikation för PoC
 
-Budget och utfall redovisas PER ÅR. En termin är minsta planeringsenhet; flera terminer kan ingå i samma optimering. Skilj alltid mellan (a) modellerad långsiktig teoretisk årskostnad och besparingspotential, (b) verifierad och faktiskt realiserbar besparing, och (c) eventuella övergångskostnader/avtalsvillkor. Initial PoC fokuserar på (a); det betyder inte att (b) redan uppstår. Planeringen måste beakta perioder med extrem beläggning, inte bara medelutnyttjande.
+## 1. Syfte och förväntat resultat
 
-2. HÅRDA KRAV OCH GENOMFÖRBARHET
-• Alla INOM PoC:ns deklarerade omfattning ingående tentamina och deras dimensionerande tentander ska kunna genomföras. Det är inte en lyckad optimering att lämna tentamina eller studenter oplacerade. Vid konflikt ska körningen ange att fullständig lösning inte hittades/är omöjlig under givna förutsättningar och redovisa orsaker och nödvändiga förändringar; partiella scheman är enbart diagnostik.
-• Publicerad fysisk kapacitet per sal och tentamensformat är ett ABSOLUT TAK. Ingen experimentell beläggningsgrad får höja den.
-• Uppsala och Visby behandlas som separata planeringsområden. Tentander, lokaler och vakter flyttas inte mellan orterna.
-• Digital examination kräver tekniskt kompatibel lokal. Optimeraren får inte konvertera digital tentamen till papper (eller tvärtom) utan ett uttryckligt hypotetiskt scenario.
-• Tvingande lagar, kollektivavtal, arbetstidsregler, raster, dygnsvila och kompetenskrav måste följas för alla personaltyper.
-• Förhindra samtidiga tentamina på samma kurs och samma utbildningsprogram. Krockar mellan orelaterade parallella studier på individnivå ingår inte. Om programkoppling saknas ska begränsad säkerhet anges, inte döljas.
-• PoC:n exkluderar tills vidare särskild stöd-sal och särskilda stödbehov. Exkludera då konsekvent både motsvarande efterfrågan och kapacitet och redovisa tydligt vad som faller utanför, så att resultat inte felaktigt påstår full täckning av universitetets samtliga tentander.
+PoC:n ska beräkna hur tentamensverksamhetens långsiktiga **årliga totalkostnad** kan minskas genom att tentamenstillfällen, tentamenslokaler och tentamensvakter planeras gemensamt. Den ska ge ett beräknat ekonomiskt optimum eller den bästa hittade genomförbara lösningen inom tillgänglig beräkningstid, redovisa osäkerhet och jämföra med en tydligt beskriven nulägeskostnad.
 
-3. PARAMETERSTYRD TENTAMENSSCHEMALÄGGNING (NÄR)
-Historiskt önskat datum, starttid och ursprunglig lokal kan per scenario vara hårt fasta, mjuka preferenser eller flexibla inom tillåtna ramar. I normalfallet ska oförändrat schema föredras när det inte finns skäl att ändra det. Använd antingen verifierbara ändringskostnader eller en separat justerbar preferens/sekundärmålfunktion; blanda inte ihop dessa med faktiska kronor.
+Minsta planeringsperiod är **en termin**. Flera terminer kan kombineras. Ekonomiska resultat redovisas i **kronor per år**. PoC:n avser i första hand långsiktig strukturell potential: faktisk genomförbarhet enligt hyresavtal, uppsägningstider och omställningskostnader kan utredas separat.
 
-Definiera vilka parametrar användaren kan justera, utan godtyckliga snäva värdegränser:
-• Planeringstermin(er) och tillåtna kalenderdatum, inklusive särskilda tilläggsdagar utanför tentamenstoppar och möjlighet till helgskrivningar.
-• Möjliga skrivpass per dag, startfönster, tentamenslängd och antal möjliga pass, med hänsyn till hur länge salarna faktiskt kan användas.
-• Ställtid/omställning mellan två SEPARATA skrivtillfällen i samma sal, som en justerbar parameter, exempelvis turnaround_minutes. Historiska intervall är inte automatiskt en beslutad regel.
-• Tentamenslängd är normalt en given egenskap. Eventuell parameter max_exam_duration_hours avser en uttrycklig hypotetisk ändring av examinationens upplägg och får aldrig tyst korta en faktisk 5-timmarstentamen.
-• Samma tentamen kan delas upp mellan flera rum vid samma tillfälle; antalet tentander får inte dubbleras.
-• Olika tentamina och olika skrivtider FÅR finnas i samma salstillfälle, med gemensam start men olika sluttider. Nytillkomna tentander släpps INTE in löpande medan prov pågår. Salen kan användas på nytt först efter sista skrivande och ställtid.
-• Om en och samma tentamen får erbjudas vid flera helt olika starttillfällen är en öppen verksamhetsfråga; grundantagande i första PoC är ett gemensamt tillfälle.
+## 2. Modellens beslut och gemensam målfunktion
 
-4. EFTERFRÅGAN OCH DIGITALISERING
-• Historiskt antal registrerade/anmälda tentander kan användas som dimensionering när bättre uppgift saknas; skilj noga på Ladokregistrering, institutionsönskemål och FAKTISK närvaro. Fält i Ladokutdraget är inte verifierad närvaro per automatik.
-• Parametern demand_variation_pct ändrar antalet tentander PER tentamen, inte antalet tentamenstillfällen. Startvärde 0 %. Samma procent för alla tentamina i version ett; avrundning till heltal definieras och redovisas.
-• Andelen digitala tentamina väntas öka. Tillåt scenario för framtida digital andel, exempelvis digital_exam_share_pct, med tydlig regel för vilka tentamina som växlar format, och märk detta som prognos/hypotes i stället för ett historiskt faktum.
-• Externa lokaler som saknar digital teknik, exempelvis Fyrishov i nuvarande beskrivning, kan inte användas för digitala tentamina utan annan teknisk åtgärd. Investering i korttidslokaler ska inte ingå som generellt alternativ.
+Optimeraren beslutar inom valda verksamhetsregler:
+- vilka tillåtna datum och skrivpass som används för respektive tentamen,
+- hur varje tentamens deltagare fördelas mellan kompatibla salar och vilka salar som nyttjas,
+- vilka långsiktiga lokalalternativ och kortvariga externa hyrperioder som behövs,
+- hur många anonymiserade tentamensvakter som behövs, hur arbetsdagar läggs upp och hur vakterna fördelas mellan salar och byggnader.
 
-5. LOKALER OCH KOSTNADER (VAR)
-Lokaler ska ha identifiering, ort, byggnad/geografisk position, fysisk kapacitet, formatkompatibilitet, tillgängliga tider, kostnadstyp och användningsvillkor. Lokaler inom samma ort kan användas flexibelt för kompatibla tentor; avstånd påverkar framför allt vakters tidsåtgång och därmed kostnaden.
+**Målfunktion:** minimera jämförbar långsiktig årskostnad för långsiktiga lokaler, korttids-/externhyror, personal, betalda förflyttningar och andra relevanta kostnader. Undvik dubbelräkning av betald arbetstid, bomtid och resor. Personalvolym, arbetstimmar och bomtid är kostnadsvariabler; ingen förutbestämd personalstyrka är ett kapacitetstak.
 
-Skilj på:
-A. Långtidshyrda lokaler: fasta kostnader, normalt inte sparade bara för att salen står tom en timme. Optimeringen ska kunna analysera ett kontrafaktiskt MINDRE lokalbestånd, exempelvis att tre långtidshyrda salar ersätts av två, även om den nuvarande hyran eller lokalen inte kan delas upp. Ett proportionellt reducerat hyrespris är då ett explicit hypotetiskt antagande, inte en verifierad avtalsmöjlighet.
-B. Korttids-/externhyra: kostnad enligt verkligt debiterbar dag eller sammanhängande hyrperiod och praktiska villkor. Föredra inte automatiskt externa lokaler; digitalt krav kan göra dem oanvändbara.
-C. Tekniska anpassningar: investering endast tänkbar i långsiktigt disponerade lokaler, ej exempelvis tillfälligt hyrt Fyrishov. Investeringsmodul prioriteras inte i första PoC.
+En förändring av historiskt datum, startpass eller lokal ska göras när nyttan motiverar den. Använd verklig administrationskostnad när den kan beläggas och annars en separat justerbar preferens som kan avgöra mellan ekonomiskt likvärdiga lösningar.
 
-6. PERSONAL OCH ARBETSTID
-Modellera anonymiserade personalresurser med kostnader, arbetstidsvillkor och tillgänglighet; inga personuppgifter behövs. Uppgift om dagens 86 aktiva vakter, varav cirka 20 anställda, är nulägesreferens och INTE en maximigräns. Antal vakter, arbetsvolym och eventuell sammansättning av anställningsformer påverkar totalkostnaden och får optimeras över den långsiktiga horisonten.
+## 3. Genomförbarhet och hårda begränsningar
 
-Bemanningsbehov varierar med antal samtidigt skrivande i respektive sal och tillämpliga bemanningsregler. Presentationsmaterialets preliminära intervallregel (1–65: 2; 66–135: 3; 136–220: 4; 221–250: 5; 250–300: 6) ska dubbelkontrolleras för gränsvärden och högre kapaciteter; utforma den som lätt ersättbar konfigurationsdata, inte kod. Att minska bemanning när vissa grupper slutar ska kunna vara en separat verksamhetsparameter om säkerhetsregler medger det.
+En godkänd lösning ska uppfylla **hela den obligatoriska efterfrågan** inom vald PoC-omfattning. Alla ingående tentamina och dimensionerande tentander ska kunna skriva. Modellen får inte minska kostnaderna genom att lämna tentamina eller personer oplacerade. Om fullständig placering inte kan visas redovisas statusen tydligt; ett partiellt schema kan användas enbart för separat kapacitetsdiagnostik.
 
-En vakt kan bemanna flera tentor under en dag och arbeta i flera byggnader INOM samma ort. Förflyttning, förberedelse, avslut, raster, vila och bomtid måste tidsmodelleras utan dubbelräkning. Restid och iordningställande kan inte ske samtidigt. Lön, tillägg, övertid, betalda förflyttningar, eventuell bomtid samt relevanta kollektiva villkor ingår i EN sammanhängande kostnadsmodell.
+- Varje sals fysiska skrivplatsantal är ett **absolut tak**.
+- Digitala tentamina placeras endast i lokaler med nödvändig digital teknik.
+- Uppsala och Visby är **separata planeringsområden**; tentander och personal flyttas inte mellan orterna.
+- Tentamina för samma kurs eller utbildningsprogram får inte kollidera. Om koppling till program saknas måste begränsad kontrolltäckning redovisas.
+- Tillämpliga lagar, avtal, arbetstidsregler, raster, vila, bemanning och kompetenskrav gäller alla personalresurser.
+- **Särskilt pedagogiskt stöd och särskild stöd-sal** ingår inte i den inledande optimeringsomfattningen. Deras efterfrågan och kapacitet hålls konsekvent utanför och redovisas separat.
 
-7. GEMENSAM MÅLFUNKTION OCH RESULTAT
-Minimera långsiktig årlig total kostnad = strukturella lokalkostnader + externa lokalkostnader + personalkostnader + relevanta ytterligare kostnader (transport eller andra poster utan dubbelräkning). Ett schema med färre salstimmar eller färre vakter är inte per automatik bättre; det är total kostnad som avgör.
+## 4. Kalender och tentamenstillfällen
 
-Rapportera separat:
-• Giltighet/full efterfrågetäckning och solverstatus: optimal, genomförbar utan optimalitetsbevis, ej fullständigt genomförbar, tidsgräns.
-• Den hypotetiska årskostnaden och skillnaden mot tydligt definierat nulägesscenario.
-• Lokalbestånd, externhyrda dagar/perioder, digital kompatibilitet, terminsvisa toppar och antal skrivtillfällen.
-• Personalvolym, bemanning över tid, betald tid, bomtid och flyttningar.
-• Flyttade tentor jämfört med ursprungligt datum/tid/lokal; förändringspreferenser/-kostnader.
-• Antaganden, vilken data som är verifierad, vilka delar som är uppskattningar, solverns optimalitetsgap och känslighet.
-• Tydlig etikett för TEORETISK kontra faktiskt REALISERBAR besparing.
+Modellen omfattar minst en hel termin, med parameterstyrda tillåtna kalenderdatum, skrivperioder, dagar (inklusive möjliga helger), provpass och startfönster. Ursprungligt datum, starttid och lokal kan vara bindande, önskat med prioritet eller flexibelt inom scenarioinställningarna.
 
-8. KÖRBAR PoC OCH SNART ANKOMMANDE DATA
-PoC:n MÅSTE fungera med befintligt material redan i dag. Använd kvalificerade, synligt dokumenterade, versionshanterade antaganden där data saknas. Alla antaganden ska kunna bytas mot bättre data om några dagar UTAN större ombyggnad. Separera importerade rådata, normaliserad datamodell, antaganderegister, scenarioparametrar, optimeringsmotor och rapportering. CLI och maskinläsbart resultat är tillräckligt; grafisk kalender kan användas som scenariointerface senare, men bygg inte en egen webbapp nu.
+Varje tentamen har normalt en given skrivtid. En möjlig parameter `max_exam_duration_hours` representerar ett **explicit verksamhetsexperiment** med ändrade examinationsvillkor och måste redovisas som sådant.
 
-Befintliga datakällor:
-• Tentaplaceringar_Export_2025-09-01-2026-08-31.xlsx: historiska placeringar/bokningar.
-• Utsökning Ladok tentander från tidigare termin.xlsx: Ladokbaserat deltagarunderlag, inte säkerställd faktisk närvaro.
-• 2026 Tentamenslokaler.xlsx: lokaler och kostnader.
-• PM och tillämpning av schemaläggning, rektorsbeslut om principer, lokalt kollektivavtal, mötesanteckningar och presentation Utvecklingsarbete 2-10-26.
+Olika tentamina får samlokaliseras och kan ha olika sluttider under ett gemensamt salstillfälle. Deltagarna börjar vid samma starttid för salen. Ny grupp får börja först sedan samtliga i föregående tillfälle avslutat och den justerbara ställtiden passerat. En tentamen får delas över flera salar vid samma tillfälle utan dubbelräkning av deltagare. Utgångsantagande är ett gemensamt starttillfälle per tentamen.
 
-9. EXPLICIT ÖPPNA FRÅGOR / VERIFIERINGSBEHOV
-Faktisk närvaro, examen–programrelationer, exakta bemanningsgränser och arbetstidsvillkor, anställningskostnader, transport-/förberedelsetider, fullständiga digitala salförutsättningar, externa lokalers exakta hyrvillkor, kostnader vid långsiktig lokalminskning och eventuella tillfällen där en tenta får ges vid olika starttider. Dessa punkter får inte döljas eller felaktigt presenteras som verifierade fakta, men behöver inte blockera kvalificerade explorativa körningar.
+Ställtid anges med en konfigurerbar tidsparameter, t.ex. `turnaround_minutes`.
 
-10. ARKITEKTURPRINCIP
-Utforma den minsta korrekta GEMENSAMMA modellen, kontrollera beslutsvariablerna och hårda kraven med syntetiska testfall och därefter historisk data. Återanvänd befintlig kod där den passar, men skydda inte en missvisande modell med fler specialfall. Projektets nästa steg är kodnära gap-granskning före större omarbetning.
+## 5. Lokaler
 
+Lokaldata ska beskriva stabilt sal-ID, ort, byggnad, position, fysisk kapacitet, digital kompatibilitet, tillgänglighet och kostnads- eller avtalsvillkor.
+
+**Långsiktigt disponerade lokaler** modelleras som en strukturell årskostnad. PoC:n ska kunna undersöka ett mindre eller annorlunda lokalbestånd, även genom ett hypotetiskt ersättningsalternativ med färre salar och angiven uppskattad hyra. Sådana ersättningshyror markeras som antaganden tills en verklig lokal och ett avtal är kända.
+
+**Tillfälligt hyrda lokaler** modelleras med faktiska eller uppskattade debiteringsperioder, exempelvis dag eller sammanhängande hyrperiod. Digital kompatibilitet gäller även för dem. Teknikinvesteringar är endast ett möjligt framtida analysalternativ för långsiktigt disponerade lokaler och ingår inte i inledande kalkyl.
+
+## 6. Tentamensvakter
+
+Vakter representeras av **anonymiserade personalresurser**, med arbetstid, kostnad, anställnings-/avtalskategori, kompetens och tillgänglighet. Antalet resurser kan varieras och bestämmas utifrån totalt ekonomi- och bemanningsbehov.
+
+Bemanningskrav anges som verifierbara eller preliminära regler kopplade till **antal samtidigt skrivande tentander per sal och tidsintervall**. Möjligheten att minska bemanningen när deltagare avslutar är en scenarioinställning som endast aktiveras när regelverket medger det.
+
+En vakt kan arbeta vid flera tentamenstillfällen och i olika byggnader under samma dag inom samma ort. Modellen ska respektera restider, förberedelse, avslut, rast, vila, tillämpliga avtal, arbetspass och eventuell betald bomtid. Förflyttning och förberedelse får inte överlappa andra tilldelade arbetsuppgifter.
+
+Dagens uppgifter om cirka 86 aktiva vakter, varav cirka 20 anställda, är **indata för nulägesbeskrivningen**, inte en begränsning av framtida bemanningsvolym. Bemanningsintervall som anges i verksamhetens presentationer behöver valideras och hanteras som lätt utbytbara regeldata.
+
+## 7. Efterfrågan och framtidsscenarier
+
+Historiska bokningar kombineras med Ladokuppgifter för att dimensionera antalet tentander. Separera önskade platser, anmälda tentander och verifierad faktisk närvaro. För varje körning dokumenteras vilket efterfrågemått som används.
+
+- `demand_variation_pct`: gemensam procentuell förändring av **antal tentander per tentamen**. Antalet tillfällen ändras inte; avrundning anges explicit.
+- `digital_exam_share_pct`: hypotetisk andel digitala tentamina vid en framtida tidpunkt; vilka prov som klassificeras om och hur det sker måste vara reproducerbart.
+- Tillåtna datum, helger, skrivpass, ställtider, tidspreferenser och verksamhetsregler ska kunna väljas i scenariokonfigurationen utan godtyckligt snäva hårdkodade intervall.
+
+## 8. Datakällor och antaganden
+
+Befintliga datakällor i `C:\lokalt\tentalokaler\underlag`:
+- `Tentaplaceringar_Export_2025-09-01-2026-08-31.xlsx` – historiska boknings-/placeringsposter.
+- `Utsökning Ladok tentander från tidigare termin.xlsx` – Ladokbaserade deltagaruppgifter, inte automatiskt verifierad närvaro.
+- `2026 Tentamenslokaler.xlsx` – lokal-/kostnadsrader som behöver kopplas till verkliga salar.
+- Verksamhetsdokument, beslut, tillämpningsregler, avtal och utvecklingspresentationer.
+
+PoC:n ska vara **körbar med tillgängligt material**. Saknade uppgifter får ersättas med kvalificerade, uttryckligen märkta antaganden. Varje antagande ska ange namn, värde, enhet, motivering, källa, giltighet och status. Antaganden ska kunna ersättas med inkommande data utan ombyggnad av solverlogiken.
+
+Källdatamodellen ska hålla isär **tentamensbehov/beställning, historisk salplacering, Ladokaktivitet, faktisk sal och avtals-/kostnadsobjekt**. Kopplingsosäkerhet och exkluderade poster redovisas.
+
+## 9. Resultat och kvalitetskrav
+
+Varje körning ska dokumentera konfiguration, dataversion, antaganden, modellerad omfattning, solverstatus, beräkningstid och eventuell optimalitetslucka. Rapporten ska visa:
+- total efterfrågan och bevisad fullständig täckning, eller uttryckligt uteblivet genomförbarhetsresultat,
+- schema och ändringar från ursprungligt datum, pass och lokal,
+- belastning, lokalportfölj, korttidsinhyrningar och tillgång till digitala platser,
+- personalvolym, arbetstid, bomtid och förflyttningar,
+- kostnad per kategori, total långsiktig årskostnad och teoretisk årlig besparingspotential jämfört med definierad baslinje,
+- osäkerheter och skillnad mellan hypotetisk respektive avtalsmässigt genomförbar besparing.
+
+CLI och maskinläsbara resultat är tillräckliga för PoC:n. Utvärdera modellen först med små syntetiska fall med kända svar och därefter med en hel termins historiska data.
+
+## 10. Öppna databehov
+
+För att minska osäkerheten behöver projektet verifierade uppgifter om faktisk närvaro, kurs–programkopplingar, salarnas teknik och kapacitet, externa hyrperioder och priser, alternativa lokalers hyresnivåer, personal- och transportkostnader samt detaljerade bemannings-/arbetstidsregler. Lösningen ska kunna omvärderas utan programombyggnad när dessa uppgifter blir tillgängliga.
