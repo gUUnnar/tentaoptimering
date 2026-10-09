@@ -275,7 +275,11 @@ def _aggregate_staffing(assignments: pd.DataFrame, demands: dict[str, dict[str, 
 
 def _individual_staffing(assignments: pd.DataFrame, staff_assignments: pd.DataFrame | None, demands: dict[str, dict[str, Any]], rooms: dict[str, dict[str, Any]], scenario: IntegratedTermScenario, slots: dict[str, CalendarSlot]) -> RuleResult:
     status, reason, object_ids = validate_staffing(assignments, staff_assignments, demands, rooms, scenario, slots)
-    return RuleResult("individual_staffing_constraints", status, reason, object_ids)
+    assumption_only = status == PASS and any(
+        item.assumption_id == "individual_staffing_rules" and item.status != "verified"
+        for item in scenario.assumptions
+    )
+    return RuleResult("individual_staffing_constraints", status, reason, object_ids, assumption_only)
 
 
 def _session_intervals(assignments: pd.DataFrame, demands: dict[str, dict[str, Any]], scenario: IntegratedTermScenario, slots: dict[str, CalendarSlot]) -> list[tuple[str, str, int, int, int]]:

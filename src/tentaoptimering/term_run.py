@@ -109,6 +109,8 @@ def _schedule_portfolio(
     chosen: list[dict[str, Any]] = []
     by_id = {item.exam_demand_id: item for item in demands}
     placed_slots: dict[str, CalendarSlot] = {}
+    room_session_durations: dict[tuple[str, str], int] = {}
+    slots_by_id = {item.slot_id: item for values in slots_by_demand.values() for item in values}
     for demand in sorted(demands, key=lambda item: (-item.participants, item.exam_demand_id)):
         compatible = [room for room in portfolio if room.plan_area == demand.plan_area]
         allocation = None
@@ -119,7 +121,11 @@ def _schedule_portfolio(
                 for other in demands if other.exam_demand_id in placed_slots
             ):
                 continue
-            compatible_at_slot = [room for room in compatible if room_is_compatible(demand, room, slot)]
+            compatible_at_slot = [
+                room for room in compatible
+                if room_is_compatible(demand, room, slot)
+                and _room_is_free(room, slot, demand.duration_minutes, room_session_durations, slots_by_id, scenario)
+            ]
             free = sum(remaining.get((slot.slot_id, room.room_id), 0) for room in compatible_at_slot)
             if free < demand.participants:
                 continue
@@ -143,12 +149,34 @@ def _schedule_portfolio(
         slot, rows = allocation
         for row in rows:
             remaining[slot.slot_id, row["room_id"]] -= int(row["participants"])
+            key = str(row["room_id"]), slot.slot_id
+            room_session_durations[key] = max(room_session_durations.get(key, 0), demand.duration_minutes)
         loads[slot.slot_id] += demand.participants
         placed_slots[demand.exam_demand_id] = slot
         chosen.extend(rows)
     sessions = _sessions(chosen, by_id, scenario, slots_by_demand)
     plan = plan_staffing(_staffing_tasks(sessions, chosen, portfolio, by_id, scenario), scenario.staffing_policy)
     return (tuple(chosen), sessions, plan) if plan.feasible else None
+
+
+def _room_is_free(
+    room: IntegratedRoom, slot: CalendarSlot, duration: int,
+    session_durations: dict[tuple[str, str], int], slots_by_id: dict[str, CalendarSlot],
+    scenario: IntegratedTermScenario,
+) -> bool:
+    """Prevent a room from receiving overlapping pass sessions while placing."""
+    candidate_duration = max(duration, session_durations.get((room.room_id, slot.slot_id), 0))
+    for (room_id, existing_slot_id), existing_duration in session_durations.items():
+        if room_id != room.room_id or existing_slot_id == slot.slot_id:
+            continue
+        existing_slot = slots_by_id[existing_slot_id]
+        if (
+            existing_slot.scheduled_date == slot.scheduled_date
+            and slot.start_minute < existing_slot.start_minute + existing_duration + scenario.calendar.turnaround_minutes
+            and existing_slot.start_minute < slot.start_minute + candidate_duration + scenario.calendar.turnaround_minutes
+        ):
+            return False
+    return True
 
 
 def _sessions(

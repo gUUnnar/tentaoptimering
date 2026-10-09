@@ -66,18 +66,17 @@ def required_staff(participants: int, policy: StaffingPolicy) -> int:
 def plan_staffing(tasks: tuple[StaffingTask, ...], policy: StaffingPolicy) -> StaffingPlan:
     """Create a reproducible anonymous worker plan or identify an impossible task.
 
-    Workers are created only when no prior worker can take an assignment.  Each
-    assignment includes preparation and closing time, so rest, shift, break,
-    daily-work and building-transition checks apply to paid work rather than only
-    the student writing interval.
+    Workers are created only when no prior worker can take an assignment. Long
+    room-supervision duties are split into contiguous coverage segments no longer
+    than the configured continuous-work limit. This keeps the room covered while
+    requiring a real, recorded gap before an individual can return from a break.
     """
     _validate_policy(policy)
     workers: list[list[dict[str, object]]] = []
     travel_total = 0
-    for task in sorted(tasks, key=lambda item: (item.scheduled_date, item.start_minute, item.task_id)):
-        start = task.start_minute - policy.preparation_minutes
-        end = task.end_minute + policy.closing_minutes
-        if not _fits_shift(start, end, policy.shifts) or end - start > min(policy.maximum_continuous_minutes, policy.maximum_daily_minutes):
+    for task in _expanded_tasks(tasks, policy):
+        start, end = task.start_minute, task.end_minute
+        if not _fits_shift(start, end, policy.shifts):
             return StaffingPlan(False, len(workers), 0, travel_total, 0, (), f"task_outside_shift:{task.task_id}")
         for _ in range(task.staff_required):
             selection = _select_worker(workers, task, start, end, policy)
@@ -97,6 +96,23 @@ def plan_staffing(tasks: tuple[StaffingTask, ...], policy: StaffingPolicy) -> St
     work_minutes = sum(int(item["end_minute"]) - int(item["start_minute"]) for item in assignments)
     idle_minutes = _idle_minutes(workers)
     return StaffingPlan(True, len(workers), work_minutes, travel_total, idle_minutes, assignments)
+
+
+def _expanded_tasks(tasks: tuple[StaffingTask, ...], policy: StaffingPolicy) -> tuple[StaffingTask, ...]:
+    """Turn a long supervised session into staff-covered break-sized duties."""
+    expanded = []
+    limit = min(policy.maximum_continuous_minutes, policy.maximum_daily_minutes)
+    for task in tasks:
+        start = task.start_minute - policy.preparation_minutes
+        end = task.end_minute + policy.closing_minutes
+        boundaries = list(range(start, end, limit)) + [end]
+        for index, (segment_start, segment_end) in enumerate(zip(boundaries, boundaries[1:]), start=1):
+            task_id = task.task_id if len(boundaries) == 2 else f"{task.task_id}#{index}"
+            expanded.append(StaffingTask(
+                task_id, task.scheduled_date, segment_start, segment_end, task.building_id,
+                task.participants, task.staff_required,
+            ))
+    return tuple(sorted(expanded, key=lambda item: (item.scheduled_date, item.start_minute, item.task_id)))
 
 
 def _select_worker(workers: list[list[dict[str, object]]], task: StaffingTask, start: int, end: int, policy: StaffingPolicy) -> int | None:

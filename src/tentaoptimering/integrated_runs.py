@@ -133,7 +133,6 @@ def _report(payload: dict[str, Any]) -> str:
         f"- Status: `{comparison['status']}`.",
         f"- Källans preliminära internhyreprofil: {comparison['source_baseline_preliminary_internal_rent_ore']} öre per år.",
         f"- Scenariots antagandekostnad: {comparison['scenario_assumption_cost_ore']} öre per år.",
-        f"- Illustrativ, ej jämförbar differens: {comparison['illustrative_unverified_delta_ore']} öre per år.",
         "- Teoretisk potential och verifierad realiserbar besparing: inte beräknade.", "",
         "## Begränsningar", "",
         *[f"- {item}" for item in payload["limitations"]], "",

@@ -47,6 +47,16 @@ class StaffingTests(unittest.TestCase):
         self.assertFalse(plan.feasible)
         self.assertEqual(plan.reason, "task_outside_shift:late")
 
+    def test_long_supervision_uses_recorded_relief_segments(self) -> None:
+        plan = plan_staffing((
+            StaffingTask("long", date(2026, 1, 12), 8 * 60, 18 * 60, "a", 20, 1),
+        ), self.policy)
+
+        self.assertTrue(plan.feasible)
+        self.assertEqual(plan.worker_count, 2)
+        self.assertEqual([row["task_id"] for row in plan.assignments], ["long#1", "long#2"])
+        self.assertTrue(all(row["end_minute"] - row["start_minute"] <= 300 for row in plan.assignments))
+
 
 if __name__ == "__main__":
     unittest.main()

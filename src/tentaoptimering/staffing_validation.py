@@ -57,15 +57,20 @@ def _expected_tasks(
         except ValueError:
             return (f"{room_id}|{slot_id}",)
         duration = max(int(item["duration_minutes"]) for item in members if item)
-        task_id = f"{room_id}|{slot_id}"
-        expected[task_id] = {
-            "scheduled_date": slot.scheduled_date.isoformat(),
-            "start_minute": slot.start_minute - scenario.staffing_policy.preparation_minutes,
-            "end_minute": slot.start_minute + duration + max(
-                scenario.staffing_policy.closing_minutes, scenario.calendar.turnaround_minutes,
-            ),
-            "building_id": str(room.get("building_id") or room_id), "count": count,
-        }
+        base_id = f"{room_id}|{slot_id}"
+        start = slot.start_minute - scenario.staffing_policy.preparation_minutes
+        end = slot.start_minute + duration + max(
+            scenario.staffing_policy.closing_minutes, scenario.calendar.turnaround_minutes,
+        )
+        limit = min(scenario.staffing_policy.maximum_continuous_minutes, scenario.staffing_policy.maximum_daily_minutes)
+        boundaries = list(range(start, end, limit)) + [end]
+        for index, (segment_start, segment_end) in enumerate(zip(boundaries, boundaries[1:]), start=1):
+            task_id = base_id if len(boundaries) == 2 else f"{base_id}#{index}"
+            expected[task_id] = {
+                "scheduled_date": slot.scheduled_date.isoformat(), "start_minute": segment_start,
+                "end_minute": segment_end, "building_id": str(room.get("building_id") or room_id),
+                "count": count,
+            }
     return expected
 
 

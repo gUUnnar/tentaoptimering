@@ -33,7 +33,7 @@ travel_cost_ore_per_minute = 0
 preparation_minutes = 30
 closing_minutes = 30
 minimum_break_minutes = 30
-maximum_continuous_minutes = 660
+maximum_continuous_minutes = 300
 maximum_daily_minutes = 660
 minimum_daily_rest_minutes = 660
 travel_minutes_between_buildings = 30
@@ -100,7 +100,7 @@ status = "unverified_replaceable"
 
 [[assumption]]
 id = "individual_staffing_rules"
-value = "ladder 1/2/3 staff at 50/150/300 participants; 07:30-18:30; 30-minute preparation, closing and break; 660-minute daily and continuous limit; 660-minute daily rest; 30-minute inter-building travel"
+value = "ladder 1/2/3 staff at 50/150/300 participants; 07:30-18:30; 30-minute preparation, closing and break; 300-minute continuous limit with explicit relief segments; 660-minute daily and rest limit; 30-minute inter-building travel"
 unit = "staffing_policy"
 source = "scenario_assumption_pending_collective_agreement_and_operations"
 rationale = "Aktiverar spårbara ersättbara regler för bemanning och arbetstid; inte ett verifierat kollektivavtal."

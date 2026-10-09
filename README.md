@@ -43,7 +43,7 @@ Eftervalideringen läser en sparad körnings egna modellindata, scenario och pla
 .\.venv\Scripts\python.exe -m tentaoptimering.cli validate-term-run --run-id <körnings-id>
 ```
 
-Den skriver `validation.json` och `validation.md` i körningsmappen. Full teknisk placering innebär inte verksamhetsmässig genomförbarhet: regler som bara täcks av antaganden eller saknar data/modellstöd redovisas separat och ger status `not_verified`. Resultatets kostnadsjämförelse visar separat källans preliminära internhyra, scenariokostnad och en uttryckligen ej jämförbar differens; den redovisar aldrig en verifierad besparing utan avtalskopplingar.
+Den skriver `validation.json` och `validation.md` i körningsmappen. Full teknisk placering innebär inte verksamhetsmässig genomförbarhet: regler som bara täcks av antaganden eller saknar data/modellstöd redovisas separat och ger status `not_verified`. Resultatets kostnadsjämförelse visar endast separata, ej jämförbara kostnadsprofiler och redovisar aldrig en differens eller verifierad besparing utan avtalskopplingar.
 
 ## Aktuell implementation
 

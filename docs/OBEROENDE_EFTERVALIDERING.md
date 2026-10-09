@@ -25,7 +25,7 @@ Kommandot skriver `validation.json` och `validation.md` i samma körningsmapp. V
 | `room_availability` | Kontrollerar explicita tillåtna pass per sal; annars redovisar den aktiv global regel. | Global regel är `assumption_only` utan verifierad bokningskalender. |
 | `course_program_conflicts` | Kontrollerar överlappande explicita kurs- och programrelationer när policy är aktiv. | Saknad programrelation blir `not_evaluated`, aldrig godkänd kontroll. |
 | `aggregate_staffing` | Kontrollerar att den anonyma poolen minst når beräknad maximal samtidighet. | Överbemanning är inte ett regelbrott; ingen individuell vaktplan. |
-| `individual_staffing_constraints` | Kontrollerar sparade anonymiserade vaktuppgifter mot trappa, pass, för-/efterarbete, raster, dygnsvila, daglig arbetstid och byggnadsbyte. | Saknad uppgiftsartefakt eller oersatt regeldata blir `not_evaluated`; verksamhetsreglerna är fortfarande scenariomärkta tills avtal bekräftats. |
+| `individual_staffing_constraints` | Kontrollerar sparade anonymiserade vaktuppgifter mot trappa, pass, för-/efterarbete, faktiska rastsegment, dygnsvila, daglig arbetstid och byggnadsbyte. | Saknad uppgiftsartefakt eller oersatt regeldata blir `not_evaluated`; en passerande scenariotrappa är `assumption_only` tills avtal och verksamhetsregel bekräftats. |
 
 ## Sammanfattande status
 

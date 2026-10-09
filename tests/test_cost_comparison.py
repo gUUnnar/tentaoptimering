@@ -20,7 +20,7 @@ class CostComparisonTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "not_comparable")
         self.assertEqual(result["source_baseline_preliminary_internal_rent_ore"], 10_050)
-        self.assertEqual(result["illustrative_unverified_delta_ore"], 5_050)
+        self.assertNotIn("illustrative_unverified_delta_ore", result)
         self.assertIsNone(result["verified_realizable_saving_ore"])
 
 

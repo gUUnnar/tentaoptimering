@@ -30,6 +30,25 @@ class TermRunTests(unittest.TestCase):
         self.assertEqual(result.staff_assignments[0]["start_minute"], 450)
         self.assertEqual(result.staff_assignments[0]["end_minute"], 630)
 
+    def test_overlapping_passes_cannot_share_one_room_during_placement(self) -> None:
+        scenario = IntegratedTermScenario(
+            "overlap", "test", TermCalendar(
+                date(2026, 1, 12), date(2026, 1, 12), (1,),
+                (CalendarPass("am", "08:00", "12:00"), CalendarPass("mid", "09:00", "13:00")), 30,
+            ),
+            1, 1, 1, "test", "same_course_hard_constraint", "verified",
+            StaffingPolicy((StaffingStep(20, 1),), (WorkShift("day", 7 * 60, 14 * 60),), 0, 0, 30, 300, 600, 660, 0), 0, (),
+        )
+        inputs = TermModelInputs(
+            (IntegratedDemand("first", 10, 120, "Uppsala"), IntegratedDemand("second", 10, 120, "Uppsala")),
+            (IntegratedRoom("room", 10, "Uppsala", 1),), (),
+            {"included_source_activities": 2, "source_activities_total": 2, "unresolved_source_activities": 0},
+        )
+
+        result = run_first_term_schedule(inputs, scenario)
+
+        self.assertEqual(result.status, "no_constructive_full_solution")
+
 
 if __name__ == "__main__":
     unittest.main()
