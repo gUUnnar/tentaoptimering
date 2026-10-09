@@ -13,7 +13,7 @@ npm --prefix frontend run dev
 .\.venv\Scripts\python.exe -m uvicorn tentaoptimering.api:app --host 127.0.0.1 --port 8765
 ```
 
-Vite proxar `/api` till FastAPI. Välj källdatakatalog i gränssnittet och kör **Förbered underlag** före en terminsimulering. Användarscenarier, bearbetat underlag, rapporter och körresultat ligger under `%LOCALAPPDATA%\Uppsala universitet\Tentaoptimering`, aldrig i installationsmappen.
+Vite proxar `/api` till FastAPI. Använd **Bläddra** för att öppna systemets mappväljare, välj källdatakatalog och spara sökvägen före **Förbered underlag**. Mappväljaren körs i den lokala Pythonprocessen eftersom webbläsaren av säkerhetsskäl inte kan lämna ut en godtycklig lokal mappsökväg. Användarscenarier, bearbetat underlag, rapporter och körresultat ligger under `%LOCALAPPDATA%\Uppsala universitet\Tentaoptimering`, aldrig i installationsmappen.
 
 Den inbyggda terminsmallen är explorativ. Eftervalideringen visar därför teknisk placeringsfullständighet separat från verksamhetsmässig genomförbarhet; regeldata som saknas eller endast är antaganden blir aldrig godkända.
 
