@@ -147,6 +147,7 @@ Användaren ska utan kunskap om konfigurationsfiler, JSON, modellversioner, fils
 - **N-7** Inga lokaler uppfinns. Historiskt samtidigt platsbehov skiljs från den kända lokalportföljen; saknad kapacitet är ett synligt datagap.
 - **N-8** Grundmått för efterfrågan är registrerade tentander. Registrerade, bokade och närvarande platser blandas aldrig utan tydlig definition.
 - **N-9** Populationen redovisas som inläst, beräkningsbar och kvarstående datagap. Oavgjorda aktiviteter exkluderas inte automatiskt ur potentialbedömningen.
+- **N-11** Resultatsidan har högst en fotnotsrad, en hopfälld panel för förutsättningar och begränsningar samt en omfattningsrad med neutrala siffror. Upprepade varningstexter och bannrar används inte; måttens namn bär sin definition.
 - **N-10** Resultatet redovisar påverkansmått (antal och andel flyttade tentor, flyttavstånd, flyttar till helg eller ändrad starttid, fördelning per institution och kurs) så att priset för flexibiliteten är synligt.
 - **N-5** Kostnadsbelopp jämförs endast mellan körningar med samma kostnadsantaganden. Skillnad mot internhyra visas aldrig som besparing.
 

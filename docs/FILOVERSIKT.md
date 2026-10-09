@@ -41,6 +41,14 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `docs/OPTIMERINGSUNDERLAG.md` | Korn, relationsregler och tillåten användning av det maskinläsbara underlaget före motorbygge. |
 | `docs/OPTIMERINGSMOTOR.md` | CP-SAT-modell, scenarier, mål, validering, CLI-kontrakt och resultattolkning. |
 | `docs/OBEROENDE_EFTERVALIDERING.md` | Regelvis och fristående kontroll av en sparad terminskörning samt betydelsen av de två statusmåtten. |
+| `docs/MALARKITEKTUR_ANALYS_2026-10-09.md` | Beslutsunderlag och leveransplan för omtaget (arkitektur, Nuläge, CP-SAT-restriktioner, steg, rensningsverifiering). Tillfälligt tills omtaget är genomfört. |
+| `docs/PARAMETERKATALOG.md` | Utkast till den enda parameterkatalogen (endast parametrar som motorn läser) med grund och effektfall. |
+| `docs/DOMANMODELL.md` | Utkast till domänmodellen: Dataunderlag, Simulering, Förutsättning, Körning, Resultat; lagring och jämförbarhet. |
+| `docs/KAPACITETSFORTECKNING.md` | Varje funktion i dagens system med beslut (behåll, bygg om, ersätt, ta bort) och beroenden. |
+| `docs/KRAVUPPFYLLNAD.md` | Kravmatris: status idag och efter första leveransen, bevis och datakrav. |
+| `docs/DATAANALYS_S0.md` | Analys av population, delade tillfällen, `canonical_demand`, hemtentor, institution och kapacitetsavvikelser. |
+| `docs/ANALYS_KOLLEKTIVAVTAL.md` | Analys av lokalt kollektivavtal för tentamenspersonal och vad som kan bli verifierat. |
+| `docs/prototyp/index.html` | Fristående klickbar prototyp av användarflödet (ingen produktkod; uppmätta förprovsvärden). |
 | `docs/LOKALT_GRANSSNITT.md` | Arkitektur, API-kontrakt, källkodsutveckling och offlineverifiering av Windowsdistributionen. |
 
 ## Python-paket: `src/tentaoptimering`
@@ -108,6 +116,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `tests/test_optimizer.py` | Säkrar kapacitet, överlappning, samlokalisering, uppdelning, tidsflexibilitet, reproducerbarhet och eftervalidering. |
 | `tests/test_synthetic_integrated.py` | Säkrar att det integrerade syntetiska fallet väljer högre bemanning när lokalbesparingen är större och täcker samtliga deltagare. |
 | `tests/test_term_calendar.py` | Säkrar att terminskalendern respekterar konfigurerade veckodagar, pass och tentamenslängder. |
+| `tools/inventory.py` | Utvecklingsverktyg: importgraf, nåbarhet, oreferererade symboler, API-rutter, CLI-kommandon och frontendfiler. |
 | `tools/check_code_file_lengths.py` | Fristående kontroll: mål 500 rader, stark varning vid 800 och fel vid 1 000 rader. |
 
 ## Rapporter och genererade filer

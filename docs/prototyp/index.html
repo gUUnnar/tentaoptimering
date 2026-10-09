@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tentaoptimering – prototyp</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#1b2430; --muted:#5d6877; --line:#dfe3e9; --accent:#1f5fa8; --accent-weak:#e6eef8;
+  --ok:#1f7a4d; --ok-bg:#e4f3ea; --data:#1f5fa8; --data-bg:#e6eef8; --warn:#8a5a00; --warn-bg:#fbf0d9; --exp:#6b3fa0; --exp-bg:#efe7f8;
+  --bar-base:#b8c0cc; --bar-sim:#1f5fa8; --cap:#c0392b;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#12161c; --panel:#1a2029; --ink:#e7ebf1; --muted:#9aa5b4; --line:#2a323e; --accent:#6fa8ee; --accent-weak:#1f2d42;
+  --ok:#6cc79a; --ok-bg:#173325; --data:#6fa8ee; --data-bg:#1f2d42; --warn:#e0b455; --warn-bg:#352a10; --exp:#b79be0; --exp-bg:#2b2140;
+  --bar-base:#566173; --bar-sim:#6fa8ee; --cap:#ec7a6c; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.ribbon{background:var(--warn-bg);color:var(--warn);font-size:12px;padding:4px 16px;text-align:center;border-bottom:1px solid var(--line)}
+header.top{display:flex;align-items:center;gap:24px;background:var(--panel);border-bottom:1px solid var(--line);padding:0 20px;height:52px}
+header.top .brand{font-weight:650;letter-spacing:.2px}
+header.top nav{display:flex;gap:4px}
+header.top nav button{background:none;border:0;padding:15px 12px;font:inherit;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}
+header.top nav button.on{color:var(--ink);border-bottom-color:var(--accent)}
+main{max-width:1120px;margin:0 auto;padding:24px 20px 64px}
+h1{font-size:22px;margin:0 0 4px} h2{font-size:17px;margin:28px 0 10px} h3{font-size:14px;margin:0 0 6px}
+.sub{color:var(--muted);margin:0 0 18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.grow{flex:1}
+button.btn{font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:7px 14px;border-radius:8px;cursor:pointer}
+button.btn:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+@media (prefers-color-scheme: dark){button.primary{color:#0b1220}}
+button.link{background:none;border:0;color:var(--accent);cursor:pointer;font:inherit;padding:0;text-align:left}
+button:disabled{opacity:.5;cursor:default}
+input[type=text],input[type=number],select,textarea{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:6px 9px}
+.chip{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;white-space:nowrap}
+.g-verifierad{background:var(--ok-bg);color:var(--ok)} .g-data{background:var(--data-bg);color:var(--data)}
+.g-antagande{background:var(--warn-bg);color:var(--warn)} .g-experiment{background:var(--exp-bg);color:var(--exp)}
+.status{font-size:12px;padding:1px 8px;border-radius:99px;background:var(--accent-weak);color:var(--accent)}
+.status.muted{background:var(--line);color:var(--muted)}
+table{border-collapse:collapse;width:100%} th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top} th{font-weight:600;font-size:13px;color:var(--muted)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:16px 0}
+.tabs button{background:none;border:0;padding:9px 14px;font:inherit;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}
+.tabs button.on{color:var(--ink);border-bottom-color:var(--accent)}
+.layout{display:grid;grid-template-columns:200px 1fr;gap:24px}
+@media (max-width:760px){.layout{grid-template-columns:1fr}}
+.groups button{display:block;width:100%;text-align:left;background:none;border:0;padding:8px 10px;border-radius:7px;font:inherit;color:var(--muted);cursor:pointer}
+.groups button.on{background:var(--accent-weak);color:var(--ink)}
+.param{display:grid;grid-template-columns:minmax(180px,1fr) minmax(220px,1.3fr) auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+@media (max-width:760px){.param{grid-template-columns:1fr}}
+.param .lab{font-weight:550} .param .help{color:var(--muted);font-size:13px}
+.changed{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-left:6px;vertical-align:middle}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--panel);color:var(--ink);padding:6px 12px;font:inherit;cursor:pointer}
+.seg button.on{background:var(--accent);color:#fff}
+@media (prefers-color-scheme: dark){.seg button.on{color:#0b1220}}
+.checks label{margin-right:12px;white-space:nowrap}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.kpi .v{font-size:30px;font-weight:650;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi .l{color:var(--muted);font-size:13px}
+.kpi .d{font-size:13px;margin-top:4px}
+.strip{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;color:var(--muted);font-size:13px}
+.foot{color:var(--muted);font-size:12.5px;margin-top:22px}
+details.panel{margin-top:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+details.panel summary{cursor:pointer;padding:9px 14px;color:var(--muted);font-size:13.5px}
+details.panel .in{padding:4px 14px 14px;font-size:14px}
+.bars{display:flex;align-items:flex-end;gap:1px;height:150px;position:relative;border-bottom:1px solid var(--line)}
+.bars .b{flex:1;display:flex;align-items:flex-end;gap:0;min-width:2px;height:100%}
+.bars .b i{flex:1;display:block}
+.bars .base{background:var(--bar-base)} .bars .sim{background:var(--bar-sim)}
+.capline{position:absolute;left:0;right:0;border-top:1.5px dashed var(--cap)}
+.capline span{position:absolute;right:0;top:-18px;font-size:12px;color:var(--cap)}
+.legend{display:flex;gap:16px;font-size:12.5px;color:var(--muted);margin:8px 0}
+.legend i{display:inline-block;width:10px;height:10px;margin-right:5px;border-radius:2px}
+.overlay{position:fixed;inset:0;background:rgba(10,15,25,.45);display:flex;align-items:center;justify-content:center;z-index:10}
+.dialog{background:var(--panel);border-radius:12px;padding:22px;width:min(520px,92vw);border:1px solid var(--line)}
+.opt{border:1px solid var(--line);border-radius:9px;padding:10px 12px;cursor:pointer;display:block;margin:8px 0}
+.opt.on{border-color:var(--accent);background:var(--accent-weak)}
+.progress{height:8px;background:var(--line);border-radius:6px;overflow:hidden} .progress>div{height:100%;background:var(--accent);width:0;transition:width .35s}
+.muted{color:var(--muted)} .small{font-size:13px}
+.menu{position:relative;display:inline-block}
+.menu .pop{position:absolute;right:0;top:100%;background:var(--panel);border:1px solid var(--line);border-radius:8px;min-width:150px;z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.12)}
+.menu .pop button{display:block;width:100%;text-align:left;border:0;background:none;padding:8px 12px;font:inherit;color:var(--ink);cursor:pointer}
+.menu .pop button:hover{background:var(--accent-weak)}
+.curve svg{width:100%;height:auto;display:block}
+.chips input{width:70px}
+.note{color:var(--muted);font-size:13px;margin:6px 0}
+</style>
+</head>
+<body>
+<div class="ribbon">Prototyp för granskning av arbetsflödet. Platstoppar och flyttar är uppmätta i ett förprov mot det verkliga underlaget; salstillfällen, vaktbehov och kostnad beräknas av motorn i senare steg och visas som platshållare.</div>
+<header class="top">
+  <div class="brand">Tentaoptimering</div>
+  <nav id="nav"></nav>
+</header>
+<main id="main"></main>
+<div id="modal"></div>
+
+<script>
+const DATA = {"nulage": {"C": 1586, "perday": {"2026-01-12": 1162, "2026-01-13": 1247, "2026-01-14": 1365, "2026-01-15": 1586, "2026-01-16": 1568, "2026-01-17": 980, "2026-01-18": 348, "2026-01-19": 52, "2026-01-20": 1, "2026-01-21": 8, "2026-01-23": 142, "2026-01-24": 707, "2026-01-25": 6, "2026-01-26": 76, "2026-01-27": 128, "2026-01-29": 96, "2026-01-30": 150, "2026-01-31": 495, "2026-02-01": 111, "2026-02-02": 81, "2026-02-03": 45, "2026-02-04": 121, "2026-02-05": 89, "2026-02-06": 403, "2026-02-07": 576, "2026-02-08": 257, "2026-02-09": 373, "2026-02-10": 168, "2026-02-11": 47, "2026-02-12": 150, "2026-02-13": 311, "2026-02-14": 457, "2026-02-15": 147, "2026-02-16": 477, "2026-02-17": 497, "2026-02-18": 991, "2026-02-19": 548, "2026-02-20": 557, "2026-02-21": 410, "2026-02-22": 98, "2026-02-23": 136, "2026-02-24": 106, "2026-02-25": 12, "2026-02-26": 296, "2026-02-27": 436, "2026-02-28": 675, "2026-03-02": 35, "2026-03-03": 135, "2026-03-04": 219, "2026-03-05": 61, "2026-03-06": 445, "2026-03-07": 550, "2026-03-09": 113, "2026-03-10": 161, "2026-03-11": 108, "2026-03-12": 622, "2026-03-13": 600, "2026-03-14": 178, "2026-03-16": 1099, "2026-03-17": 689, "2026-03-18": 593, "2026-03-19": 891, "2026-03-20": 974, "2026-03-21": 312, "2026-03-22": 381, "2026-03-23": 991, "2026-03-24": 398, "2026-03-25": 327, "2026-03-26": 127, "2026-03-27": 622, "2026-03-28": 462, "2026-03-30": 153, "2026-03-31": 166}}, "curve": {"alla|0": 1586, "alla|1": 917, "alla|2": 717, "alla|3": 598, "alla|4": 513, "alla|5": 449, "alla|7": 435, "alla|10": 435, "alla|14": 435, "mån–fre|0": 1586, "mån–fre|1": 1434, "mån–fre|2": 1238, "mån–fre|3": 911, "mån–fre|4": 717, "mån–fre|5": 598, "mån–fre|7": 502, "mån–fre|10": 435, "mån–fre|14": 435}, "detail": {"alla|3": {"C": 598, "moved": 112, "perday": {"2026-01-09": 597, "2026-01-10": 598, "2026-01-11": 598, "2026-01-12": 598, "2026-01-13": 596, "2026-01-14": 596, "2026-01-15": 598, "2026-01-16": 597, "2026-01-17": 598, "2026-01-18": 597, "2026-01-19": 598, "2026-01-20": 598, "2026-01-21": 356, "2026-01-22": 208, "2026-01-23": 142, "2026-01-24": 551, "2026-01-25": 6, "2026-01-26": 76, "2026-01-27": 128, "2026-01-29": 96, "2026-01-30": 150, "2026-01-31": 495, "2026-02-01": 111, "2026-02-02": 81, "2026-02-03": 45, "2026-02-04": 121, "2026-02-05": 89, "2026-02-06": 403, "2026-02-07": 576, "2026-02-08": 257, "2026-02-09": 373, "2026-02-10": 168, "2026-02-11": 47, "2026-02-12": 150, "2026-02-13": 311, "2026-02-14": 457, "2026-02-15": 334, "2026-02-16": 586, "2026-02-17": 497, "2026-02-18": 586, "2026-02-19": 568, "2026-02-20": 557, "2026-02-21": 494, "2026-02-22": 98, "2026-02-23": 136, "2026-02-24": 106, "2026-02-25": 232, "2026-02-26": 296, "2026-02-27": 436, "2026-02-28": 455, "2026-03-02": 35, "2026-03-03": 135, "2026-03-04": 219, "2026-03-05": 61, "2026-03-06": 445, "2026-03-07": 550, "2026-03-09": 151, "2026-03-10": 245, "2026-03-11": 108, "2026-03-12": 584, "2026-03-13": 477, "2026-03-14": 509, "2026-03-15": 322, "2026-03-16": 572, "2026-03-17": 563, "2026-03-18": 593, "2026-03-19": 588, "2026-03-20": 539, "2026-03-21": 596, "2026-03-22": 597, "2026-03-23": 576, "2026-03-24": 498, "2026-03-25": 452, "2026-03-26": 482, "2026-03-27": 593, "2026-03-28": 462, "2026-03-29": 29, "2026-03-30": 153, "2026-03-31": 166}, "moved_by_type": {"Ordinarie tenta": 97, "Omtenta": 11, "Hybridtenta": 3, "Dugga": 1}, "moved_seats": 12575, "shift_median": 3.0, "shift_max": 3, "earlier": 57, "later": 55, "to_weekend": 47, "from_weekend": 22}, "mån–fre|3": {"C": 911, "moved": 503, "perday": {"2026-01-09": 813, "2026-01-12": 911, "2026-01-13": 911, "2026-01-14": 911, "2026-01-15": 911, "2026-01-16": 911, "2026-01-19": 910, "2026-01-20": 911, "2026-01-21": 732, "2026-01-22": 353, "2026-01-23": 142, "2026-01-26": 76, "2026-01-27": 164, "2026-01-28": 281, "2026-01-29": 111, "2026-01-30": 150, "2026-02-02": 81, "2026-02-03": 214, "2026-02-04": 661, "2026-02-05": 346, "2026-02-06": 403, "2026-02-09": 373, "2026-02-10": 204, "2026-02-11": 402, "2026-02-12": 297, "2026-02-13": 413, "2026-02-16": 477, "2026-02-17": 592, "2026-02-18": 896, "2026-02-19": 548, "2026-02-20": 557, "2026-02-23": 199, "2026-02-24": 526, "2026-02-25": 107, "2026-02-26": 301, "2026-02-27": 677, "2026-03-02": 232, "2026-03-03": 297, "2026-03-04": 376, "2026-03-05": 191, "2026-03-06": 701, "2026-03-09": 117, "2026-03-10": 243, "2026-03-11": 286, "2026-03-12": 622, "2026-03-13": 796, "2026-03-16": 903, "2026-03-17": 785, "2026-03-18": 689, "2026-03-19": 891, "2026-03-20": 881, "2026-03-23": 904, "2026-03-24": 679, "2026-03-25": 635, "2026-03-26": 127, "2026-03-27": 622, "2026-03-30": 153, "2026-03-31": 628}, "moved_by_type": {"Ordinarie tenta": 110, "Omtenta": 376, "Hybridtenta": 11, "Dugga": 6}, "moved_seats": 15700, "shift_median": 3.0, "shift_max": 3, "earlier": 262, "later": 241, "to_weekend": 0, "from_weekend": 439}}, "cap": 1179, "floor": 435, "pop": {"rooms": 1255, "seats": 46604}, "rooms": [["Bergsbrunnagatan 15 sal 1", 206, 254], ["Bergsbrunnagatan 15 sal 2", 229, 280], ["Fyrislundsgatan 80 sal 1", 200, 200], ["Fyrislundsgatan 80 sal 2", 80, 10], ["Råbyvägen 95 sal 1", 96, 127], ["Råbyvägen 95 sal 2", 128, 150], ["Råbyvägen 95 sal 3", 180, 210], ["Danmarksgatan 30", null, 344], ["Fyrishov hall D", null, 300], ["Fyrishov hall E", null, 330], ["Fyrishov hall F", null, 260]]};
+const GRUPPER = ["Efterfrågan","Tidsflexibilitet","Regler","Mål","Lokaler","Bemanning","Kostnadsantaganden"];
+const TYPER = ["Ordinarie tenta","Omtenta","Dugga","Hybridtenta","Hemtenta"];
+const fmt = n => (n==null?"–":Math.round(n).toLocaleString("sv-SE"));
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+const defaults = () => ({ earlier:0, later:0, weekdays:"alla", types:new Set(TYPER), keepOrder:true, turnaround:30, variation:0, rounding:"uppåt",
+  mode:"min", tol:0, cap:"", solverTime:60, curveDays:[0,1,2,3,5,7], rooms:"publicerade", maxRooms:8, costSeat:"", costStaff:"" });
+const clone = p => ({...p, types:new Set(p.types), curveDays:[...p.curveDays]});
+
+let state = {
+  view:"list", tab:"forutsattningar", group:"Tidsflexibilitet", openId:null, selected:new Set(), menu:null, compare:null,
+  sims:[
+    {id:1,name:"Dagens förutsättningar",notes:"Utgångsläge",modified:"2026-10-08",p:defaults(),runs:[]},
+    {id:2,name:"±3 dagar, alla veckodagar",notes:"Hur mycket hjälper tre dagars flexibilitet?",modified:"2026-10-09",p:Object.assign(defaults(),{earlier:3,later:3}),runs:[]},
+    {id:3,name:"±3 dagar utan helger",notes:"Vad kostar en helgfri tentamensperiod?",modified:"2026-10-09",p:Object.assign(defaults(),{earlier:3,later:3,weekdays:"mån–fre"}),runs:[]},
+  ], nextId:4, running:null
+};
+state.sims.forEach(s=>{ if(s.id>1) s.runs.push(makeRun(s)); else s.runs.push(makeRun(s)); });
+
+function key(p){ return (p.weekdays)+"|"+Math.max(p.earlier,p.later); }
+function makeRun(sim){
+  const p=sim.p, n=Math.max(p.earlier,p.later);
+  const symmetric = p.earlier===p.later;
+  const k = key(p), detail = DATA.detail[p.weekdays+"|"+n];
+  const c = DATA.curve[k];
+  return { id:Date.now()+Math.random(), when:"2026-10-09 "+new Date().toTimeString().slice(0,5), params:clone(p),
+    peak: symmetric? c : null, detail: symmetric && p.variation===0 ? detail : null, precomputed: symmetric && c!=null && p.variation===0, notes:"" };
+}
+function lastRun(sim){ return sim.runs[sim.runs.length-1]; }
+function changedFromBase(p){
+  const d=defaults(), out=[];
+  if(p.earlier!==d.earlier) out.push(["Får tidigareläggas",p.earlier+" dagar"]);
+  if(p.later!==d.later) out.push(["Får senareläggas",p.later+" dagar"]);
+  if(p.weekdays!==d.weekdays) out.push(["Tillåtna veckodagar",p.weekdays]);
+  if(p.types.size!==d.types.size) out.push(["Flyttbara tentamenstyper",[...p.types].join(", ")||"inga"]);
+  if(p.keepOrder!==d.keepOrder) out.push(["Behåll kursordning",p.keepOrder?"ja":"nej"]);
+  if(p.turnaround!==d.turnaround) out.push(["Ställtid",p.turnaround+" min"]);
+  if(p.variation!==d.variation) out.push(["Förändrat antal tentander",(p.variation>0?"+":"")+p.variation+" %"]);
+  if(p.rounding!==d.rounding) out.push(["Avrundning",p.rounding]);
+  if(p.mode!==d.mode) out.push(["Mål",p.mode==="min"?"minimera platstopp":"klara platstak"]);
+  if(p.cap!==d.cap) out.push(["Platstak",p.cap||"inget"]);
+  return out;
+}
+function isStale(sim){ const r=lastRun(sim); if(!r) return true; return JSON.stringify(changedFromBase(r.params))!==JSON.stringify(changedFromBase(sim.p)); }
+
+/* ---------- navigation ---------- */
+function renderNav(){
+  const items=[["list","Simuleringar"],["compare","Jämförelser"],["data","Dataunderlag"]];
+  document.getElementById("nav").innerHTML = items.map(([k,l])=>`<button class="${(state.view===k||(k==='list'&&state.view==='sim'))?'on':''}" onclick="go('${k}')">${l}</button>`).join("");
+}
+function go(v){ state.view=v; state.menu=null; render(); window.scrollTo(0,0); }
+function render(){ renderNav(); const m=document.getElementById("main");
+  m.innerHTML = state.view==="list"?viewList(): state.view==="sim"?viewSim(): state.view==="compare"?viewCompare(): viewData();
+  bindSim();
+}
+
+/* ---------- 1. Mina simuleringar ---------- */
+function headline(sim){
+  const r=lastRun(sim); if(!r) return '<span class="muted">Aldrig körd</span>';
+  if(r.peak==null) return `<span class="muted">Se resultat</span>`;
+  return `Platstopp <b>${fmt(r.peak)}</b> <span class="muted">(Nuläge ${fmt(DATA.nulage.C)})</span>`;
+}
+function viewList(){
+  const rows = state.sims.map(s=>`
+   <tr>
+     <td style="width:28px"><input type="checkbox" ${state.selected.has(s.id)?'checked':''} onchange="toggleSel(${s.id})" aria-label="Välj för jämförelse"></td>
+     <td><button class="link" onclick="openSim(${s.id})"><b>${esc(s.name)}</b></button><div class="small muted">${esc(s.notes||"")}</div></td>
+     <td>${headline(s)}</td>
+     <td>${isStale(s)&&lastRun(s)?'<span class="status muted">Ändrad sedan körning</span>':lastRun(s)?'<span class="status">Körd</span>':'<span class="status muted">Utkast</span>'}</td>
+     <td class="small muted">${s.modified}</td>
+     <td style="text-align:right"><div class="menu"><button class="btn" onclick="toggleMenu(${s.id},event)">⋯</button>
+       ${state.menu===s.id?`<div class="pop"><button onclick="openSim(${s.id})">Öppna</button><button onclick="copySim(${s.id})">Kopiera</button><button onclick="renameSim(${s.id})">Byt namn</button><button onclick="askDelete(${s.id})">Radera…</button></div>`:''}</div></td>
+   </tr>`).join("");
+  return `<div class="row"><div class="grow"><h1>Mina simuleringar</h1><p class="sub">Ändra planeringsförutsättningar, kör och jämför mot Nuläge.</p></div>
+    <button class="btn" ${state.selected.size<2?'disabled':''} onclick="startCompare()">Jämför valda (${state.selected.size})</button>
+    <button class="btn primary" onclick="newDialog()">Ny simulering</button></div>
+    <div class="card" style="padding:0"><table><thead><tr><th></th><th>Namn</th><th>Senaste resultat</th><th>Status</th><th>Ändrad</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="6" class="muted" style="padding:24px">Inga simuleringar ännu. Skapa din första med Ny simulering.</td></tr>'}</tbody></table></div>`;
+}
+function toggleSel(id){ state.selected.has(id)?state.selected.delete(id):state.selected.add(id); render(); }
+function toggleMenu(id,e){ e.stopPropagation(); state.menu = state.menu===id?null:id; render(); }
+document.addEventListener("click",()=>{ if(state.menu!=null){ state.menu=null; render(); } });
+function openSim(id){ state.openId=id; state.view="sim"; state.tab = lastRun(simById(id))?"resultat":"forutsattningar"; state.menu=null; render(); }
+function simById(id){ return state.sims.find(s=>s.id===id); }
+function copySim(id){ const s=simById(id); const c={...s,id:state.nextId++,name:s.name+" (kopia)",p:clone(s.p),runs:[],modified:"2026-10-09"}; state.sims.push(c); state.menu=null; render(); }
+function renameSim(id){ const s=simById(id); const n=prompt("Nytt namn",s.name); if(n){ s.name=n; } state.menu=null; render(); }
+function askDelete(id){ const s=simById(id); state.menu=null;
+  modal(`<h3>Radera "${esc(s.name)}"?</h3><p>Simuleringen och dess ${s.runs.length} körning${s.runs.length===1?'':'ar'} raderas. Dataunderlaget påverkas inte.</p>
+  <div class="row" style="justify-content:flex-end"><button class="btn" onclick="closeModal()">Avbryt</button><button class="btn primary" onclick="doDelete(${id})">Radera</button></div>`); }
+function doDelete(id){ state.sims=state.sims.filter(s=>s.id!==id); state.selected.delete(id); closeModal(); render(); }
+function modal(html){ document.getElementById("modal").innerHTML=`<div class="overlay" onclick="if(event.target===this)closeModal()"><div class="dialog">${html}</div></div>`; }
+function closeModal(){ document.getElementById("modal").innerHTML=""; }
+
+/* ---------- 2. Ny simulering ---------- */
+let nd={start:"nulage",name:""};
+function newDialog(){ nd={start:"nulage",name:""}; drawNew(); }
+function drawNew(){
+  modal(`<h3>Ny simulering</h3>
+   <label class="small muted">Namn</label><br><input type="text" id="ndname" style="width:100%" placeholder="Till exempel: Tre dagars flexibilitet" value="${esc(nd.name)}" oninput="nd.name=this.value"><br><br>
+   <div class="small muted">Utgångspunkt</div>
+   <label class="opt ${nd.start==='nulage'?'on':''}" onclick="nd.start='nulage';drawNew()"><b>Dagens förutsättningar (Nuläge)</b><div class="small muted">Alla tentor på sina historiska tider. Ändra det du vill undersöka.</div></label>
+   ${state.sims.map(s=>`<label class="opt ${nd.start==='s'+s.id?'on':''}" onclick="nd.start='s${s.id}';drawNew()"><b>Kopia av ${esc(s.name)}</b></label>`).join("")}
+   <div class="small muted" style="margin-top:10px">Dataunderlag: <b>Källdata 2026-10-08</b> · 1 525 aktiviteter · <button class="link" onclick="go('data');closeModal()">Läs in nya källdata…</button></div>
+   <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn" onclick="closeModal()">Avbryt</button><button class="btn primary" onclick="createSim()">Skapa</button></div>`);
+}
+function createSim(){ const name=nd.name.trim()||"Ny simulering"; const src=nd.start.startsWith("s")?simById(+nd.start.slice(1)):null;
+  const s={id:state.nextId++,name,notes:"",modified:"2026-10-09",p:src?clone(src.p):defaults(),runs:[]}; state.sims.unshift(s); closeModal(); state.openId=s.id; state.view="sim"; state.tab="forutsattningar"; state.group="Tidsflexibilitet"; render(); }
+
+/* ---------- 3. Simulering: förutsättningar ---------- */
+function viewSim(){
+  const sim=simById(state.openId); if(!sim){ state.view="list"; return viewList(); }
+  const stale=isStale(sim)&&lastRun(sim);
+  const run = state.running&&state.running.sim===sim.id;
+  return `<div class="row"><div class="grow"><div class="small"><button class="link" onclick="go('list')">← Simuleringar</button></div>
+     <h1>${esc(sim.name)} ${stale?'<span class="status muted">Ändrad sedan körning</span>':''}</h1><p class="sub">${esc(sim.notes||"Dataunderlag: Källdata 2026-10-08")}</p></div>
+     <button class="btn primary" onclick="runSim(${sim.id})" ${run?'disabled':''}>${lastRun(sim)?'Kör igen':'Kör simulering'}</button></div>
+   ${run?runningBox():''}
+   <div class="tabs"><button class="${state.tab==='forutsattningar'?'on':''}" onclick="state.tab='forutsattningar';render()">Förutsättningar</button>
+     <button class="${state.tab==='resultat'?'on':''}" onclick="state.tab='resultat';render()">Resultat</button>
+     <button class="${state.tab==='korningar'?'on':''}" onclick="state.tab='korningar';render()">Körningar (${sim.runs.length})</button></div>
+   ${state.tab==='forutsattningar'?tabParams(sim):state.tab==='resultat'?tabResult(sim):tabRuns(sim)}`;
+}
+function badge(g){ const m={verifierad:["Verifierad","g-verifierad"],data:["Hämtat ur data","g-data"],antagande:["Antagande","g-antagande"],experiment:["Experiment","g-experiment"]}[g]; return `<span class="chip ${m[1]}">${m[0]}</span>`; }
+function tabParams(sim){
+  const p=sim.p, ch=changedFromBase(p);
+  const grpBtn = GRUPPER.map(g=>`<button class="${state.group===g?'on':''}" onclick="state.group='${g}';render()">${g}</button>`).join("");
+  const dot = k => ch.some(c=>c[0]===k)?'<span class="changed" title="Ändrad jämfört med Nuläge"></span>':'';
+  const P = {
+   "Efterfrågan": `
+    ${par("Mått","Registrerade tentander","<span class='muted'>Fast i denna version</span>","data","Antal registrerade i Ladok. Bokade platser och närvaro används inte som efterfrågemått.")}
+    ${par("Förändrat antal tentander"+dot("Förändrat antal tentander"),`<input type="number" id="p_var" value="${p.variation}" min="-90" max="200" style="width:90px"> %`,"","experiment","Gemensam procentuell förändring av antalet tentander per tentamen. Antalet tentamenstillfällen ändras inte.")}
+    ${par("Avrundning"+dot("Avrundning"),`<select id="p_round"><option ${p.rounding==="uppåt"?"selected":""}>uppåt</option><option ${p.rounding==="närmaste"?"selected":""}>närmaste</option><option ${p.rounding==="nedåt"?"selected":""}>nedåt</option></select> <span class="muted small">minst 1</span>`,"","antagande","Hur ett förändrat antal avrundas till heltal.")}`,
+   "Tidsflexibilitet": `
+    ${par("Får tidigareläggas"+dot("Får tidigareläggas"),`<input type="range" id="p_e" min="0" max="14" value="${p.earlier}"> <b id="p_e_v">${p.earlier}</b> dagar`,"","antagande","Hur många dagar före ursprungsdatum en tentamen får placeras.")}
+    ${par("Får senareläggas"+dot("Får senareläggas"),`<input type="range" id="p_l" min="0" max="14" value="${p.later}"> <b id="p_l_v">${p.later}</b> dagar`,"","antagande","Hur många dagar efter ursprungsdatum en tentamen får placeras.")}
+    ${par("Tillåtna veckodagar"+dot("Tillåtna veckodagar"),`<div class="seg"><button class="${p.weekdays==='alla'?'on':''}" onclick="setP('weekdays','alla')">Alla dagar</button><button class="${p.weekdays==='mån–fre'?'on':''}" onclick="setP('weekdays','mån–fre')">Måndag–fredag</button><button disabled title="Fler val i den riktiga appen">Anpassa…</button></div>`,"","antagande","Gäller flyttbara tentor. En flyttbar tentamen på en otillåten dag måste flyttas inom fönstret.")}
+    ${par("Flyttbara tentamenstyper"+dot("Flyttbara tentamenstyper"),`<div class="checks">${TYPER.map(t=>`<label><input type="checkbox" ${p.types.has(t)?"checked":""} onchange="toggleType('${t}')"> ${t}</label>`).join("")}</div>`,"","antagande","Tentor av andra typer ligger kvar på sitt historiska tillfälle.")}
+    ${par("Spärrade perioder",`<span class="muted">Inga</span> <button class="btn" disabled title="Fler val i den riktiga appen">Lägg till period</button>`,"","antagande","Datum då flyttade tentor inte får placeras (till exempel lov).")}
+    ${par("Tillåtna starttider vid flytt",`<span class="muted">Endast ursprunglig starttid</span> <button class="btn" disabled title="Fler val i den riktiga appen">Lägg till starttid</button>`,"","antagande","Om en tentamen får byta starttid, till exempel 08:00 eller 14:00.")}
+    ${p.earlier+p.later===0&&p.weekdays!=='alla'?`<div class="note">Veckodagarna påverkar bara tentor som får flyttas. Fönstret är 0 dagar, så ingen tentamen flyttas.</div>`:''}`,
+   "Regler": `
+    ${par("Behåll ordningen mellan tentor i samma kurs"+dot("Behåll kursordning"),`<label><input type="checkbox" id="p_order" ${p.keepOrder?"checked":""}> Omtenta ligger aldrig före ordinarie tenta</label>`,"","antagande","Tentor i samma kurs får aldrig överlappa i tid.")}
+    ${par("Ställtid mellan tentor i samma sal"+dot("Ställtid"),`<input type="number" id="p_turn" value="${p.turnaround}" min="0" max="180" style="width:90px"> minuter`,"","antagande","Tid från att en grupp lämnat salen tills nästa får börja.")}`,
+   "Mål": `
+    ${par("Mål"+dot("Mål"),`<div class="seg"><button class="${p.mode==='min'?'on':''}" onclick="setP('mode','min')">Minimera platstopp</button><button class="${p.mode==='cap'?'on':''}" onclick="setP('mode','cap')">Klara givet platstak</button></div>`,"","experiment","Platstopp = flest samtidigt skrivande tentander. Med platstak söker modellen minsta antal flyttar som ryms.")}
+    ${p.mode==='cap'?par("Platstak"+dot("Platstak"),`<input type="number" id="p_cap" value="${p.cap}" style="width:110px" placeholder="platser">`,"","experiment","Högsta tillåtna antal samtidiga platser."):''}
+    ${par("Längsta beräkningstid",`<input type="number" id="p_time" value="${p.solverTime}" style="width:90px"> sekunder`,"","antagande","Kort tid kan ge en lösning som inte är bevisat bäst; gapet redovisas.")}`,
+   "Lokaler": `
+    ${par("Lokaler som får användas",`<b>8 salar</b> · 1 179 platser <button class="btn" disabled>Ändra urval</button>`,"","data","Salar med publicerad kapacitet. Kapaciteten är inte verifierad för bokningsperioden.")}
+    <div class="note">Danmarksgatan 30 och Fyrishov hall D–F används i historiken men saknar kapacitetsuppgift. De kan läggas till först när kapacitet angetts. <button class="link" onclick="go('data')">Se Dataunderlag</button></div>`,
+   "Bemanning": `
+    ${par("Vakter per sal",`1 till 50 · 2 till 150 · 3 till 300 deltagare`,"","antagande","Avtalet reglerar inte bemanning per sal.")}
+    ${par("Pass utan rast, längst",`300 minuter`,"","verifierad","Rast ska läggas ut vid pass längre än fem timmar (lokalt kollektivavtal, 2.5).")}
+    ${par("Kortaste betalda pass",`120 minuter`,"","verifierad","Pass kortare än två timmar räknas som två (lokalt kollektivavtal, 2.2).")}
+    ${par("Arbetspass, förberedelse, avslut, rast, dygnsvila, restid",`<button class="btn">Visa och ändra…</button>`,"","antagande","Sju värden; alla Antagande tills regler verifierats.")}`,
+   "Kostnadsantaganden": `
+    ${par("Årskostnad per lokalplats",`<input type="number" id="p_cs" value="${p.costSeat}" style="width:110px" placeholder="inte angiven"> kr`,"","antagande","Utan värde visas ingen modellkostnad.")}
+    ${par("Årskostnad per vakt",`<input type="number" id="p_cv" value="${p.costStaff}" style="width:110px" placeholder="inte angiven"> kr`,"","antagande","Med värden visas modellkostnad enligt antaganden. Aldrig som besparing mot internhyra.")}`
+  };
+  const nAnt=14;
+  return `<div class="strip" style="margin-bottom:14px"><b>${ch.length}</b> ${ch.length===1?'ändring':'ändringar'} jämfört med Nuläge${ch.length?': '+ch.map(c=>c[0].toLowerCase()+' '+esc(c[1])).join(' · '):'.'} · ${nAnt} av 31 värden är antaganden · <button class="link" onclick="state.group='Tidsflexibilitet';render()">Visa antaganden</button></div>
+   <div class="layout"><div class="groups">${grpBtn}</div><div class="card" style="padding:4px 18px">${P[state.group]}</div></div>`;
+}
+function par(label,control,extra,grund,help){ return `<div class="param"><div><div class="lab">${label}</div><div class="help">${help}</div></div><div>${control} ${extra||""}</div><div>${badge(grund)}</div></div>`; }
+function setP(k,v){ simById(state.openId).p[k]=v; render(); }
+function toggleType(t){ const p=simById(state.openId).p; p.types.has(t)?p.types.delete(t):p.types.add(t); render(); }
+function bindSim(){
+  if(state.view!=="sim") return; const p=simById(state.openId)?.p; if(!p) return;
+  const on=(id,fn)=>{ const e=document.getElementById(id); if(e) e.addEventListener("input",()=>{fn(e); simById(state.openId).modified="2026-10-09";}); };
+  on("p_e",e=>{p.earlier=+e.value; document.getElementById("p_e_v").textContent=e.value;});
+  on("p_l",e=>{p.later=+e.value; document.getElementById("p_l_v").textContent=e.value;});
+  on("p_var",e=>{p.variation=+e.value||0;}); on("p_round",e=>{p.rounding=e.value;}); on("p_turn",e=>{p.turnaround=+e.value;});
+  on("p_cap",e=>{p.cap=e.value;}); on("p_time",e=>{p.solverTime=+e.value;}); on("p_cs",e=>{p.costSeat=e.value;}); on("p_cv",e=>{p.costStaff=e.value;});
+  const o=document.getElementById("p_order"); if(o) o.addEventListener("change",()=>{p.keepOrder=o.checked; render();});
+  ["p_e","p_l"].forEach(id=>{ const e=document.getElementById(id); if(e) e.addEventListener("change",()=>render()); });
+  ["p_var","p_round","p_turn","p_cap"].forEach(id=>{ const e=document.getElementById(id); if(e) e.addEventListener("change",()=>render()); });
+}
+
+/* ---------- 4. Körning ---------- */
+const FASER=["Förbereder underlag","Placerar tentor","Kontrollerar kapacitet","Räknar bemanning","Kontrollerar resultatet"];
+function runningBox(){ const r=state.running; return `<div class="card" style="margin-bottom:12px"><div class="row"><div class="grow"><b>${FASER[r.phase]}…</b> <span class="muted small">${r.pct} %</span></div><button class="btn" onclick="cancelRun()">Avbryt</button></div><div class="progress" style="margin-top:8px"><div style="width:${r.pct}%"></div></div><div class="small muted" style="margin-top:6px">Du kan lämna sidan; körningen fortsätter.</div></div>`; }
+function runSim(id){ if(state.running) return; state.running={sim:id,pct:0,phase:0}; render();
+  state.timer=setInterval(()=>{ const r=state.running; if(!r){clearInterval(state.timer);return;} r.pct+=14; r.phase=Math.min(4,Math.floor(r.pct/21)); if(r.pct>=100){ clearInterval(state.timer); const sim=simById(id); sim.runs.push(makeRun(sim)); sim.modified="2026-10-09"; state.running=null; state.tab="resultat"; } render(); },380); }
+function cancelRun(){ clearInterval(state.timer); state.running=null; render(); }
+
+/* ---------- 5. Resultat ---------- */
+function tabResult(sim){
+  const r=lastRun(sim); if(!r) return `<div class="card muted">Ingen körning ännu. Välj <b>Kör simulering</b> när förutsättningarna ser rätt ut.</div>`;
+  const nul=DATA.nulage, d=r.detail, peak=r.peak;
+  const stale=isStale(sim)?`<div class="note">Förutsättningarna har ändrats sedan den här körningen. <button class="link" onclick="runSim(${sim.id})">Kör igen</button></div>`:'';
+  if(!r.precomputed) return `${stale}<div class="card">I prototypen finns uppmätta resultat för symmetriska fönster (samma antal dagar före och efter) utan förändrad efterfrågan. Prova ±1 till ±7 dagar med ändrad efterfrågan 0 %. I den riktiga appen beräknas alla kombinationer.</div>`;
+  const pct = Math.round((1-peak/nul.C)*100);
+  const days=Object.keys(nul.perday).sort();
+  const sim_pd = d? d.perday : null;
+  const maxv=Math.max(nul.C, d?d.C:peak, DATA.cap)*1.05;
+  const bars = days.map(dt=>{ const a=nul.perday[dt]||0, b=sim_pd?(sim_pd[dt]||0):0; return `<div class="b" title="${dt}: Nuläge ${a}${sim_pd?', simulering '+b:''}"><i class="base" style="height:${a/maxv*100}%"></i>${sim_pd?`<i class="sim" style="height:${b/maxv*100}%"></i>`:''}</div>`; }).join("");
+  const over=Object.values(nul.perday).filter(v=>v>DATA.cap).length;
+  const simOver = sim_pd?Object.values(sim_pd).filter(v=>v>DATA.cap).length:0;
+  const mv = d? `
+    <div class="kpis"><div class="card kpi"><div class="l">Flyttade tentor</div><div class="v">${fmt(d.moved)}</div><div class="d muted">${(d.moved/DATA.pop.rooms*100).toFixed(1).replace('.',',')} % av ${fmt(DATA.pop.rooms)} · ${fmt(d.moved_seats)} tentander</div></div>
+    <div class="card kpi"><div class="l">Flyttavstånd</div><div class="v">${d.shift_median} d</div><div class="d muted">median · längst ${d.shift_max} dagar · ${d.earlier} tidigare, ${d.later} senare</div></div>
+    <div class="card kpi"><div class="l">Helger</div><div class="v">${d.from_weekend}→${d.to_weekend}</div><div class="d muted">flyttade från helg → till helg</div></div></div>
+    <table style="margin-top:10px"><thead><tr><th>Tentamenstyp</th><th class="num">Flyttade</th></tr></thead><tbody>${Object.entries(d.moved_by_type).map(([k,v])=>`<tr><td>${k}</td><td class="num">${v}</td></tr>`).join("")}</tbody></table>`
+   : `<div class="muted">Detaljer om flyttar visas för körningar med ±3 dagar i prototypen.</div>`;
+  const floor = DATA.floor;
+  return `${stale}
+   <div class="kpis">
+     <div class="card kpi"><div class="l">Minsta platstopp under valda förutsättningar</div><div class="v">${fmt(peak)}</div><div class="d"><b>${pct>0?'−'+pct+' %':'±0 %'}</b> <span class="muted">mot Nuläge ${fmt(nul.C)}</span></div></div>
+     <div class="card kpi"><div class="l">Kapacitet i kända lokaler</div><div class="v">${fmt(DATA.cap)}</div><div class="d ${peak>DATA.cap?'':'muted'}">${peak<=DATA.cap?'Räcker vid alla tidpunkter':'Brist upp till '+fmt(peak-DATA.cap)+' platser'}</div></div>
+     <div class="card kpi"><div class="l">Salstillfällen · vaktbehov</div><div class="v">–</div><div class="d muted">beräknas i nästa steg</div></div>
+   </div>
+   <div class="strip" style="margin-top:12px">Beräknat på <b>${fmt(DATA.pop.rooms)}</b> tentor (${fmt(DATA.pop.seats)} registrerade tentander) som använder lokal · beräkningsbar del av inläst population (88 % av registrerade) · <button class="link" onclick="go('data')">Se omfattning</button></div>
+
+   <h2>Belastning per dag</h2>
+   <div class="legend"><span><i style="background:var(--bar-base)"></i>Nuläge</span>${sim_pd?'<span><i style="background:var(--bar-sim)"></i>Simulering</span>':''}<span><i style="background:var(--cap);height:2px;margin-top:5px"></i>Känd lokalkapacitet ${fmt(DATA.cap)}</span></div>
+   <div class="bars">${bars}<div class="capline" style="bottom:${DATA.cap/maxv*100}%"><span>${fmt(DATA.cap)}</span></div></div>
+   <div class="small muted" style="margin-top:6px">Största samtidiga antal tentander per dag, 12 jan–31 mar 2026. Nuläge: ${over} dagar över kapaciteten (högst ${fmt(nul.C-DATA.cap)} platser). ${sim_pd?'Simulering: '+(simOver?simOver+' dagar över.':'ingen dag över kapaciteten.'):''}</div>
+
+   <h2>Vad flyttades?</h2>${mv}
+
+   <h2>Flexibilitetskurva</h2>${curveBlock(sim)}
+
+   <div class="foot">Simuleringen tar inte hänsyn till individuella studenters eventuella tentamenskrockar.</div>
+   <details class="panel"><summary>Förutsättningar och begränsningar</summary><div class="in">
+     <p><b>Omfattning.</b> Inläst 1 525 aktiviteter · beräkningsbar 1 258 (88 % av registrerade) · kvarstående 267 (170 delar tentamenstillfälle, 71 saknar bokning, 25 saknar deltagarantal, 1 saknar koppling). Nuläge och simulering bygger på samma tentor och samma efterfrågemått (registrerade tentander).</p>
+     <p><b>Platstopp</b> är det minsta antal samtidiga tentander som krävs om platserna ses som en gemensam pool; verkliga salar kräver realisering i nästa steg.</p>
+     <p><b>Antaganden i denna körning:</b> ställtid ${r.params.turnaround} min · flyttbara typer: ${[...r.params.types].join(", ")} · kursordning ${r.params.keepOrder?"bevaras":"bevaras inte"} · kapacitet = publicerad (ej verifierad för perioden).</p>
+     <p><b>Saknas i modellen:</b> digital kompatibilitet per sal · salskalendrar · tentamensperioder och omtentaintervall · kostnad.</p>
+   </div></details>`;
+}
+function curveBlock(sim){
+  const p=sim.p, mode=p.weekdays; const W=640,H=200,pad=34;
+  const days=p.curveDays.slice().sort((a,b)=>a-b);
+  const pts=days.map(n=>({n, v:DATA.curve[mode+"|"+n]}));
+  const xs=n=>pad+(n/Math.max(14,days[days.length-1]||14))*(W-pad-10);
+  const ys=v=>H-24-(v/1700)*(H-40);
+  const line=pts.filter(q=>q.v!=null).map((q,i)=>(i?'L':'M')+xs(q.n)+','+ys(q.v)).join(" ");
+  const dots=pts.map(q=>q.v!=null?`<circle cx="${xs(q.n)}" cy="${ys(q.v)}" r="4" fill="var(--accent)"/><text x="${xs(q.n)}" y="${ys(q.v)-9}" font-size="11" text-anchor="middle" fill="var(--ink)">${q.v}</text><text x="${xs(q.n)}" y="${H-8}" font-size="11" text-anchor="middle" fill="var(--muted)">±${q.n}</text>`:`<text x="${xs(q.n)}" y="${H-8}" font-size="11" text-anchor="middle" fill="var(--muted)">±${q.n}?</text>`).join("");
+  const floor=ys(DATA.floor);
+  return `<div class="curve card"><div class="row small"><span class="muted">Minsta platstopp vid olika fönster, övriga förutsättningar som i simuleringen (${mode==='alla'?'alla dagar':'måndag–fredag'}).</span></div>
+   <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Flexibilitetskurva"><line x1="${pad}" x2="${W-10}" y1="${H-24}" y2="${H-24}" stroke="var(--line)"/><line x1="${pad}" x2="${W-10}" y1="${floor}" y2="${floor}" stroke="var(--cap)" stroke-dasharray="4 4"/><text x="${W-12}" y="${floor-5}" font-size="11" text-anchor="end" fill="var(--cap)">största enskilda tentan ${DATA.floor}</text><path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2"/>${dots}</svg>
+   <div class="chips row small"><span class="muted">Dagvärden:</span>${days.map(n=>`<span class="chip g-data">±${n} <button class="link" onclick="rmDay(${n})" aria-label="Ta bort">×</button></span>`).join("")}<input type="number" id="addday" min="0" max="365" placeholder="dagar"> <button class="btn" onclick="addDay()">Lägg till</button></div>
+   <div class="note">Förslagen 0, 1, 2, 3, 5, 7 är bara förval. Valfritt heltal kan läggas till. I prototypen är punkter förberäknade för 0–5, 7, 10 och 14 dagar.</div></div>`;
+}
+function addDay(){ const v=parseInt(document.getElementById("addday").value,10); if(isNaN(v)||v<0) return; const p=simById(state.openId).p; if(!p.curveDays.includes(v)) p.curveDays.push(v); render(); }
+function rmDay(n){ const p=simById(state.openId).p; p.curveDays=p.curveDays.filter(x=>x!==n); render(); }
+
+/* ---------- 6. Körningar ---------- */
+function tabRuns(sim){
+  return `<div class="card" style="padding:0"><table><thead><tr><th>Tid</th><th>Ändringar mot Nuläge</th><th class="num">Platstopp</th><th>Anteckning</th></tr></thead><tbody>${sim.runs.slice().reverse().map(r=>`<tr><td class="small">${r.when}</td><td class="small">${changedFromBase(r.params).map(c=>esc(c[0])+": "+esc(c[1])).join("<br>")||'<span class="muted">Inga (Nuläge)</span>'}</td><td class="num">${r.peak!=null?fmt(r.peak):'–'}</td><td><input type="text" placeholder="Vad testade du?" value="${esc(r.notes||"")}" onchange="this.value" style="width:100%"></td></tr>`).join("")}</tbody></table></div>`;
+}
+
+/* ---------- 7. Jämför ---------- */
+function startCompare(){ state.compare=[...state.selected].slice(0,2); state.view="compare"; render(); }
+function viewCompare(){
+  const ids=state.compare&&state.compare.length===2?state.compare:[...state.selected].slice(0,2);
+  if(ids.length<2) return `<h1>Jämförelser</h1><p class="sub">Markera två simuleringar under Simuleringar och välj Jämför.</p><div class="card muted">Inget att jämföra ännu.</div>`;
+  const [a,b]=ids.map(simById), ra=lastRun(a), rb=lastRun(b);
+  if(!ra||!rb) return `<h1>Jämförelser</h1><div class="card">Båda simuleringarna behöver vara körda.</div>`;
+  const dA=ra.detail, dB=rb.detail;
+  const pa=changedFromBase(a.p), pb=changedFromBase(b.p);
+  const names=[...new Set([...pa.map(x=>x[0]),...pb.map(x=>x[0])])];
+  const val=(arr,n)=>{ const x=arr.find(y=>y[0]===n); return x?esc(x[1]):'<span class="muted">som Nuläge</span>'; };
+  const row=(l,x,y,f=fmt)=>`<tr><td>${l}</td><td class="num">${x==null?'–':f(x)}</td><td class="num">${y==null?'–':f(y)}</td><td class="num">${x!=null&&y!=null?(y-x>0?'+':'')+f(y-x):'–'}</td></tr>`;
+  return `<div class="small"><button class="link" onclick="go('list')">← Simuleringar</button></div><h1>Jämförelse</h1>
+   <p class="sub"><span class="chip g-verifierad">Jämförbara</span> Samma dataunderlag, population, efterfrågemått, lokaler och bemanning. Bara flexibilitet skiljer.</p>
+   <div class="card" style="padding:0"><table><thead><tr><th></th><th class="num">${esc(a.name)}</th><th class="num">${esc(b.name)}</th><th class="num">Skillnad</th></tr></thead><tbody>
+     ${row("Nuläge, platstopp",DATA.nulage.C,DATA.nulage.C)}
+     ${row("Minsta platstopp",ra.peak,rb.peak)}
+     ${row("Flyttade tentor",dA?dA.moved:null,dB?dB.moved:null)}
+     ${row("Flyttade tentander",dA?dA.moved_seats:null,dB?dB.moved_seats:null)}
+     ${row("Från helg → till helg",dA?dA.from_weekend:null,dB?dB.from_weekend:null)}
+   </tbody></table></div>
+   <h2>Vad skiljer förutsättningarna?</h2>
+   <div class="card" style="padding:0"><table><thead><tr><th>Förutsättning</th><th>${esc(a.name)}</th><th>${esc(b.name)}</th></tr></thead><tbody>${names.map(n=>`<tr><td>${esc(n)}</td><td>${val(pa,n)}</td><td>${val(pb,n)}</td></tr>`).join("")||'<tr><td colspan="3" class="muted">Inga skillnader.</td></tr>'}</tbody></table></div>
+   <div class="foot">Simuleringen tar inte hänsyn till individuella studenters eventuella tentamenskrockar.</div>`;
+}
+
+/* ---------- 8. Dataunderlag ---------- */
+function viewData(){
+  return `<h1>Dataunderlag</h1><p class="sub">Inläst källdata som alla simuleringar bygger på.</p>
+   <div class="card"><div class="row"><div class="grow"><b>Källdata 2026-10-08</b> <span class="status">Klar</span><div class="small muted">Används av ${state.sims.length} simuleringar · Tentaplaceringar 2025-09-01–2026-08-31, Ladok vårtermin 2026, Tentamenslokaler 2026</div></div>
+     <button class="btn" onclick="alert('I den riktiga appen öppnas en mappväljare här.')">Läs in nya källdata…</button></div></div>
+   <h2>Omfattning</h2>
+   <div class="card" style="padding:0"><table><thead><tr><th>Nivå</th><th class="num">Aktiviteter</th><th class="num">Registrerade</th><th>Anmärkning</th></tr></thead><tbody>
+    <tr><td><b>Inläst</b></td><td class="num">1 525</td><td class="num">53 076</td><td></td></tr>
+    <tr><td><b>Beräkningsbar (ingår)</b></td><td class="num">1 258</td><td class="num">46 698</td><td class="small muted">88 % av registrerade. Därav använder 1 255 lokal (46 604 tentander).</td></tr>
+    <tr><td>Delar tentamenstillfälle (ingår inte)</td><td class="num">170</td><td class="num">5 038</td><td class="small muted">82 tillfällen. 3 583–5 203 platser beroende på om aktiviteterna är samma eller olika deltagare. Metod ej säkrad.</td></tr>
+    <tr><td>Ingen bokning hittad</td><td class="num">71</td><td class="num">1 339</td><td class="small muted">Längd och sal saknas.</td></tr>
+    <tr><td>Saknat deltagarantal</td><td class="num">25</td><td class="num">–</td><td class="small muted">Ingår i de 267 oavgjorda.</td></tr>
+    <tr><td>Ingen koppling</td><td class="num">1</td><td class="num">1</td><td></td></tr></tbody></table></div>
+   <h2>Lokaler</h2>
+   <div class="card" style="padding:0"><table><thead><tr><th>Lokal</th><th class="num">Publicerad kapacitet</th><th class="num">Största bokning (året)</th><th>Status</th></tr></thead><tbody>
+    ${DATA.rooms.map(r=>`<tr><td>${r[0]}</td><td class="num">${r[1]??'–'}</td><td class="num">${r[2]}</td><td>${r[1]?(r[2]>r[1]?'<span class="chip g-antagande">Bokad över publicerad kapacitet</span>':'<span class="chip g-data">Hämtat ur data</span>'):'<span class="chip g-antagande">Kapacitet saknas</span>'}</td></tr>`).join("")}
+   </tbody></table></div>
+   <div class="note">Under terminen överstiger 23 av 1 259 bokningar publicerad kapacitet. Historiskt bokat antal används inte som fysisk kapacitet.</div>`;
+}
+render();
+</script>
+</body>
+</html>
