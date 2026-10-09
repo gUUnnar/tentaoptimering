@@ -38,7 +38,7 @@ Heltalsavrundning av deltagarantal sker med exakt heltalsaritmetik.
 Varje resultat har ett block `verification`:
 
 - `solver`: `optimal_proven` eller `feasible_not_proven` (solverns eget påstående, inget oberoende bevis);
-- `independent_validation`: **`not_performed`**. Resultatet är solververifierat men inte oberoende eftervaliderat; den fristående valideraren för den nya resultattypen återstår;
+- `independent_validation`: **`not_performed`**. Resultatet är solververifierat men inte oberoende eftervaliderat; fältet i `joint_result.json` är solverns eget och ändras aldrig. Den oberoende valideringen redovisas separat i `joint_validation.json` (se `docs/OBEROENDE_EFTERVALIDERING.md`);
 - `digital_compatibility`: `assumed_not_verified: …` när digitala behov ligger i salar med okvantifierat stöd, annars `consistent_with_published_room_support_not_verified_for_period`;
 - `group_disjointness`: `assumed_not_verified` för samtentor;
 - `student_overlap`: `not_evaluated`.

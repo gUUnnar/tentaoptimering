@@ -12,6 +12,7 @@ from .optimization_runs import compare_runs, load_run_result, run_optimization
 from .integrated_runs import run_integrated_term
 from .integrated_validation import write_validation_report
 from .joint_inputs import run_real_subset
+from .joint_validation import write_validation
 from .optimizer_config import load_scenario_config
 from .parameter_catalog import load_parameter_catalog
 from .paths import REPO_ROOT, default_source_dir
@@ -41,6 +42,7 @@ def build_parser() -> argparse.ArgumentParser:
             "compare",
             "optimize-term",
             "optimize-joint",
+            "validate-joint-run",
             "validate-term-run",
         ),
         default="prepare",
@@ -242,16 +244,35 @@ def _command_payload(args: argparse.Namespace, outputs: PipelineOutputs) -> dict
         }
     if args.command == "optimize-joint":
         config_path = _require(args.config, "--config", args.command)
+        run = run_real_subset(
+            config_path,
+            args.processed_dir,
+            REPO_ROOT / "config" / "joint_parameter_catalog.toml",
+            args.runs_dir,
+        )
+        failed = run["validation"]["technical_validation"] == "fail"
         return {
             "schema_version": SCHEMA_VERSION,
             "command": args.command,
-            "status": "ok",
-            "run": run_real_subset(
-                config_path,
-                args.processed_dir,
-                REPO_ROOT / "config" / "joint_parameter_catalog.toml",
-                args.runs_dir,
-            ),
+            "status": "technical_validation_failed" if failed else "ok",
+            "run": run,
+        }
+    if args.command == "validate-joint-run":
+        run_id = _require(args.run_id, "--run-id", args.command)
+        payload = write_validation(
+            args.runs_dir / run_id,
+            processed_dir=args.processed_dir,
+            config_path=args.config,
+            catalog_path=REPO_ROOT / "config" / "joint_parameter_catalog.toml",
+            source_dir=args.source_dir,
+            source_manifest=args.report_dir / "run_manifest.json",
+        )
+        failed = payload["summary"]["technical_validation"] == "fail" or payload["summary"]["provenance"] == "fail"
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "command": args.command,
+            "status": "technical_validation_failed" if failed else "ok",
+            "validation": payload,
         }
     if args.command == "validate-term-run":
         run_id = _require(args.run_id, "--run-id", args.command)
@@ -300,6 +321,12 @@ def _emit(payload: dict[str, Any], output_format: str, stream: Any | None = None
             print(f"Optimalitetsgap: {run['result']['solver']['relative_gap']}", file=stream)
         report_name = "joint_report.md" if payload["command"] == "optimize-joint" else "report.md"
         print(f"Rapport: {run['artifacts'][report_name]}", file=stream)
+        if payload["command"] == "optimize-joint":
+            _emit_joint_validation(run["validation"], stream)
+        return
+    if payload["command"] == "validate-joint-run":
+        _emit_joint_validation(payload["validation"]["summary"], stream)
+        print(f"Rapport: {Path(payload['validation']['run']['run_dir']) / 'joint_validation.md'}", file=stream)
         return
     if payload["command"] == "validate-term-run":
         validation = payload["validation"]
@@ -316,6 +343,13 @@ def _emit(payload: dict[str, Any], output_format: str, stream: Any | None = None
     print("Resultatfiler:", file=stream)
     for name, path in payload["outputs"].items():
         print(f"- {name}: {path}", file=stream)
+
+
+def _emit_joint_validation(summary: dict[str, Any], stream: Any) -> None:
+    print(f"Solverns status (återgiven): {summary['solver_status']['reported_outcome']}", file=stream)
+    print(f"Teknisk eftervalidering: {summary['technical_validation']}", file=stream)
+    print(f"Verksamhetsmässig verifiering: {summary['business_verification']}", file=stream)
+    print(f"Ursprung och integritet: {summary['provenance']}", file=stream)
 
 
 def _error_payload(command: str, error: Exception) -> dict[str, Any]:
@@ -339,7 +373,7 @@ def main(argv: list[str] | None = None) -> int:
         _emit(_error_payload(args.command, error), args.output_format, sys.stderr)
         return 1
     _emit(payload, args.output_format)
-    return 0
+    return 3 if payload.get("status") == "technical_validation_failed" else 0
 
 
 if __name__ == "__main__":
