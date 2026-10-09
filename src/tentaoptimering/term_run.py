@@ -12,7 +12,7 @@ from .integrated_config import IntegratedTermScenario
 from .integrated_inputs import TermModelInputs
 from .integrated_term import AggregateStaffing, IntegratedDemand, IntegratedRoom
 from .term_calendar import CalendarSlot, eligible_slots
-from .term_rules import demands_conflict, room_is_compatible, slots_overlap
+from .term_rules import room_is_compatible, slots_overlap
 from .staffing import StaffingPlan, StaffingTask, plan_staffing, required_staff
 
 
@@ -57,8 +57,9 @@ def run_first_term_schedule(inputs: TermModelInputs, scenario: IntegratedTermSce
         room for room in inputs.rooms if room.plan_area in {item.plan_area for item in inputs.demands}
     )
     best: tuple[int, tuple[dict[str, Any], ...], tuple[dict[str, Any], ...], tuple[IntegratedRoom, ...], StaffingPlan] | None = None
+    conflict_ids = _conflict_ids(inputs.demands)
     for portfolio in _portfolios(relevant_rooms, inputs.demands):
-        scheduled = _schedule_portfolio(inputs.demands, portfolio, scenario, slots_by_demand)
+        scheduled = _schedule_portfolio(inputs.demands, portfolio, scenario, slots_by_demand, conflict_ids)
         if scheduled is None:
             continue
         assignments, sessions, staff_plan = scheduled
@@ -99,7 +100,7 @@ def _portfolios(rooms: tuple[IntegratedRoom, ...], demands: tuple[IntegratedDema
 
 def _schedule_portfolio(
     demands: tuple[IntegratedDemand, ...], portfolio: tuple[IntegratedRoom, ...], scenario: IntegratedTermScenario,
-    slots_by_demand: dict[str, tuple[CalendarSlot, ...]],
+    slots_by_demand: dict[str, tuple[CalendarSlot, ...]], conflict_ids: dict[str, frozenset[str]],
 ) -> tuple[tuple[dict[str, Any], ...], tuple[dict[str, Any], ...], StaffingPlan] | None:
     remaining = {
         (slot.slot_id, room.room_id): room.capacity
@@ -109,16 +110,17 @@ def _schedule_portfolio(
     chosen: list[dict[str, Any]] = []
     by_id = {item.exam_demand_id: item for item in demands}
     placed_slots: dict[str, CalendarSlot] = {}
-    room_session_durations: dict[tuple[str, str], int] = {}
+    room_session_durations: dict[str, dict[str, int]] = {}
     slots_by_id = {item.slot_id: item for values in slots_by_demand.values() for item in values}
     for demand in sorted(demands, key=lambda item: (-item.participants, item.exam_demand_id)):
         compatible = [room for room in portfolio if room.plan_area == demand.plan_area]
         allocation = None
         for slot in sorted(slots_by_demand[demand.exam_demand_id], key=lambda item: (loads[item.slot_id], item.slot_id)):
             if any(
-                demands_conflict(demand, other)
-                and slots_overlap(slot, demand.duration_minutes, placed_slots[other.exam_demand_id], other.duration_minutes)
-                for other in demands if other.exam_demand_id in placed_slots
+                other_id in placed_slots and slots_overlap(
+                    slot, demand.duration_minutes, placed_slots[other_id], by_id[other_id].duration_minutes,
+                )
+                for other_id in conflict_ids[demand.exam_demand_id]
             ):
                 continue
             compatible_at_slot = [
@@ -149,8 +151,8 @@ def _schedule_portfolio(
         slot, rows = allocation
         for row in rows:
             remaining[slot.slot_id, row["room_id"]] -= int(row["participants"])
-            key = str(row["room_id"]), slot.slot_id
-            room_session_durations[key] = max(room_session_durations.get(key, 0), demand.duration_minutes)
+            room_durations = room_session_durations.setdefault(str(row["room_id"]), {})
+            room_durations[slot.slot_id] = max(room_durations.get(slot.slot_id, 0), demand.duration_minutes)
         loads[slot.slot_id] += demand.participants
         placed_slots[demand.exam_demand_id] = slot
         chosen.extend(rows)
@@ -159,15 +161,31 @@ def _schedule_portfolio(
     return (tuple(chosen), sessions, plan) if plan.feasible else None
 
 
+def _conflict_ids(demands: tuple[IntegratedDemand, ...]) -> dict[str, frozenset[str]]:
+    """Index explicit course/program relations once for every portfolio trial."""
+    grouped: dict[tuple[str, str], list[str]] = {}
+    for demand in demands:
+        if demand.course_code:
+            grouped.setdefault(("course", demand.course_code), []).append(demand.exam_demand_id)
+        for program_id in demand.program_ids:
+            grouped.setdefault(("program", program_id), []).append(demand.exam_demand_id)
+    conflicts = {item.exam_demand_id: set() for item in demands}
+    for members in grouped.values():
+        for member in members:
+            conflicts[member].update(other for other in members if other != member)
+    return {item: frozenset(others) for item, others in conflicts.items()}
+
+
 def _room_is_free(
     room: IntegratedRoom, slot: CalendarSlot, duration: int,
-    session_durations: dict[tuple[str, str], int], slots_by_id: dict[str, CalendarSlot],
+    session_durations: dict[str, dict[str, int]], slots_by_id: dict[str, CalendarSlot],
     scenario: IntegratedTermScenario,
 ) -> bool:
     """Prevent a room from receiving overlapping pass sessions while placing."""
-    candidate_duration = max(duration, session_durations.get((room.room_id, slot.slot_id), 0))
-    for (room_id, existing_slot_id), existing_duration in session_durations.items():
-        if room_id != room.room_id or existing_slot_id == slot.slot_id:
+    room_durations = session_durations.get(room.room_id, {})
+    candidate_duration = max(duration, room_durations.get(slot.slot_id, 0))
+    for existing_slot_id, existing_duration in room_durations.items():
+        if existing_slot_id == slot.slot_id:
             continue
         existing_slot = slots_by_id[existing_slot_id]
         if (
