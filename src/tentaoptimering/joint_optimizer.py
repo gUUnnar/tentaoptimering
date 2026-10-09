@@ -264,9 +264,46 @@ def _build_variables_and_constraints(
                 model.Add(count >= staff[key] - max_staff * (1 - active))
                 active_staff.append(count)
         model.Add(sum(active_staff) <= staff_pool)
+    _add_staffing_cuts(model, problem, sessions, occupancy, staff)
     return _Variables(
         selected, seats, uses, sessions, occupancy, staff, session_end, owned, staff_pool
     )
+
+
+def staffing_cut_edges(ladder: tuple[Any, ...]) -> list[tuple[tuple[int, int], tuple[int, int]]]:
+    """Edges of the lower convex hull of occupancy -> required staff (step function).
+
+    Each edge is a valid linear lower bound `staff >= y0 + slope * (occupancy - x0)` for every
+    occupancy 1..max, so adding it never removes a feasible schedule.
+    """
+    points = [(0, 0)]
+    previous = 0
+    for step in ladder:
+        points += [(previous + 1, step.required_staff), (step.max_participants, step.required_staff)]
+        previous = step.max_participants
+    hull: list[tuple[int, int]] = []
+    for point in sorted(set(points)):
+        while len(hull) >= 2 and (
+            (hull[-1][0] - hull[-2][0]) * (point[1] - hull[-2][1])
+            - (hull[-1][1] - hull[-2][1]) * (point[0] - hull[-2][0])
+        ) <= 0:
+            hull.pop()
+        hull.append(point)
+    return [(a, b) for a, b in zip(hull, hull[1:]) if a[0] != b[0]]
+
+
+def _add_staffing_cuts(
+    model: cp_model.CpModel,
+    problem: JointOptimizationInput,
+    sessions: dict[tuple[str, str], cp_model.IntVar],
+    occupancy: dict[tuple[str, str], cp_model.IntVar],
+    staff: dict[tuple[str, str], cp_model.IntVar],
+) -> None:
+    """Tighten the weak linear relaxation of the ladder lookup; the lookup itself stays exact."""
+    for (x0, y0), (x1, y1) in staffing_cut_edges(problem.staffing.ladder):
+        rise, run = y1 - y0, x1 - x0
+        for key in staff:
+            model.Add(run * staff[key] >= rise * occupancy[key] + (run * y0 - rise * x0) * sessions[key])
 
 
 def _room_non_overlap(
@@ -418,6 +455,8 @@ def _solver(problem: JointOptimizationInput, time_limit: float | None = None) ->
     solver.parameters.max_time_in_seconds = time_limit or problem.solver.time_limit_seconds
     solver.parameters.random_seed = problem.solver.random_seed
     solver.parameters.num_search_workers = problem.solver.num_workers
+    if problem.solver.deterministic and problem.solver.num_workers > 1:
+        solver.parameters.interleave_search = True  # reproducible parallel search for a given seed
     return solver
 
 
@@ -435,6 +474,7 @@ def _empty_result(problem: JointOptimizationInput, solver: cp_model.CpSolver, st
         (),
         (),
         _limitations(problem),
+        {"solver": outcome, "independent_validation": "not_performed", "student_overlap": "not_evaluated"},
     )
 
 

@@ -20,7 +20,7 @@ Originalfilerna ligger i `C:\lokalt\tentalokaler\underlag` och ska hanteras skri
 
 ## Körning
 
-Med den lokala virtuella miljön:
+Installera paketet i redigerbart läge så att körningar och tester använder `src` (inte en gammal kopia i `site-packages`): `.\.venv\Scripts\python.exe -m pip install -e .`. Därefter, med den lokala virtuella miljön:
 
 ```powershell
 .\.venv\Scripts\python.exe -m tentaoptimering.cli prepare

@@ -111,6 +111,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `tests/test_canonical_demand.py` | Säkrar scope-täckning och att flera källaktiviteter kan bilda ett tentamensbehov utan dubbelräkning. |
 | `tests/test_file_policy.py` | Säkrar filstorlekströsklarna och att ingen Python-fil passerat den obligatoriska delningsgränsen. |
 | `tests/test_integrated_term.py` | Säkrar hård deltagartäckning och gemensam optimering av lokalportfölj samt anonym samtidig bemanning. |
+| `tests/test_joint_parameter_effects.py` | Effekttest för varje implementerad parameter, spårning mot gamla registret, startider och referenstillfälle, digital grund och samtentor. |
 | `tests/test_joint_optimizer.py` | Handräknade referensfall för kostnadsavvägning, full täckning, samtentor, digitalt krav, kurskrock, ställtid och kontraktsrundresa. |
 | `tests/test_parameter_catalog.py` | Säkrar att alla parametrar exponeras och att motorstöd samt frusna experimentvärden är explicita. |
 | `tests/test_integrated_config.py` | Säkrar att det versionshanterade terminscenariot har validerbar kalender och spårbara antaganden. |

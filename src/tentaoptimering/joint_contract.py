@@ -100,6 +100,7 @@ class SolverSettings:
     time_limit_seconds: float = 60.0
     random_seed: int = 20261009
     num_workers: int = 1
+    deterministic: bool = False
 
 
 @dataclass(frozen=True)

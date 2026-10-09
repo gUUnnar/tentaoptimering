@@ -51,6 +51,7 @@ _BASE_PARAMETERS = """
 "cost.staff_session_ore" = 1000
 "solver.time_limit_seconds" = 5.0
 "solver.seed" = 7
+"solver.workers" = 1
 """
 
 
@@ -160,6 +161,7 @@ EFFECT_CASES: dict[str, object] = {
     "solver.time_limit_seconds": 9.0,
     "solver.seed": 8,
     "solver.workers": 2,
+    "solver.deterministic": True,
 }
 
 

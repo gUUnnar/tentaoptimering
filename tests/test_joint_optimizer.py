@@ -19,7 +19,7 @@ from tentaoptimering.joint_contract import (
     read_problem,
     write_problem,
 )
-from tentaoptimering.joint_optimizer import solve_joint_optimization
+from tentaoptimering.joint_optimizer import solve_joint_optimization, staffing_cut_edges
 
 
 def _group(group_id: str, count: int, *activities: str) -> ParticipantGroup:
@@ -177,6 +177,39 @@ class JointOptimizerTests(unittest.TestCase):
             write_problem(problem, path)
             loaded = read_problem(path)
         self.assertEqual(loaded, problem)
+
+
+class StaffingCutTests(unittest.TestCase):
+    def test_cut_edges_are_valid_lower_bounds_for_every_occupancy(self) -> None:
+        for ladder in (
+            (StaffingStep(50, 1), StaffingStep(150, 2), StaffingStep(300, 3)),
+            (StaffingStep(100, 1),),
+            (StaffingStep(20, 1), StaffingStep(25, 3), StaffingStep(400, 4)),
+        ):
+            edges = staffing_cut_edges(ladder)
+            self.assertTrue(edges)
+            for occupancy in range(1, ladder[-1].max_participants + 1):
+                required = next(step.required_staff for step in ladder if occupancy <= step.max_participants)
+                for (x0, y0), (x1, y1) in edges:
+                    bound = y0 + (y1 - y0) * (occupancy - x0) / (x1 - x0)
+                    self.assertGreaterEqual(required + 1e-9, bound, (ladder, occupancy, (x0, y0), (x1, y1)))
+
+    def test_cuts_do_not_change_hand_calculated_optimum_with_a_staircase(self) -> None:
+        slot = CandidateSlot("s", date(2026, 1, 12), "am", 480, 720)
+        demands = tuple(
+            ExamDemand(f"e{i}", (_group(f"g{i}", 60, f"a{i}"),), 120, "Uppsala", ("s",), "s") for i in (1, 2)
+        )
+        rooms = (Room("big", "b1", "Uppsala", 120, 100), Room("small", "b2", "Uppsala", 60, 10))
+        problem = JointOptimizationInput(
+            INPUT_SCHEMA_VERSION, "ladder", "h", (slot,), demands, rooms,
+            StaffingCostPolicy((StaffingStep(60, 1), StaffingStep(120, 3)), 1000), SolverSettings(5, 1, 1), (),
+            ScopeSummary(2, 2, 0, 0, 2, 120), 0,
+        )
+        result = solve_joint_optimization(problem)
+        # Two rooms with 60 each need 2 staff (room cost 110 + pool 2000 = 2110); one 120-room needs 3 (100 + 3000).
+        self.assertEqual(result.solver.outcome, "optimal")
+        self.assertEqual(result.costs.comparable_total_cost_ore, 2110)
+        self.assertEqual(result.staff_pool_size, 2)
 
 
 if __name__ == "__main__":

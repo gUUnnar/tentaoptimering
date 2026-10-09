@@ -89,7 +89,8 @@ def build_real_subset_problem(
             closing_minutes=int(values["staffing.closing_minutes"]),
         ),
         solver=SolverSettings(
-            float(values["solver.time_limit_seconds"]), int(values["solver.seed"]), int(values["solver.workers"])
+            float(values["solver.time_limit_seconds"]), int(values["solver.seed"]), int(values["solver.workers"]),
+            bool(values["solver.deterministic"]),
         ),
         parameters=parameters,
         scope=ScopeSummary(

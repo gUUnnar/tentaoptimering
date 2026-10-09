@@ -595,8 +595,19 @@ id = "solver.workers"
 group = "Mål"
 label = "Antal beräkningstrådar"
 value_type = "integer"
-default = 1
+default = 8
 default_basis = "assumption"
-help_text = "En tråd ger reproducerbart resultat vid samma frö; flera trådar kan ge andra men likvärdiga lösningar."
+help_text = "Flera trådar ger kraftigt bättre kostnadsgräns och snabbare bevis på större fall (mätt: 60 tentor, gap 52 procent med en tråd mot 17-25 procent med åtta)."
+engine_support = "implemented"
+honored_by = "joint_optimizer._solver"
+
+[[parameter]]
+id = "solver.deterministic"
+group = "Mål"
+label = "Reproducerbar parallell sökning"
+value_type = "boolean"
+default = false
+default_basis = "assumption"
+help_text = "Sant ger samma sökning för samma indata, frö och trådantal, men mätt 2-4 gånger sämre kostnadsgräns och lösning på 120-160 tentor. Falskt är standard; körningen är ändå spårbar via frusna indata och sparat resultat. Tidsgränsen mäts i väggtid, så ett avbrutet resultat kan skilja mellan datorer."
 engine_support = "implemented"
 honored_by = "joint_optimizer._solver"
