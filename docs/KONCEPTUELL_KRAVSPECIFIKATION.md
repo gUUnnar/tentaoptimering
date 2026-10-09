@@ -91,8 +91,69 @@ Varje körning ska dokumentera konfiguration, dataversion, antaganden, modellera
 - kostnad per kategori, total långsiktig årskostnad och teoretisk årlig besparingspotential jämfört med definierad baslinje,
 - osäkerheter och skillnad mellan hypotetisk respektive avtalsmässigt genomförbar besparing.
 
-CLI och maskinläsbara resultat är tillräckliga för PoC:n. Utvärdera modellen först med små syntetiska fall med kända svar och därefter med en hel termins historiska data.
+Resultaten ska vara tillgängliga både i det lokala användargränssnittet (avsnitt 11) och som maskinläsbara filer. Utvärdera modellen först med små syntetiska fall med kända svar och därefter med en hel termins historiska data.
 
 ## 10. Öppna databehov
 
 För att minska osäkerheten behöver projektet verifierade uppgifter om faktisk närvaro, kurs–programkopplingar, salarnas teknik och kapacitet, externa hyrperioder och priser, alternativa lokalers hyresnivåer, personal- och transportkostnader samt detaljerade bemannings-/arbetstidsregler. Lösningen ska kunna omvärderas utan programombyggnad när dessa uppgifter blir tillgängliga.
+
+Följande uppgifter avgör särskilt hur långt resultaten kan tolkas: kurs-/programöverlapp eller studentöverlapp (utan dem är varje flytt av ordinarie tentor en övre gräns för potential), regler för omtentamen och fastställda tentamensperioder, kapacitet och kalender för alla använda lokaler utanför de publicerade salarna, samt avskrift och verifiering av det lokala kollektivavtalet för tentamensvakter.
+
+## 11. Användargränssnitt och experimentellt arbetsflöde
+
+Syftet med PoC:n är att kunna **undersöka hur ändrade planeringsförutsättningar påverkar behovet av lokaler och vakter**. Det kräver ett användargränssnitt som utgår från användarens arbete och inte från programmets interna struktur.
+
+### 11.1 Begrepp
+
+| Begrepp | Betydelse |
+|---|---|
+| **Dataunderlag** | Oföränderlig ögonblicksbild av inlästa källdata, med källfilernas hashar, kvalitet och omfattningsbeslut |
+| **Simulering** | Ett namngivet arbetsobjekt: dataunderlag, omfattning och förutsättningsvärden |
+| **Förutsättning** | Ett justerbart värde i en simulering, definierat av parameterkatalogen |
+| **Körning** | Genomförd beräkning av en simulering med frusen specifikation |
+| **Resultat** | Täckning, resursbehov, validering, begränsningar och kostnadsprofil för en körning |
+| **Nuläge** | Referenskörning med samma omfattning, data och beräkningsförutsättningar men utan planeringsflexibilitet |
+
+Termen *scenario* används inte som produktbegrepp.
+
+### 11.2 Krav på arbetsflödet (UX)
+
+Användaren ska utan kunskap om konfigurationsfiler, JSON, modellversioner, filsökvägar eller Python kunna:
+
+- **UX-1** starta programmet lokalt på Windows utan separat installation av Python, Node.js, Docker eller databasserver;
+- **UX-2** skapa en simulering med begripliga standardvärden;
+- **UX-3** ändra verksamhetsförutsättningar, och se vilka värden som är verifierade, hämtade ur data, antaganden eller experiment;
+- **UX-4** köra beräkningen, följa status och avbryta;
+- **UX-5** undersöka resultat, antaganden och begränsningar, med resursbehov alltid jämfört mot Nuläge;
+- **UX-6** ändra förutsättningar och köra igen utan att tidigare körningar förändras;
+- **UX-7** jämföra körningar, där bara jämförbara körningar får jämföras och skillnaden i förutsättningar redovisas;
+- **UX-8** namnge, organisera, kopiera och radera simuleringar; radering visar vad som tas bort.
+
+### 11.3 Krav på parametrar och verifiering
+
+- **P-1 Aktiv betyder verksam.** En parameter som visas som justerbar ska faktiskt påverka beräkningen eller en uttryckligen beskriven beräkning. Funktioner utan modellstöd visas inte som reglage.
+- **P-2 En parameterkatalog.** Definitioner (enhet, gränser, hjälptext, standardvärde, grund) finns på ett ställe. Värden hör till simuleringen.
+- **P-3 Härledd verifiering.** Verifieringsstatus för en regel härleds av dokumenterat underlag och oberoende kontroll av resultatet. Ingen användare kan göra en regel verifierad genom att ange värde eller etikett. Saknad data eller modellstöd är aldrig godkänt.
+- **P-4 Grund.** Varje värde är *Verifierad*, *Hämtat ur data*, *Antagande* (med motivering) eller *Experiment*.
+- **P-5 Reproducerbarhet.** En körning fryser alla förutsättningsvärden, katalogversion, dataunderlagets hash och motorversion.
+
+### 11.4 Krav på Nuläge och jämförelse
+
+- **N-1** Nuläge beräknas med samma kod, data, omfattning, efterfrågemått, lokalbestånd, bemanningsregler och kostnadsantaganden som simuleringen. Endast uttryckligt definierade flexibilitetsparametrar och efterfrågevariation får skilja.
+- **N-2** Faktisk historik (till exempel bokade platser och lokaler utanför beståndet) redovisas som kontext, inte som baslinje.
+- **N-3** Vid efterfrågevariation särskiljs efterfrågeeffekt från planeringseffekt.
+- **N-4** Datumflyttar simuleras fritt inom användarens parametrar; avsaknad av studentöverlappsdata begränsar inte optimeringen. Resultatvyn har en diskret fotnot: "Simuleringen tar inte hänsyn till individuella studenters eventuella tentamenskrockar." Antaganden och begränsningar visas tydligt men får inte dominera analysen; verktyget undersöker möjligheter och godkänner inget färdigt schema.
+- **N-6** Platsnivåer från optimeringen redovisas som optimistiska undre gränser under angivna restriktioner. Lokalrealisering mot känd lokalportfölj och bemanning redovisas som separata nivåer och förväxlas inte med platsmåttet.
+- **N-7** Inga lokaler uppfinns. Historiskt samtidigt platsbehov skiljs från den kända lokalportföljen; saknad kapacitet är ett synligt datagap.
+- **N-8** Grundmått för efterfrågan är registrerade tentander. Registrerade, bokade och närvarande platser blandas aldrig utan tydlig definition.
+- **N-9** Populationen redovisas som inläst, beräkningsbar och kvarstående datagap. Oavgjorda aktiviteter exkluderas inte automatiskt ur potentialbedömningen.
+- **N-10** Resultatet redovisar påverkansmått (antal och andel flyttade tentor, flyttavstånd, flyttar till helg eller ändrad starttid, fördelning per institution och kurs) så att priset för flexibiliteten är synligt.
+- **N-5** Kostnadsbelopp jämförs endast mellan körningar med samma kostnadsantaganden. Skillnad mot internhyra visas aldrig som besparing.
+
+### 11.5 Avgränsning av första användbara leverans
+
+Första leveransen ska möjliggöra experiment med: datum- och veckodagsflexibilitet inklusive flexibilitet per tentamenstyp, starttidsflexibilitet, efterfrågevariation och jämförelse av resursbehov (platser, lokaler, vaktbehov, tidsmått) mot Nuläge. Digital andel, externhyra, ersättningslokaler, maximal skrivtid och avancerad kostnadsoptimering ingår i målbilden men tillkommer först när motor och data stöder dem. Varje krav i denna specifikation redovisas i `docs/KRAVUPPFYLLNAD.md` som uppfyllt, delvis uppfyllt eller saknas, med bevisande test.
+
+### 11.6 Krav på kodbasen
+
+Kodbasen ska innehålla en domänmodell, en parameterkatalog, en körnings- och valideringskedja, ett API och ett användargränssnitt. Ersatt eller historisk implementation, parallella scenariomodeller och kompatibilitetslager ska inte finnas kvar. Testkod som behövs för att verifiera resultat får finnas som tester.
