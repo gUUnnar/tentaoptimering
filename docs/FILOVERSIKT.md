@@ -52,6 +52,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `integrated_runs.py` | Skapar granskningsbara körningsartefakter för integrerade terminsresultat. |
 | `integrated_validation.py` | Läser en sparad terminskörning och kontrollerar regelvis täckning, kapacitet, intervall, ort, antaganden och bemanning. |
 | `cost_model.py` | Datatyper och spärrat resultat för kostnader tills verifierade avtalskopplingar finns. |
+| `cost_comparison.py` | Visar källans internhyreprofil och scenariokostnad utan att omvandla deras differens till besparing. |
 | `linkage.py` | Kandidatdiagnostik mellan bokningsplaceringar och Ladok; gör inga verifierade kopplingar. |
 | `loaders.py` | Läsning och schemakontroll av de tre Excelkällorna. |
 | `model_inputs.py` | Bygger provisoriska bokningshändelser, kandidatrelationer, rumsinventering och optimeringsinmatningar. |
@@ -68,7 +69,10 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `reporting.py` | Skriver baslinje-, kvalitets- och kandidatkopplingsrapporter. |
 | `synthetic_integrated.py` | Litet CP-SAT-bevisfall där salstillfällen skapar bemanningskostnad och lokal- samt personalkostnad optimeras gemensamt. |
 | `term_calendar.py` | Genererar scenariostyrda terminsdatum och skrivpass samt filtrerar pass som inte rymmer tentamenslängden. |
-| `term_run.py` | Genomför första skalbara, konstruktiva terminskörningen genom portföljurval och balanserad placering med integrerad kostnadsutvärdering. |
+| `term_rules.py` | Delade hårda regler för kurs/programkrock, område, digitalt krav och sals tillgänglighet. |
+| `staffing.py` | Bygger anonymiserade men individuellt genomförbara vaktuppgifter från trappa, pass, raster, vila och byggnadsbyte. |
+| `staffing_validation.py` | Fristående kontroll av sparade vaktuppgifter utan att planeringsalgoritmen anropas. |
+| `term_run.py` | Genomför första skalbara, konstruktiva terminskörningen genom portföljurval, hårda placeringsregler och integrerad bemanningskostnad. |
 | `validation.py` | Beräknar kvalitetsmått och kvalitetsfynd per datakälla. |
 
 ## Tester och utvecklingsverktyg
@@ -76,6 +80,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | Fil | Ansvar |
 |---|---|
 | `tests/test_cost_model.py` | Säkrar att sparbelopp förblir spärrat utan verifierade kostnadskopplingar. |
+| `tests/test_cost_comparison.py` | Säkrar att källinternhyra och scenariokostnad aldrig redovisas som verifierad besparing. |
 | `tests/test_cli.py` | Säkrar JSON som standard, statuskontraktet och maskinläsbara fel. |
 | `tests/test_canonical_demand.py` | Säkrar scope-täckning och att flera källaktiviteter kan bilda ett tentamensbehov utan dubbelräkning. |
 | `tests/test_file_policy.py` | Säkrar filstorlekströsklarna och att ingen Python-fil passerat den obligatoriska delningsgränsen. |
@@ -83,6 +88,8 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `tests/test_integrated_config.py` | Säkrar att det versionshanterade terminscenariot har validerbar kalender och spårbara antaganden. |
 | `tests/test_integrated_inputs.py` | Säkrar adapterens källspårbarhet och synliga scope-fullständighet. |
 | `tests/test_integrated_validation.py` | Säkrar oberoende eftervalidering, inklusive passöverlappning, kapacitet, ort och ej verifierbar verksamhetsstatus. |
+| `tests/test_staffing.py` | Säkrar bemanningstrappa, arbetspass, raster, vila och byggnadsbyten. |
+| `tests/test_term_run.py` | Säkrar att schemaläggarens sparade vaktintervall kan valideras oberoende. |
 | `tests/test_linkage.py` | Säkrar kurskodsextraktion och att kandidatmatchningens tvetydighet bevaras. |
 | `tests/test_model_inputs.py` | Säkrar kandidatrelationer, flera placeringar per efterfrågepost och behandling av saknat efterfrågevärde. |
 | `tests/test_normalize.py` | Säkrar central textnormalisering och synliggör blandat bokningskorn. |

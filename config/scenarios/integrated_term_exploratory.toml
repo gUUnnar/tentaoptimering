@@ -99,6 +99,22 @@ rationale = "Kopplar personalbehov till samtidiga salstillfällen utan att påst
 status = "unverified_replaceable"
 
 [[assumption]]
+id = "individual_staffing_rules"
+value = "ladder 1/2/3 staff at 50/150/300 participants; 07:30-18:30; 30-minute preparation, closing and break; 660-minute daily and continuous limit; 660-minute daily rest; 30-minute inter-building travel"
+unit = "staffing_policy"
+source = "scenario_assumption_pending_collective_agreement_and_operations"
+rationale = "Aktiverar spårbara ersättbara regler för bemanning och arbetstid; inte ett verifierat kollektivavtal."
+status = "unverified_replaceable"
+
+[[assumption]]
+id = "course_program_conflicts"
+value = "same course code cannot overlap; program relations missing"
+unit = "conflict_policy"
+source = "preliminary_demand_course_code_and_missing_program_relation_data"
+rationale = "Kurskod tillämpas som hård regel när den finns. Programkrockar saknar relationstabell och kan därför inte verifieras."
+status = "partially_covered_replaceable"
+
+[[assumption]]
 id = "annual_staff_cost"
 value = "5000000"
 unit = "ore per anonymous staff resource per year"
