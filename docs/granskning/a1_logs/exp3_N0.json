@@ -1,0 +1,36 @@
+{
+ "N": 0,
+ "vars": 26574,
+ "cons": 55010,
+ "build": 0.7310967445373535,
+ "analytic": 1333,
+ "overpk": {
+  "status": "OPTIMAL",
+  "obj": 1333.0,
+  "bound": 1333.0,
+  "vals": {
+   "overpk": 1333,
+   "over": 2441,
+   "sessions": 772,
+   "guards": 2152,
+   "minutes": 699108,
+   "moves": 0
+  },
+  "time": 10.8
+ },
+ "guards": {
+  "status": "FEASIBLE",
+  "obj": 696.0,
+  "bound": 431.0,
+  "vals": {
+   "overpk": 1333,
+   "over": 2604,
+   "sessions": 371,
+   "guards": 696,
+   "minutes": 249060,
+   "moves": 0
+  },
+  "time": 300.3
+ },
+ "moved": 0
+}

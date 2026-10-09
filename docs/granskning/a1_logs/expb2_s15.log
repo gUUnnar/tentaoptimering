@@ -1,0 +1,6 @@
+N=2 skala=1.5: pool C*=1074 (steg 2 flytt 19 FEASIBLE bound 18.0)
+  original: ext=False overpk=0.0 (OPTIMAL) vaktpass=157.0 (FEASIBLE, bound 138.0) salstillfallen=None (UNKNOWN)
+  poolens optimum: ext=False overpk=0.0 (OPTIMAL) vaktpass=155.0 (FEASIBLE, bound 132.0) salstillfallen=None (UNKNOWN)
+  rumsmedvetet: overpk 0.0 OPTIMAL
+  rumsmedvetet: vaktpass 154.0 FEASIBLE bound 119.0 tid 240.4
+  rumsmedvetet: flyttade 185 salstillfallen 62

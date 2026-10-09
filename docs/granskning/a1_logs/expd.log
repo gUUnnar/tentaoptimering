@@ -1,0 +1,45 @@
+dagar 73 toppar 10: [1586, 1568, 1365, 1247, 1162, 1099, 991, 991, 980, 974] median 312 summa platsdagar(toppar) 30104
+--- lastvaraktighetskurva: K, dagar over K, summa overskott (platsdagar)
+300 38 14725
+400 31 11275
+500 22 8593
+600 16 6569
+700 12 5161
+800 11 4054
+900 10 2963
+1000 6 2027
+1119 5 1333
+1200 4 966
+1400 2 354
+1586 0 0
+--- nyhetsbudsregel: K* = niva som overskrids av n*=c_fast/c_extern dagar (per termin om c_fast per termin)
+n* 1 -> K* 1568
+n* 2 -> K* 1365
+n* 3 -> K* 1247
+n* 5 -> K* 1099
+n* 8 -> K* 980
+n* 10 -> K* 891
+n* 15 -> K* 622
+n* 20 -> K* 550
+n* 30 -> K* 403
+n* 40 -> K* 219
+tentor <=50 platser: 962 av 1255 andel platser 0.35750150201699427
+                        d  seat_peak  ...  guard_minutes  n_exams
+d                    1.00      -0.11  ...          -0.04    -0.02
+seat_peak           -0.11       1.00  ...           0.92     0.85
+guard_conc_isolated -0.05       0.86  ...           0.97     0.98
+guard_minutes       -0.04       0.92  ...           1.00     0.98
+n_exams             -0.02       0.85  ...           0.98     1.00
+
+[5 rows x 5 columns]
+dag med max platstopp 2026-01-15 ; dag med max samtidiga vakter 2026-01-16 ; max vakter 57 ; dag med max vaktminuter 2026-01-16
+rangordning topp5 platstopp-dagar ['2026-01-15', '2026-01-16', '2026-01-14', '2026-01-13', '2026-01-12']
+rangordning topp5 vakt-konc-dagar ['2026-01-16', '2026-01-12', '2026-01-14', '2026-01-15', '2026-02-28']
+rangordning topp5 vaktminuter ['2026-01-16', '2026-01-15', '2026-01-14', '2026-01-12', '2026-01-24']
+summa vaktminuter 504030 = 8400.5 vakt-timmar (isolerad, +-30 min forb/avslut)
+peak: C* 598
+peak-optimal + min flytt: flyttade 121
+ stats peak-opt {'max': 598, 'dagar_over': 0, 'overskott': 0}
+ stats original {'max': 1586, 'dagar_over': 5, 'overskott': 1333}
+overskott-minimering K=1119: OPTIMAL 0.0 bound 0.0 flyttade 1066
+ stats exceed-opt {'max': 1118, 'dagar_over': 0, 'overskott': 0}
