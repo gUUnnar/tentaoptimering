@@ -1,0 +1,56 @@
+schema_version = "joint-real-subset-v1"
+
+[scenario]
+id = "joint_real_subset_2026"
+description = "Avgränsat verkligt bevisfall för gemensam kostnadsoptimering."
+
+[subset]
+plan_area = "Uppsala"
+exam_event_ids = [
+  "exam-event-0002964",
+  "exam-event-0004171",
+  "exam-event-0003987",
+  "exam-event-0001322",
+  "exam-event-0001060",
+  "exam-event-0000084",
+  "exam-event-0001023",
+  "exam-event-0003188",
+  "exam-event-0001919",
+  "exam-event-0001389",
+  "exam-event-0000100",
+  "exam-event-0004309",
+]
+
+[parameters]
+"demand.variation_pct" = 0
+"demand.rounding" = "up"
+"window.earlier_days" = 1
+"window.later_days" = 1
+"calendar.start_date" = "2026-01-12"
+"calendar.end_date" = "2026-01-14"
+"calendar.weekdays" = [1, 2, 3]
+"calendar.start_times" = ["08:00", "14:00"]
+"calendar.turnaround_minutes" = 30
+"flex.movable_types" = ["ordinarie", "omtenta", "dugga", "hybrid"]
+"rooms.max_rooms_per_exam" = 8
+"rooms.allow_split_across_buildings" = false
+"staffing.ladder" = [
+  {max_participants = 50, required_staff = 1},
+  {max_participants = 150, required_staff = 2},
+  {max_participants = 300, required_staff = 3},
+]
+"staffing.preparation_minutes" = 30
+"staffing.closing_minutes" = 30
+"cost.room_annual_per_seat_ore" = 100000
+"cost.external_room_session_ore" = 0
+"cost.staff_annual_ore" = 5000000
+"cost.staff_session_ore" = 0
+"solver.time_limit_seconds" = 20.0
+"solver.seed" = 20261009
+
+[rationales]
+"window.earlier_days" = "Tre dagars avgränsat testfönster för att mäta gemensam modellering."
+"window.later_days" = "Tre dagars avgränsat testfönster för att mäta gemensam modellering."
+"cost.room_annual_per_seat_ore" = "Explorativ proxy 1 000 kr per plats och år; inte avtalskostnad."
+"cost.staff_annual_ore" = "Explorativ proxy 50 000 kr per dimensionerande anonym resurs och år."
+"staffing.ladder" = "Provisorisk regel som kan ersättas utan solverändring."

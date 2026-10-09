@@ -11,7 +11,9 @@ from typing import Any
 from .optimization_runs import compare_runs, load_run_result, run_optimization
 from .integrated_runs import run_integrated_term
 from .integrated_validation import write_validation_report
+from .joint_inputs import run_real_subset
 from .optimizer_config import load_scenario_config
+from .parameter_catalog import load_parameter_catalog
 from .paths import REPO_ROOT, default_source_dir
 from .pipeline import PipelineOutputs, output_paths, run_pipeline
 
@@ -32,11 +34,13 @@ def build_parser() -> argparse.ArgumentParser:
             "status",
             "resources",
             "parameters",
+            "joint-parameters",
             "validate-config",
             "optimize",
             "result",
             "compare",
             "optimize-term",
+            "optimize-joint",
             "validate-term-run",
         ),
         default="prepare",
@@ -159,6 +163,19 @@ def _parameters_payload() -> dict[str, Any]:
     }
 
 
+def _joint_parameters_payload() -> dict[str, Any]:
+    path = REPO_ROOT / "config" / "joint_parameter_catalog.toml"
+    catalog = load_parameter_catalog(path)
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "command": "joint-parameters",
+        "status": "ok",
+        "catalog_version": catalog.version,
+        "parameter_catalog": str(path.resolve()),
+        "parameters": [item.__dict__ for item in catalog.parameters],
+    }
+
+
 def _resources_payload(outputs: PipelineOutputs) -> dict[str, Any]:
     readiness = _read_json(outputs.optimization_readiness_json)
     manifest = _read_json(outputs.run_manifest_json)
@@ -192,6 +209,8 @@ def _command_payload(args: argparse.Namespace, outputs: PipelineOutputs) -> dict
         return _resources_payload(outputs)
     if args.command == "parameters":
         return _parameters_payload()
+    if args.command == "joint-parameters":
+        return _joint_parameters_payload()
     if args.command == "validate-config":
         config_path = _require(args.config, "--config", args.command)
         config = load_scenario_config(config_path)
@@ -220,6 +239,19 @@ def _command_payload(args: argparse.Namespace, outputs: PipelineOutputs) -> dict
             "command": args.command,
             "status": "ok",
             "run": run_integrated_term(config_path, args.processed_dir, args.runs_dir),
+        }
+    if args.command == "optimize-joint":
+        config_path = _require(args.config, "--config", args.command)
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "command": args.command,
+            "status": "ok",
+            "run": run_real_subset(
+                config_path,
+                args.processed_dir,
+                REPO_ROOT / "config" / "joint_parameter_catalog.toml",
+                args.runs_dir,
+            ),
         }
     if args.command == "validate-term-run":
         run_id = _require(args.run_id, "--run-id", args.command)
@@ -254,16 +286,20 @@ def _emit(payload: dict[str, Any], output_format: str, stream: Any | None = None
     if payload["status"] == "error":
         print(f"Fel: {payload['error']['message']}", file=stream)
         return
-    if payload["command"] in {"optimize", "optimize-term"}:
+    if payload["command"] in {"optimize", "optimize-term", "optimize-joint"}:
         run = payload["run"]
         print(f"Körning: {run['run_id']}", file=stream)
         if payload["command"] == "optimize":
             print(f"Utfall: {run['outcome']}", file=stream)
             print(f"Solverstatus: {run['solver']['status']}", file=stream)
-        else:
+        elif payload["command"] == "optimize-term":
             print(f"Utfall: {run['result']['solution']['status']}", file=stream)
             print(f"Optimalitetsgap: {run['result']['solution']['optimality_gap']}", file=stream)
-        print(f"Rapport: {run['artifacts']['report.md']}", file=stream)
+        else:
+            print(f"Utfall: {run['result']['solver']['outcome']}", file=stream)
+            print(f"Optimalitetsgap: {run['result']['solver']['relative_gap']}", file=stream)
+        report_name = "joint_report.md" if payload["command"] == "optimize-joint" else "report.md"
+        print(f"Rapport: {run['artifacts'][report_name]}", file=stream)
         return
     if payload["command"] == "validate-term-run":
         validation = payload["validation"]

@@ -1,0 +1,613 @@
+catalog_version = "2.1.0"
+
+[[parameter]]
+id = "demand.variation_pct"
+group = "Efterfrågan"
+label = "Förändrat antal tentander"
+value_type = "integer"
+unit = "percent"
+default = 0
+default_basis = "experiment"
+help_text = "Skalar varje tentamens dimensionerande deltagarantal."
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "demand.rounding"
+group = "Efterfrågan"
+label = "Avrundning av deltagarantal"
+value_type = "choice"
+default = "up"
+default_basis = "assumption"
+help_text = "Avrundningsregel efter efterfrågevariation."
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "window.earlier_days"
+legacy_ids = ["date_shift_earlier_days"]
+group = "Tidsflexibilitet"
+label = "Får tidigareläggas"
+value_type = "integer"
+unit = "days"
+default = 0
+default_basis = "assumption"
+help_text = "Antal kalenderdagar före ursprungligt datum."
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "window.later_days"
+legacy_ids = ["date_shift_later_days"]
+group = "Tidsflexibilitet"
+label = "Får senareläggas"
+value_type = "integer"
+unit = "days"
+default = 0
+default_basis = "assumption"
+help_text = "Antal kalenderdagar efter ursprungligt datum."
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "calendar.weekdays"
+legacy_ids = ["allowed_weekdays"]
+group = "Tidsflexibilitet"
+label = "Tillåtna veckodagar"
+value_type = "integer_list"
+default = [1, 2, 3, 4, 5, 6, 7]
+default_basis = "assumption"
+help_text = "ISO-veckodagar som får användas."
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "calendar.blocked_ranges"
+group = "Tidsflexibilitet"
+label = "Spärrade kalenderperioder"
+value_type = "date_range_list"
+default = []
+default_basis = "assumption"
+help_text = "Datumintervall (start och end, inklusive) där flyttade tentor inte får placeras."
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "calendar.start_times"
+legacy_ids = ["start_time_shift_minutes", "calendar_passes"]
+group = "Tidsflexibilitet"
+label = "Tillåtna starttider"
+value_type = "time_list"
+default = ["08:00", "14:00"]
+default_basis = "assumption"
+help_text = "Starttider som genererar kandidatpass för flyttbara tentor. Historiska starttider som inte ingår bevaras som referens men blir inte kandidater."
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "calendar.turnaround_minutes"
+legacy_ids = ["turnaround_minutes"]
+group = "Tidsflexibilitet"
+label = "Ställtid mellan salstillfällen"
+value_type = "integer"
+unit = "minutes"
+default = 30
+default_basis = "assumption"
+help_text = "Tid innan en sal får användas igen."
+engine_support = "implemented"
+honored_by = "joint_optimizer._room_non_overlap"
+
+[[parameter]]
+id = "calendar.exam_periods"
+legacy_ids = ["calendar_periods"]
+group = "Tidsflexibilitet"
+label = "Tillåtna tentamensperioder"
+value_type = "date_range_list"
+default = []
+default_basis = "assumption"
+help_text = "Perioder där tentamina får placeras."
+engine_support = "contract_only"
+
+[[parameter]]
+id = "flex.movable_types"
+group = "Tidsflexibilitet"
+label = "Flyttbara tentamenstyper"
+value_type = "string_list"
+default = ["ordinarie", "omtenta", "dugga", "hybrid"]
+default_basis = "assumption"
+help_text = "Typer som får använda alternativa pass."
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "rules.keep_course_order"
+group = "Regler"
+label = "Behåll ordningen inom kurs"
+value_type = "boolean"
+default = true
+default_basis = "assumption"
+help_text = "Ordinarie tenta och omtenta behåller inbördes ordning."
+engine_support = "contract_only"
+
+[[parameter]]
+id = "rules.student_conflicts"
+legacy_ids = ["course_program_conflicts"]
+group = "Regler"
+label = "Individuella studentkrockar"
+value_type = "boolean"
+default = false
+default_basis = "source_data"
+help_text = "Kräver individ- eller verifierade programrelationer."
+engine_support = "contract_only"
+
+[[parameter]]
+id = "rooms.selection"
+legacy_ids = ["allowed_room_inventory"]
+group = "Lokaler"
+label = "Lokaler som får användas"
+value_type = "room_id_list"
+default = []
+default_basis = "source_data"
+help_text = "Tom lista betyder alla kompatibla salar i dataunderlaget."
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "rooms.capacity_override"
+group = "Lokaler"
+label = "Egen kapacitet per sal"
+value_type = "room_integer_map"
+default = {}
+default_basis = "experiment"
+help_text = "Ersätter datakällans kapacitet och måste motiveras."
+engine_support = "contract_only"
+
+[[parameter]]
+id = "rooms.custom_rooms"
+group = "Lokaler"
+label = "Egna lokaler"
+value_type = "room_list"
+default = []
+default_basis = "experiment"
+help_text = "Hypotetiska eller kompletterande lokaler."
+engine_support = "contract_only"
+
+[[parameter]]
+id = "rooms.max_rooms_per_exam"
+legacy_ids = ["max_rooms_per_exam"]
+group = "Lokaler"
+label = "Högsta antal salar per tentamen"
+value_type = "integer"
+default = 8
+default_basis = "assumption"
+help_text = "Begränsar uppdelning av ett tentamensbehov."
+engine_support = "implemented"
+honored_by = "joint_optimizer._build_variables_and_constraints"
+
+[[parameter]]
+id = "rooms.allow_split_across_buildings"
+group = "Lokaler"
+label = "Tillåt delning mellan byggnader"
+value_type = "boolean"
+default = false
+default_basis = "assumption"
+help_text = "Tillåter att en tenta delas över flera byggnader."
+engine_support = "implemented"
+honored_by = "joint_optimizer._build_variables_and_constraints"
+
+[[parameter]]
+id = "digital.exam_share_pct"
+group = "Digitalt"
+label = "Andel digitala tentamina"
+value_type = "integer"
+unit = "percent"
+default = 0
+default_basis = "experiment"
+help_text = "Omklassificerar reproducerbart en andel tentamina som digitala."
+engine_support = "contract_only"
+
+[[parameter]]
+id = "staffing.ladder"
+legacy_ids = ["minimum_invigilator_staffing"]
+group = "Bemanning"
+label = "Bemanningstrappa"
+value_type = "staffing_ladder"
+default = [{max_participants = 50, required_staff = 1}, {max_participants = 150, required_staff = 2}, {max_participants = 300, required_staff = 3}]
+default_basis = "assumption"
+help_text = "Krav på samtidiga vakter per aktiv sal och deltagarantal."
+engine_support = "implemented"
+honored_by = "joint_optimizer._staff_lookup"
+
+[[parameter]]
+id = "staffing.preparation_minutes"
+group = "Bemanning"
+label = "Förberedelsetid"
+value_type = "integer"
+unit = "minutes"
+default = 30
+default_basis = "assumption"
+help_text = "Tid före salstillfällets start."
+engine_support = "implemented"
+honored_by = "joint_optimizer._build_variables_and_constraints"
+
+[[parameter]]
+id = "staffing.closing_minutes"
+group = "Bemanning"
+label = "Avslutningstid"
+value_type = "integer"
+unit = "minutes"
+default = 30
+default_basis = "assumption"
+help_text = "Tid efter salstillfällets slut."
+engine_support = "implemented"
+honored_by = "joint_optimizer._build_variables_and_constraints"
+
+[[parameter]]
+id = "staffing.shifts"
+legacy_ids = ["staff_shifts"]
+group = "Bemanning"
+label = "Tillåtna arbetspass"
+value_type = "time_range_list"
+default = [{start = "07:30", end = "19:30"}]
+default_basis = "assumption"
+help_text = "Individuella vakters tillåtna arbetspass."
+engine_support = "contract_only"
+
+[[parameter]]
+id = "staffing.min_break_minutes"
+legacy_ids = ["minimum_break_minutes"]
+group = "Bemanning"
+label = "Minsta rast"
+value_type = "integer"
+unit = "minutes"
+default = 30
+default_basis = "assumption"
+help_text = "Individuell rastregel."
+engine_support = "contract_only"
+
+[[parameter]]
+id = "staffing.max_continuous_minutes"
+legacy_ids = ["maximum_continuous_minutes"]
+group = "Bemanning"
+label = "Längsta sammanhängande arbetstid"
+value_type = "integer"
+unit = "minutes"
+default = 300
+default_basis = "verified"
+help_text = "Rast ska läggas ut vid pass längre än fem timmar."
+engine_support = "contract_only"
+
+[[parameter]]
+id = "staffing.max_daily_minutes"
+legacy_ids = ["maximum_daily_minutes"]
+group = "Bemanning"
+label = "Längsta arbetstid per dygn"
+value_type = "integer"
+unit = "minutes"
+default = 660
+default_basis = "assumption"
+help_text = "Övre dygnsgräns för individuell vakt."
+engine_support = "contract_only"
+
+[[parameter]]
+id = "staffing.min_daily_rest_minutes"
+legacy_ids = ["minimum_daily_rest_minutes"]
+group = "Bemanning"
+label = "Minsta dygnsvila"
+value_type = "integer"
+unit = "minutes"
+default = 660
+default_basis = "assumption"
+help_text = "Minsta vila mellan arbetsdygn."
+engine_support = "contract_only"
+
+[[parameter]]
+id = "staffing.travel_minutes"
+legacy_ids = ["travel_time_minutes"]
+group = "Bemanning"
+label = "Restid mellan byggnader"
+value_type = "integer"
+unit = "minutes"
+default = 30
+default_basis = "assumption"
+help_text = "Betald restid mellan uppgifter i olika byggnader."
+engine_support = "contract_only"
+
+[[parameter]]
+id = "staffing.min_paid_shift_minutes"
+group = "Bemanning"
+label = "Kortaste betalda pass"
+value_type = "integer"
+unit = "minutes"
+default = 120
+default_basis = "verified"
+help_text = "Kortaste betalda individuella arbetspass."
+engine_support = "contract_only"
+
+[[parameter]]
+id = "cost.room_annual_per_seat_ore"
+legacy_ids = ["annual_room_cost"]
+group = "Kostnader"
+label = "Årlig lokalkostnad per plats"
+value_type = "integer"
+unit = "ore_per_year"
+default = 0
+default_basis = "assumption"
+help_text = "Provisorisk kostnadsregel för långsiktigt disponerade salar."
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "cost.external_room_session_ore"
+group = "Kostnader"
+label = "Externhyra per salstillfälle"
+value_type = "integer"
+unit = "ore_per_session"
+default = 0
+default_basis = "assumption"
+help_text = "Kontraktet och optimeraren kan kostnadssätta externa salstillfällen, men dataadaptern har ännu ingen källa för externa lokalalternativ. Värdet ignoreras tills en extern lokal kan anges."
+engine_support = "contract_only"
+
+[[parameter]]
+id = "cost.staff_annual_ore"
+legacy_ids = ["annual_staff_cost"]
+group = "Kostnader"
+label = "Årskostnad per vaktresurs"
+value_type = "integer"
+unit = "ore_per_year"
+default = 0
+default_basis = "assumption"
+help_text = "Kostnad för dimensionerande anonym samtidig bemanningsresurs."
+engine_support = "implemented"
+honored_by = "joint_optimizer.solve_joint_optimization"
+
+[[parameter]]
+id = "cost.staff_session_ore"
+group = "Kostnader"
+label = "Kostnad per vakt och salstillfälle"
+value_type = "integer"
+unit = "ore_per_session"
+default = 0
+default_basis = "assumption"
+help_text = "Rörlig kostnad per regelberäknad vaktnärvaro."
+engine_support = "implemented"
+honored_by = "joint_optimizer.solve_joint_optimization"
+
+[[parameter]]
+id = "cost.annualization_factor"
+group = "Kostnader"
+label = "Annualiseringsfaktor"
+value_type = "number"
+unit = "factor"
+default = 1.0
+default_basis = "assumption"
+help_text = "Skalar periodkostnader endast när efterfrågeprofilen motiverar det."
+engine_support = "contract_only"
+
+[[parameter]]
+id = "solver.time_limit_seconds"
+group = "Solver"
+label = "Längsta beräkningstid"
+value_type = "number"
+unit = "seconds"
+default = 60.0
+default_basis = "experiment"
+help_text = "Tidsgräns för ekonomisk optimering och ändringspreferens tillsammans."
+engine_support = "implemented"
+honored_by = "joint_optimizer._solver"
+
+[[parameter]]
+id = "solver.seed"
+group = "Solver"
+label = "Slumpfrö"
+value_type = "integer"
+default = 20261009
+default_basis = "experiment"
+help_text = "Slumpfrö för reproducerbar sökning."
+engine_support = "implemented"
+honored_by = "joint_optimizer._solver"
+
+[[parameter]]
+id = "exam.max_duration_hours"
+group = "Examinationsvillkor"
+label = "Högsta skrivtid"
+value_type = "number"
+unit = "hours"
+default = 0
+default_basis = "experiment"
+help_text = "Experiment med ändrade examinationsvillkor; noll lämnar längden oförändrad."
+engine_support = "contract_only"
+
+[[parameter]]
+id = "calendar.earliest_start_time"
+legacy_ids = ["earliest_start_time"]
+group = "Tidsflexibilitet"
+label = "Tidigaste starttid"
+value_type = "time"
+default = "08:00"
+default_basis = "assumption"
+help_text = "Starttider före detta klockslag genererar inga kandidatpass."
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "calendar.latest_end_time"
+legacy_ids = ["latest_end_time"]
+group = "Tidsflexibilitet"
+label = "Senaste sluttid"
+value_type = "time"
+default = "20:00"
+default_basis = "assumption"
+help_text = "En flyttad tentamen måste vara slut vid detta klockslag. Oflyttbara tentor behåller sitt historiska tillfälle även om det slutar senare."
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "calendar.start_date"
+legacy_ids = ["term_start_date"]
+group = "Tidsflexibilitet"
+label = "Första tillåtna datum"
+value_type = "date"
+default = ""
+default_basis = "assumption"
+help_text = "Tomt värde betyder tidigaste ursprungsdatum minus tidigareläggningsfönstret."
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "calendar.end_date"
+legacy_ids = ["term_end_date"]
+group = "Tidsflexibilitet"
+label = "Sista tillåtna datum"
+value_type = "date"
+default = ""
+default_basis = "assumption"
+help_text = "Tomt värde betyder senaste ursprungsdatum plus senareläggningsfönstret."
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "demand.measure"
+legacy_ids = ["demand_measure"]
+group = "Efterfrågan"
+label = "Efterfrågemått"
+value_type = "choice"
+default = "registered_count"
+default_basis = "source_data"
+help_text = "Dimensionerande deltagarantal. Endast registrerade tentander (VARAV_ANTAL_ANMALDA) stöds; andra värden avvisas."
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "demand.capacity_safety_margin_pct"
+legacy_ids = ["capacity_safety_margin"]
+group = "Efterfrågan"
+label = "Säkerhetsmarginal för platsbehov"
+value_type = "integer"
+unit = "percent"
+default = 0
+default_basis = "assumption"
+help_text = "Extra platser utöver deltagarantalet vid salstilldelning. Saknar motorstöd."
+engine_support = "contract_only"
+
+[[parameter]]
+id = "rooms.allow_split"
+legacy_ids = ["allow_split"]
+group = "Lokaler"
+label = "Tillåt delning av en tentamen över flera salar"
+value_type = "boolean"
+default = true
+default_basis = "assumption"
+help_text = "Falskt betyder att varje tentamen måste rymmas i en sal."
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "rooms.co_location_rules"
+legacy_ids = ["co_location_rules"]
+group = "Lokaler"
+label = "Regler för samlokalisering"
+value_type = "rule_set"
+default = []
+default_basis = "assumption"
+help_text = "Regler för vilka tentor som får eller inte får dela sal. Saknar motorstöd; alla tentor får idag dela sal."
+engine_support = "contract_only"
+
+[[parameter]]
+id = "rooms.availability_mode"
+legacy_ids = ["poc_room_availability_mode"]
+group = "Lokaler"
+label = "Salars tillgänglighet"
+value_type = "choice"
+default = "published_dates"
+default_basis = "assumption"
+help_text = "Salar är tillgängliga enligt publicerade datum i registret; ingen verifierad salkalender finns. Andra lägen saknar motorstöd."
+engine_support = "contract_only"
+
+[[parameter]]
+id = "digital.partial_support_policy"
+legacy_ids = ["digital_compatibility"]
+group = "Digitalt"
+label = "Salar med delvis eller okvantifierat digitalstöd"
+value_type = "choice"
+default = "allow_unverified"
+default_basis = "assumption"
+help_text = "allow_unverified: salar med status supports_e_exam får ta digitala tentor och resultatet märks som ej verifierat. exclude: endast salar där alla platser stödjer digitalt."
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "digital.unknown_demand_policy"
+group = "Digitalt"
+label = "Tentor utan registrerad digital status"
+value_type = "choice"
+default = "require_e_exam"
+default_basis = "assumption"
+help_text = "require_e_exam: okänd status kräver digitalkapabel sal (försiktigt). assume_paper: okänd status behandlas som papperstenta."
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "digital.compatibility_matrix"
+group = "Digitalt"
+label = "Verifierad kompatibilitetsmatris tentamen och sal"
+value_type = "matrix"
+default = {}
+default_basis = "source_data"
+help_text = "Verifierat antal digitala platser per sal. Underlag saknas; modellen påstår därför inte verifierad digital kompatibilitet."
+engine_support = "contract_only"
+
+[[parameter]]
+id = "objective.weights"
+legacy_ids = ["optimization_objective_weights"]
+group = "Mål"
+label = "Viktning av optimeringsmål"
+value_type = "weight_map"
+default = {}
+default_basis = "assumption"
+help_text = "Motorn minimerar jämförbar kostnad och därefter antal ändrade tillfällen (lexikografiskt). Egna vikter saknar motorstöd."
+engine_support = "contract_only"
+
+[[parameter]]
+id = "special_support.rules"
+legacy_ids = ["support_place_rules"]
+group = "Regler"
+label = "Regler för särskilt pedagogiskt stöd"
+value_type = "rule_set"
+default = []
+default_basis = "source_data"
+help_text = "Särskilt stöd ligger utanför den inledande omfattningen. Saknar motorstöd."
+engine_support = "contract_only"
+
+[[parameter]]
+id = "cost.avoidable_cost_definition"
+legacy_ids = ["avoidable_cost_definition"]
+group = "Kostnader"
+label = "Definition av undvikbara kostnader"
+value_type = "cost_component_set"
+default = []
+default_basis = "source_data"
+help_text = "Vilka kostnader som faktiskt kan undvikas. Saknar underlag och motorstöd; ingen besparing redovisas."
+engine_support = "contract_only"
+
+[[parameter]]
+id = "solver.workers"
+group = "Mål"
+label = "Antal beräkningstrådar"
+value_type = "integer"
+default = 8
+default_basis = "assumption"
+help_text = "Flera trådar ger kraftigt bättre kostnadsgräns och snabbare bevis på större fall (mätt: 60 tentor, gap 52 procent med en tråd mot 17-25 procent med åtta)."
+engine_support = "implemented"
+honored_by = "joint_optimizer._solver"
+
+[[parameter]]
+id = "solver.deterministic"
+group = "Mål"
+label = "Reproducerbar parallell sökning"
+value_type = "boolean"
+default = false
+default_basis = "assumption"
+help_text = "Sant ger samma sökning för samma indata, frö och trådantal, men mätt 2-4 gånger sämre kostnadsgräns och lösning på 120-160 tentor. Falskt är standard; körningen är ändå spårbar via frusna indata och sparat resultat. Tidsgränsen mäts i väggtid, så ett avbrutet resultat kan skilja mellan datorer."
+engine_support = "implemented"
+honored_by = "joint_optimizer._solver"
