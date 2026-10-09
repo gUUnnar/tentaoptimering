@@ -29,6 +29,31 @@ program_relation_data_status = "missing_from_preliminary_input"
 [staffing]
 staff_per_room_session = 1
 annual_cost_ore_per_staff = 5000000
+travel_cost_ore_per_minute = 0
+preparation_minutes = 30
+closing_minutes = 30
+minimum_break_minutes = 30
+maximum_continuous_minutes = 660
+maximum_daily_minutes = 660
+minimum_daily_rest_minutes = 660
+travel_minutes_between_buildings = 30
+
+[[staffing.shift]]
+shift_id = "day"
+start_time = "07:30"
+end_time = "18:30"
+
+[[staffing.ladder]]
+up_to_participants = 50
+staff_required = 1
+
+[[staffing.ladder]]
+up_to_participants = 150
+staff_required = 2
+
+[[staffing.ladder]]
+up_to_participants = 300
+staff_required = 3
 
 [costs]
 annual_room_cost_ore_per_seat = 100000

@@ -11,6 +11,7 @@ from typing import Any
 import pandas as pd
 
 from .integrated_config import IntegratedTermScenario, load_integrated_term_scenario
+from .staffing_validation import validate_staffing
 from .term_calendar import CalendarSlot, generate_calendar_slots
 
 
@@ -35,6 +36,8 @@ def validate_integrated_term_run(run_dir: Path) -> dict[str, Any]:
     inputs = json.loads((run_dir / "model_inputs.json").read_text(encoding="utf-8"))
     result = json.loads((run_dir / "result.json").read_text(encoding="utf-8"))
     assignments = pd.read_csv(run_dir / "assignments.csv", encoding="utf-8-sig")
+    staff_path = run_dir / "staff_assignments.csv"
+    staff_assignments = pd.read_csv(staff_path, encoding="utf-8-sig") if staff_path.is_file() else None
     model_inputs, demands, rooms = _model_inputs(inputs)
     slots = {item.slot_id: item for item in generate_calendar_slots(scenario.calendar)}
     assignment_rows, valid_assignments = _assignment_rows(assignments, demands, rooms, slots)
@@ -46,11 +49,11 @@ def validate_integrated_term_run(run_dir: Path) -> dict[str, Any]:
         _capacity(valid_assignments, rooms),
         _room_intervals(valid_assignments, demands, scenario, slots),
         _location(valid_assignments, demands, rooms),
-        _digital_compatibility(scenario),
-        _availability(scenario),
-        _course_program_conflicts(inputs),
+        _digital_compatibility(valid_assignments, demands, rooms, scenario),
+        _availability(valid_assignments, rooms, scenario),
+        _course_program_conflicts(valid_assignments, demands, slots, scenario),
         _aggregate_staffing(valid_assignments, demands, scenario, slots, result),
-        _individual_staffing(),
+        _individual_staffing(valid_assignments, staff_assignments, demands, rooms, scenario, slots),
     )
     technical = _technical_status(rules)
     business = _business_status(rules)
@@ -185,33 +188,83 @@ def _location(assignments: pd.DataFrame, demands: dict[str, dict[str, Any]], roo
     return _result("plan_area", failures, "Behov och sal ligger i samma planeringsområde.")
 
 
-def _digital_compatibility(scenario: IntegratedTermScenario) -> RuleResult:
+def _digital_compatibility(assignments: pd.DataFrame, demands: dict[str, dict[str, Any]], rooms: dict[str, dict[str, Any]], scenario: IntegratedTermScenario) -> RuleResult:
+    explicit = False
+    failures = []
+    missing = []
+    for row in assignments.itertuples(index=False):
+        demand, room = demands[str(row.exam_demand_id)], rooms[str(row.room_id)]
+        requirement = str(demand.get("digital_requirement", "unknown"))
+        capabilities = room.get("digital_capabilities")
+        if requirement in {"", "unknown", "none"}:
+            continue
+        explicit = True
+        if not isinstance(capabilities, list):
+            missing.append(f"{row.exam_demand_id}:{row.room_id}")
+        elif "all" not in capabilities and requirement not in capabilities:
+            failures.append(f"{row.exam_demand_id}:{row.room_id}")
+    if failures:
+        return _result("digital_compatibility", failures, "Digital kompatibilitet respekteras.")
+    if missing:
+        return RuleResult("digital_compatibility", NOT_EVALUATED, "Digitalt krav saknar sparad kompatibilitetsmatris.", tuple(missing))
+    if explicit:
+        return RuleResult("digital_compatibility", PASS, "Explicit digital kompatibilitetsmatris respekteras.", ())
     expected = "all_exploratory_candidate_rooms_assumed_compatible_with_observed_formats"
     if scenario.digital_compatibility_mode == expected:
         return RuleResult("digital_compatibility", PASS, "Global kompatibilitet är ett aktivt scenarioantagande, inte verifierad matris.", (), True)
     return RuleResult("digital_compatibility", NOT_EVALUATED, "Ingen aktiverad verifierbar kompatibilitetsmatris finns.", ())
 
 
-def _availability(scenario: IntegratedTermScenario) -> RuleResult:
+def _availability(assignments: pd.DataFrame, rooms: dict[str, dict[str, Any]], scenario: IntegratedTermScenario) -> RuleResult:
+    explicit = False
+    failures = []
+    for row in assignments.itertuples(index=False):
+        allowed = rooms[str(row.room_id)].get("available_slot_ids")
+        if allowed is None:
+            continue
+        explicit = True
+        if not isinstance(allowed, list) or str(row.slot_id) not in allowed:
+            failures.append(f"{row.room_id}:{row.slot_id}")
+    if failures:
+        return _result("room_availability", failures, "Salens explicita tillgänglighet respekteras.")
+    if explicit:
+        return RuleResult("room_availability", PASS, "Explicit salstillgänglighet respekteras.", ())
     values = {item.assumption_id: item.value for item in scenario.assumptions}
     if values.get("room_availability") == "all selected candidate rooms available for every configured slot":
         return RuleResult("room_availability", PASS, "Full tillgänglighet är ett aktivt scenarioantagande, inte verifierad kalender.", (), True)
     return RuleResult("room_availability", NOT_EVALUATED, "Verifierad salbokningskalender saknas.", ())
 
 
-def _course_program_conflicts(inputs: dict[str, Any]) -> RuleResult:
-    traceability = inputs.get("demand_traceability", [])
-    if not traceability:
-        return RuleResult("course_program_conflicts", NOT_EVALUATED, "Kurs-/programrelationer saknas.", ("course_program_conflict_policy",))
-    return RuleResult("course_program_conflicts", NOT_EVALUATED, "Kurskoder finns, men ingen aktiverad krockpolicy eller programrelation finns.", ("course_program_conflict_policy",))
+def _course_program_conflicts(assignments: pd.DataFrame, demands: dict[str, dict[str, Any]], slots: dict[str, CalendarSlot], scenario: IntegratedTermScenario) -> RuleResult:
+    if "same_course_hard_constraint" not in scenario.conflict_policy:
+        return RuleResult("course_program_conflicts", NOT_EVALUATED, "Ingen aktiv kurskrockspolicy är sparad i scenariot.", ())
+    starts = {str(demand_id): str(rows.iloc[0]["slot_id"]) for demand_id, rows in assignments.groupby("exam_demand_id")}
+    known = [item for item in demands.values() if str(item.get("course_code", "")).strip()]
+    if not known:
+        return RuleResult("course_program_conflicts", NOT_EVALUATED, "Inga explicita kurs- eller programrelationer finns i modellindata.", ())
+    failures = []
+    for index, left in enumerate(known):
+        for right in known[index + 1:]:
+            same_course = left.get("course_code") == right.get("course_code")
+            programs = set(left.get("program_ids") or ()).intersection(right.get("program_ids") or ())
+            if not same_course and not programs:
+                continue
+            left_slot, right_slot = slots.get(starts.get(str(left["exam_demand_id"]), "")), slots.get(starts.get(str(right["exam_demand_id"]), ""))
+            if left_slot and right_slot and left_slot.scheduled_date == right_slot.scheduled_date and left_slot.start_minute < right_slot.start_minute + int(right["duration_minutes"]) and right_slot.start_minute < left_slot.start_minute + int(left["duration_minutes"]):
+                failures.append(f"{left['exam_demand_id']}:{right['exam_demand_id']}")
+    if failures:
+        return _result("course_program_conflicts", failures, "Kurs- och programkrockar respekteras.")
+    if scenario.program_conflict_data_status != "verified":
+        return RuleResult("course_program_conflicts", NOT_EVALUATED, "Kurskrockar är kontrollerade, men programrelationer saknar verifierad täckning.", ("program_relation_data_status",))
+    return RuleResult("course_program_conflicts", PASS, "Kurs- och programkrockar respekteras med verifierade relationer.", ())
 
 
 def _aggregate_staffing(assignments: pd.DataFrame, demands: dict[str, dict[str, Any]], scenario: IntegratedTermScenario, slots: dict[str, CalendarSlot], result: dict[str, Any]) -> RuleResult:
     intervals = _session_intervals(assignments, demands, scenario, slots)
     expected = 0
-    for _room, day, start, end in intervals:
-        concurrent = sum(other_day == day and start < other_end and other_start < end for _other_room, other_day, other_start, other_end in intervals)
-        expected = max(expected, concurrent * scenario.staff_per_room_session)
+    for _room, day, start, end, count in intervals:
+        concurrent = sum(other_count for _other_room, other_day, other_start, other_end, other_count in intervals if other_day == day and start < other_end and other_start < end)
+        expected = max(expected, concurrent)
     actual = result.get("solution", {}).get("anonymous_staff_pool_size")
     if actual is None:
         return RuleResult("aggregate_staffing", NOT_EVALUATED, "Körningsresultatet saknar anonym bemanningspool.", ())
@@ -220,19 +273,35 @@ def _aggregate_staffing(assignments: pd.DataFrame, demands: dict[str, dict[str, 
     return _result("aggregate_staffing", [] if actual >= expected else [f"minimum:{expected}|actual:{actual}"], "Anonym samtidig bemanning uppfyller aktiverat minimikrav.")
 
 
-def _individual_staffing() -> RuleResult:
-    return RuleResult("individual_staffing_constraints", NOT_EVALUATED, "Modellen saknar individuella resurser samt regler för raster, restid, kompetens och arbetstid.", ())
+def _individual_staffing(assignments: pd.DataFrame, staff_assignments: pd.DataFrame | None, demands: dict[str, dict[str, Any]], rooms: dict[str, dict[str, Any]], scenario: IntegratedTermScenario, slots: dict[str, CalendarSlot]) -> RuleResult:
+    status, reason, object_ids = validate_staffing(assignments, staff_assignments, demands, rooms, scenario, slots)
+    return RuleResult("individual_staffing_constraints", status, reason, object_ids)
 
 
-def _session_intervals(assignments: pd.DataFrame, demands: dict[str, dict[str, Any]], scenario: IntegratedTermScenario, slots: dict[str, CalendarSlot]) -> list[tuple[str, str, int, int]]:
+def _session_intervals(assignments: pd.DataFrame, demands: dict[str, dict[str, Any]], scenario: IntegratedTermScenario, slots: dict[str, CalendarSlot]) -> list[tuple[str, str, int, int, int]]:
     intervals = []
     for (room_id, slot_id), rows in assignments.groupby(["room_id", "slot_id"]):
         slot = slots.get(str(slot_id))
         known = [demands.get(str(value)) for value in rows["exam_demand_id"]]
         if slot is None or any(item is None for item in known):
             continue
-        intervals.append((str(room_id), slot.scheduled_date.isoformat(), slot.start_minute, slot.start_minute + max(int(item["duration_minutes"]) for item in known if item) + scenario.calendar.turnaround_minutes))
+        participants = int(rows["participants"].sum())
+        intervals.append((
+            str(room_id), slot.scheduled_date.isoformat(),
+            slot.start_minute - scenario.staffing_policy.preparation_minutes,
+            slot.start_minute + max(int(item["duration_minutes"]) for item in known if item) + max(
+                scenario.staffing_policy.closing_minutes, scenario.calendar.turnaround_minutes,
+            ),
+            _staff_required(participants, scenario),
+        ))
     return intervals
+
+
+def _staff_required(participants: int, scenario: IntegratedTermScenario) -> int:
+    for step in scenario.staffing_policy.ladder:
+        if participants <= step.up_to_participants:
+            return step.staff_required
+    return 10**9
 
 
 def _result(rule_id: str, failures: list[str], pass_reason: str) -> RuleResult:

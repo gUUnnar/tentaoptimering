@@ -27,14 +27,15 @@ def run_integrated_term(config_path: Path, processed_dir: Path, runs_dir: Path) 
     shutil.copy2(config_path, run_dir / "scenario.toml")
     _write_csv(run_dir / "assignments.csv", result.assignments)
     _write_csv(run_dir / "room_sessions.csv", result.room_sessions)
+    _write_csv(run_dir / "staff_assignments.csv", result.staff_assignments)
     _write_csv(run_dir / "demand_traceability.csv", inputs.demand_traceability)
     (run_dir / "model_inputs.json").write_text(
         json.dumps({
             "demands": [
-                {**asdict(item), "allowed_pass_ids": sorted(item.allowed_pass_ids) if item.allowed_pass_ids else None}
+                _demand_input(item)
                 for item in inputs.demands
             ],
-            "rooms": [asdict(item) for item in inputs.rooms],
+            "rooms": [_room_input(item) for item in inputs.rooms],
             "demand_traceability": list(inputs.demand_traceability),
             "scope_metrics": inputs.scope_metrics,
         }, ensure_ascii=False, indent=2), encoding="utf-8"
@@ -45,12 +46,26 @@ def run_integrated_term(config_path: Path, processed_dir: Path, runs_dir: Path) 
     )
     (run_dir / "report.md").write_text(_report(payload), encoding="utf-8")
     return {"run_id": run_id, "result": payload, "artifacts": {name: str((run_dir / name).resolve()) for name in (
-        "scenario.toml", "assignments.csv", "room_sessions.csv", "demand_traceability.csv", "model_inputs.json", "result.json", "report.md",
+        "scenario.toml", "assignments.csv", "room_sessions.csv", "staff_assignments.csv", "demand_traceability.csv", "model_inputs.json", "result.json", "report.md",
     )}}
 
 
 def _write_csv(path: Path, rows: tuple[dict[str, Any], ...]) -> None:
     pd.DataFrame(rows).to_csv(path, index=False, encoding="utf-8-sig")
+
+
+def _demand_input(item: Any) -> dict[str, Any]:
+    data = asdict(item)
+    data["allowed_pass_ids"] = sorted(item.allowed_pass_ids) if item.allowed_pass_ids else None
+    data["program_ids"] = sorted(item.program_ids)
+    return data
+
+
+def _room_input(item: Any) -> dict[str, Any]:
+    data = asdict(item)
+    data["digital_capabilities"] = sorted(item.digital_capabilities)
+    data["available_slot_ids"] = sorted(item.available_slot_ids) if item.available_slot_ids is not None else None
+    return data
 
 
 def _payload(run_id: str, scenario: Any, scope_metrics: dict[str, int], result: TermRunResult) -> dict[str, Any]:
@@ -70,7 +85,11 @@ def _payload(run_id: str, scenario: Any, scope_metrics: dict[str, int], result: 
             "objective_ore": result.objective_ore,
             "annual_room_cost_ore": result.annual_room_cost_ore,
             "annual_staff_cost_ore": result.annual_staff_cost_ore,
+            "annual_travel_cost_ore": result.annual_travel_cost_ore,
             "anonymous_staff_pool_size": result.staff_pool_size,
+            "staff_work_minutes": result.staff_work_minutes,
+            "staff_travel_minutes": result.staff_travel_minutes,
+            "staff_idle_minutes": result.staff_idle_minutes,
             "rooms_used": used_rooms,
             "room_count": len(used_rooms),
             "assignment_rows": len(result.assignments),
@@ -81,7 +100,7 @@ def _payload(run_id: str, scenario: Any, scope_metrics: dict[str, int], result: 
         "limitations": [
             "Rumsinventariet saknar verifierad kalender och är endast ett explorativt scenario.",
             "Kostnaderna är ersättbara scenarioproxyer, inte realiserbar hyra eller avtalskostnad.",
-            "Bemanningen är en anonym samtidighetspool; individuell schemaläggning, raster, restider och arbetstidsvillkor kontrolleras inte.",
+            "Bemanningen är anonymiserad men varje sparad vaktuppgift kontrolleras mot scenarioinställda pass, raster, vila och byggnadsbyte; regel- och kostnadsdata är fortfarande antaganden.",
             "Körningen är konstruktiv och bevisar inte global optimalitet; optimalitetsgap saknas därför.",
             "De oavgjorda källaktiviteterna ingår inte i efterfrågan och hindrar en fullständig beräkning för hela populationen.",
         ],
@@ -99,6 +118,7 @@ def _report(payload: dict[str, Any]) -> str:
         f"- Målfunktion: {solution['objective_ore']} öre per år enligt scenarioantagandena.",
         f"- Lokalportfölj: {solution['room_count']} rum ({', '.join(solution['rooms_used'])}).",
         f"- Anonym samtidig bemanningspool: {solution['anonymous_staff_pool_size']} resurser.",
+        f"- Beräknad vaktarbete/restid/bomtid: {solution['staff_work_minutes']}/{solution['staff_travel_minutes']}/{solution['staff_idle_minutes']} minuter.",
         f"- Optimalitetsgap: `{solution['optimality_gap']}`.", "",
         "## Modellens fullständighet", "",
         f"- Täckning av inkluderade behov: {completeness['included_demand_coverage']:.1%} "

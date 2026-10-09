@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 from itertools import combinations
 from time import perf_counter
 from typing import Any
@@ -12,6 +13,7 @@ from .integrated_inputs import TermModelInputs
 from .integrated_term import AggregateStaffing, IntegratedDemand, IntegratedRoom
 from .term_calendar import CalendarSlot, eligible_slots
 from .term_rules import demands_conflict, room_is_compatible, slots_overlap
+from .staffing import StaffingPlan, StaffingTask, plan_staffing, required_staff
 
 
 @dataclass(frozen=True)
@@ -22,10 +24,15 @@ class TermRunResult:
     objective_ore: int | None
     annual_room_cost_ore: int | None
     annual_staff_cost_ore: int | None
+    annual_travel_cost_ore: int | None
     staff_pool_size: int | None
+    staff_work_minutes: int | None
+    staff_travel_minutes: int | None
+    staff_idle_minutes: int | None
     optimality_gap: str
     assignments: tuple[dict[str, Any], ...]
     room_sessions: tuple[dict[str, Any], ...]
+    staff_assignments: tuple[dict[str, Any], ...]
     model_completeness: dict[str, object]
 
 
@@ -49,16 +56,17 @@ def run_first_term_schedule(inputs: TermModelInputs, scenario: IntegratedTermSce
     relevant_rooms = tuple(
         room for room in inputs.rooms if room.plan_area in {item.plan_area for item in inputs.demands}
     )
-    best: tuple[int, tuple[dict[str, Any], ...], tuple[dict[str, Any], ...], tuple[IntegratedRoom, ...], int] | None = None
+    best: tuple[int, tuple[dict[str, Any], ...], tuple[dict[str, Any], ...], tuple[IntegratedRoom, ...], StaffingPlan] | None = None
     for portfolio in _portfolios(relevant_rooms, inputs.demands):
         scheduled = _schedule_portfolio(inputs.demands, portfolio, scenario, slots_by_demand)
         if scheduled is None:
             continue
-        assignments, sessions, staff_pool = scheduled
+        assignments, sessions, staff_plan = scheduled
         used_rooms = {row["room_id"] for row in assignments}
         room_cost = sum(room.annual_cost_ore for room in portfolio if room.room_id in used_rooms)
-        objective = room_cost + staffing.annual_cost_ore_per_staff * staff_pool
-        candidate = (objective, assignments, sessions, portfolio, staff_pool)
+        travel_cost = staff_plan.travel_minutes * scenario.travel_cost_ore_per_minute
+        objective = room_cost + staffing.annual_cost_ore_per_staff * staff_plan.worker_count + travel_cost
+        candidate = (objective, assignments, sessions, portfolio, staff_plan)
         if best is None or _candidate_key(candidate) < _candidate_key(best):
             best = candidate
     elapsed = perf_counter() - started
@@ -66,16 +74,18 @@ def run_first_term_schedule(inputs: TermModelInputs, scenario: IntegratedTermSce
     if best is None:
         return TermRunResult(
             "no_constructive_full_solution", "portfolio_enumeration_balanced_greedy", elapsed,
-            None, None, None, None, "not_available_constructive_method", (), (), completeness,
+            None, None, None, None, None, None, None, None, "not_available_constructive_method", (), (), (), completeness,
         )
-    objective, assignments, sessions, portfolio, staff_pool = best
+    objective, assignments, sessions, portfolio, staff_plan = best
     used_rooms = {row["room_id"] for row in assignments}
     room_cost = sum(room.annual_cost_ore for room in portfolio if room.room_id in used_rooms)
-    staff_cost = staffing.annual_cost_ore_per_staff * staff_pool
+    staff_cost = staffing.annual_cost_ore_per_staff * staff_plan.worker_count
+    travel_cost = staff_plan.travel_minutes * scenario.travel_cost_ore_per_minute
     return TermRunResult(
-        "constructive_feasible", "portfolio_enumeration_balanced_greedy", elapsed,
-        objective, room_cost, staff_cost, staff_pool, "not_available_constructive_method",
-        assignments, sessions, completeness,
+        "constructive_feasible", "portfolio_enumeration_balanced_greedy_with_staffing", elapsed,
+        objective, room_cost, staff_cost, travel_cost, staff_plan.worker_count,
+        staff_plan.work_minutes, staff_plan.travel_minutes, staff_plan.idle_minutes,
+        "not_available_constructive_method", assignments, sessions, staff_plan.assignments, completeness,
     )
 
 
@@ -90,7 +100,7 @@ def _portfolios(rooms: tuple[IntegratedRoom, ...], demands: tuple[IntegratedDema
 def _schedule_portfolio(
     demands: tuple[IntegratedDemand, ...], portfolio: tuple[IntegratedRoom, ...], scenario: IntegratedTermScenario,
     slots_by_demand: dict[str, tuple[CalendarSlot, ...]],
-) -> tuple[tuple[dict[str, Any], ...], tuple[dict[str, Any], ...], int] | None:
+) -> tuple[tuple[dict[str, Any], ...], tuple[dict[str, Any], ...], StaffingPlan] | None:
     remaining = {
         (slot.slot_id, room.room_id): room.capacity
         for values in slots_by_demand.values() for slot in values for room in portfolio
@@ -137,8 +147,8 @@ def _schedule_portfolio(
         placed_slots[demand.exam_demand_id] = slot
         chosen.extend(rows)
     sessions = _sessions(chosen, by_id, scenario, slots_by_demand)
-    staff_pool = _peak_sessions(sessions, scenario)
-    return tuple(chosen), sessions, staff_pool
+    plan = plan_staffing(_staffing_tasks(sessions, chosen, portfolio, by_id, scenario), scenario.staffing_policy)
+    return (tuple(chosen), sessions, plan) if plan.feasible else None
 
 
 def _sessions(
@@ -179,6 +189,33 @@ def _peak_sessions(sessions: tuple[dict[str, Any], ...], scenario: IntegratedTer
     ) if intervals else 0
 
 
+def _staffing_tasks(
+    sessions: tuple[dict[str, Any], ...], assignments: list[dict[str, Any]],
+    rooms: tuple[IntegratedRoom, ...], demands: dict[str, IntegratedDemand], scenario: IntegratedTermScenario,
+) -> tuple[StaffingTask, ...]:
+    room_by_id = {item.room_id: item for item in rooms}
+    counts: dict[tuple[str, str], int] = {}
+    for row in assignments:
+        key = str(row["room_id"]), str(row["slot_id"])
+        counts[key] = counts.get(key, 0) + int(row["participants"])
+    result = []
+    for session in sessions:
+        room_id, slot_id = str(session["room_id"]), str(session["slot_id"])
+        participants = counts[room_id, slot_id]
+        room = room_by_id[room_id]
+        result.append(StaffingTask(
+            f"{room_id}|{slot_id}", date.fromisoformat(str(session["scheduled_date"])),
+            int(session["start_minute"]), max(
+                int(session["available_again_minute"]),
+                int(session["start_minute"]) + max(
+                    demands[str(item)].duration_minutes for item in session["exam_demand_ids"]
+                ) + scenario.staffing_policy.closing_minutes,
+            ),
+            room.building_id or room.room_id, participants, required_staff(participants, scenario.staffing_policy),
+        ))
+    return tuple(result)
+
+
 def _completeness(inputs: TermModelInputs, placed_demands: int) -> dict[str, object]:
     metrics = inputs.scope_metrics
     included = metrics["included_source_activities"]
@@ -195,5 +232,5 @@ def _completeness(inputs: TermModelInputs, placed_demands: int) -> dict[str, obj
 
 
 def _candidate_key(candidate: tuple[Any, ...]) -> tuple[int, int, tuple[str, ...]]:
-    objective, _assignments, _sessions, portfolio, staff_pool = candidate
-    return int(objective), int(staff_pool), tuple(item.room_id for item in portfolio)
+    objective, _assignments, _sessions, portfolio, staff_plan = candidate
+    return int(objective), int(staff_plan.worker_count), tuple(item.room_id for item in portfolio)

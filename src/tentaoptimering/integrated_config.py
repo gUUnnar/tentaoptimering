@@ -8,6 +8,7 @@ from pathlib import Path
 import tomllib
 
 from .term_calendar import CalendarPass, CalendarPeriod, TermCalendar
+from .staffing import StaffingPolicy, StaffingStep, WorkShift
 
 
 @dataclass(frozen=True)
@@ -31,6 +32,8 @@ class IntegratedTermScenario:
     digital_compatibility_mode: str
     conflict_policy: str
     program_conflict_data_status: str
+    staffing_policy: StaffingPolicy
+    travel_cost_ore_per_minute: int
     assumptions: tuple[Assumption, ...]
 
 
@@ -67,6 +70,9 @@ def load_integrated_term_scenario(path: Path) -> IntegratedTermScenario:
         raise ValueError("Terminscenario kräver spårbara antaganden.")
     if len({item.assumption_id for item in assumptions}) != len(assumptions):
         raise ValueError("Antagandeidentifierare måste vara unika.")
+    conflicts = payload.get("conflicts", {})
+    if not isinstance(conflicts, dict):
+        raise ValueError("Terminsscenariots [conflicts] måste vara en tabell.")
     return IntegratedTermScenario(
         scenario_id=_text(payload, "scenario_id"),
         description=_text(payload, "description"),
@@ -75,8 +81,10 @@ def load_integrated_term_scenario(path: Path) -> IntegratedTermScenario:
         staff_per_room_session=_positive_int(staffing, "staff_per_room_session"),
         annual_staff_cost_ore_per_staff=_non_negative_int(staffing, "annual_cost_ore_per_staff"),
         digital_compatibility_mode=_text(_table(payload, "compatibility"), "digital_compatibility_mode"),
-        conflict_policy=_text(_table(payload, "conflicts"), "policy"),
-        program_conflict_data_status=_text(_table(payload, "conflicts"), "program_relation_data_status"),
+        conflict_policy=_optional_text(conflicts, "policy", "not_configured"),
+        program_conflict_data_status=_optional_text(conflicts, "program_relation_data_status", "not_configured"),
+        staffing_policy=_staffing_policy(staffing),
+        travel_cost_ore_per_minute=_non_negative_int(staffing, "travel_cost_ore_per_minute") if "travel_cost_ore_per_minute" in staffing else 0,
         assumptions=assumptions,
     )
 
@@ -103,6 +111,44 @@ def _dates(payload: dict[str, object], key: str) -> tuple[date, ...] | None:
     return dates
 
 
+def _staffing_policy(payload: dict[str, object]) -> StaffingPolicy:
+    """Support old exploratory files while making activated rules explicit."""
+    raw_ladder = payload.get("ladder")
+    ladder = (
+        tuple(StaffingStep(_positive_int(item, "up_to_participants"), _positive_int(item, "staff_required")) for item in raw_ladder if isinstance(item, dict))
+        if isinstance(raw_ladder, list) else (StaffingStep(10**9, _positive_int(payload, "staff_per_room_session")),)
+    )
+    if isinstance(raw_ladder, list) and len(ladder) != len(raw_ladder):
+        raise ValueError("Bemanningstrappan måste innehålla tabeller.")
+    raw_shifts = payload.get("shift")
+    shifts = (
+        tuple(WorkShift(_text(item, "shift_id"), _clock_minutes(_text(item, "start_time")), _clock_minutes(_text(item, "end_time"))) for item in raw_shifts if isinstance(item, dict))
+        if isinstance(raw_shifts, list) else (WorkShift("legacy_day", 0, 24 * 60),)
+    )
+    if isinstance(raw_shifts, list) and len(shifts) != len(raw_shifts):
+        raise ValueError("Arbetspassen måste innehålla tabeller.")
+    return StaffingPolicy(
+        ladder, shifts,
+        _non_negative_int(payload, "preparation_minutes") if "preparation_minutes" in payload else 0,
+        _non_negative_int(payload, "closing_minutes") if "closing_minutes" in payload else 0,
+        _non_negative_int(payload, "minimum_break_minutes") if "minimum_break_minutes" in payload else 0,
+        _positive_int(payload, "maximum_continuous_minutes") if "maximum_continuous_minutes" in payload else 24 * 60,
+        _positive_int(payload, "maximum_daily_minutes") if "maximum_daily_minutes" in payload else 24 * 60,
+        _non_negative_int(payload, "minimum_daily_rest_minutes") if "minimum_daily_rest_minutes" in payload else 0,
+        _non_negative_int(payload, "travel_minutes_between_buildings") if "travel_minutes_between_buildings" in payload else 0,
+    )
+
+
+def _clock_minutes(value: str) -> int:
+    try:
+        hour, minute = (int(part) for part in value.split(":"))
+    except (AttributeError, TypeError, ValueError) as error:
+        raise ValueError(f"Klockslag måste anges som HH:MM: {value}") from error
+    if not 0 <= hour <= 23 or not 0 <= minute <= 59:
+        raise ValueError(f"Klockslag ligger utanför dygnet: {value}")
+    return hour * 60 + minute
+
+
 def _table(payload: dict[str, object], key: str) -> dict[str, object]:
     value = payload.get(key)
     if not isinstance(value, dict):
@@ -114,6 +160,13 @@ def _text(payload: dict[str, object], key: str) -> str:
     value = payload.get(key)
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"Terminsscenario saknar ett ifyllt {key}.")
+    return value
+
+
+def _optional_text(payload: dict[str, object], key: str, default: str) -> str:
+    value = payload.get(key, default)
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"Terminsscenario har ogiltigt {key}.")
     return value
 
 
