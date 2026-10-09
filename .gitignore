@@ -12,6 +12,12 @@ runs/
 .coverage
 dist/
 build/
+*.spec
+frontend/node_modules/
+frontend/dist/
+frontend/*.js
+frontend/*.d.ts
+frontend/*.tsbuildinfo
 *.egg-info/
 
 *.xlsx

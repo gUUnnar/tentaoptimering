@@ -11,6 +11,9 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `AGENTS.md` | Arbetsregler för agenten, inklusive modellavgränsning, verifiering och filstorlekspolicy. |
 | `README.md` | Projektets syfte, körinstruktioner, leverabler och avgränsning. |
 | `pyproject.toml` | Python-paketets metadata, beroenden, kommandoradspunkt och verktygskonfiguration. |
+| `frontend/` | Separat byggbar React-, TypeScript-, Vite- och Tailwind-klient för det lokala gränssnittet. |
+| `packaging/build_windows.ps1` | Bygger frontend och paketerar lokal Windowsdistribution med PyInstaller. |
+| `packaging/desktop_entry.py` | Paketvänlig Pythonstartpunkt för den lokala Windowsapplikationen. |
 | `Uppdrag_Claude_Codex_tentalokaler_PoC.md` | Ursprungligt avgränsat uppdrag för första leveransen. |
 | `Slutsatser_tentalokaler_2026-10-06.md` | Dokumenterad krav- och datagenomgång samt rekommenderad fortsatt inriktning. |
 
@@ -38,6 +41,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `docs/OPTIMERINGSUNDERLAG.md` | Korn, relationsregler och tillåten användning av det maskinläsbara underlaget före motorbygge. |
 | `docs/OPTIMERINGSMOTOR.md` | CP-SAT-modell, scenarier, mål, validering, CLI-kontrakt och resultattolkning. |
 | `docs/OBEROENDE_EFTERVALIDERING.md` | Regelvis och fristående kontroll av en sparad terminskörning samt betydelsen av de två statusmåtten. |
+| `docs/LOKALT_GRANSSNITT.md` | Arkitektur, API-kontrakt, källkodsutveckling och offlineverifiering av Windowsdistributionen. |
 
 ## Python-paket: `src/tentaoptimering`
 
@@ -51,6 +55,12 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `integrated_inputs.py` | Adapter från reproducerbara scope- och optimeringsunderlag till terminsmodellens behov, rum och källspårbarhet. |
 | `integrated_runs.py` | Skapar granskningsbara körningsartefakter för integrerade terminsresultat. |
 | `integrated_validation.py` | Läser en sparad terminskörning och kontrollerar regelvis täckning, kapacitet, intervall, ort, antaganden och bemanning. |
+| `api.py` | FastAPI-lager för parametrar, scenarier, asynkrona lokala körningar, resultat och eftervalidering. |
+| `app_paths.py` | Resurs- och användarskrivbara sökvägar för utveckling och paketerad applikation. |
+| `app_storage.py` | TOML-baserade användarscenarier, inställningar och resultatinspektion utan databasserver. |
+| `scenario_consistency.py` | Synkroniserar redigerbara terminsparametrar, kalenderperioder och de spårbarhetsantaganden som redovisar samma värden. |
+| `desktop.py` | Windowsstartpunkt som startar localhost-server och öppnar standardwebbläsaren. |
+| `job_manager.py` | Enkeltrådig lokal jobbkö som hindrar samtidiga resultatskrivningar. |
 | `cost_model.py` | Datatyper och spärrat resultat för kostnader tills verifierade avtalskopplingar finns. |
 | `cost_comparison.py` | Visar källans internhyreprofil och scenariokostnad utan att omvandla deras differens till besparing. |
 | `linkage.py` | Kandidatdiagnostik mellan bokningsplaceringar och Ladok; gör inga verifierade kopplingar. |
@@ -88,6 +98,8 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `tests/test_integrated_config.py` | Säkrar att det versionshanterade terminscenariot har validerbar kalender och spårbara antaganden. |
 | `tests/test_integrated_inputs.py` | Säkrar adapterens källspårbarhet och synliga scope-fullständighet. |
 | `tests/test_integrated_validation.py` | Säkrar oberoende eftervalidering, inklusive passöverlappning, kapacitet, ort och ej verifierbar verksamhetsstatus. |
+| `tests/test_api.py` | Säkrar lokalt API-kontrakt för parametervisning, scenariekopia och validering. |
+| `tests/test_app_storage.py` | Säkrar TOML-serialisering och användarscenariernas läs-/valideringsflöde. |
 | `tests/test_staffing.py` | Säkrar bemanningstrappa, arbetspass, raster, vila och byggnadsbyten. |
 | `tests/test_term_run.py` | Säkrar att schemaläggarens sparade vaktintervall kan valideras oberoende. |
 | `tests/test_linkage.py` | Säkrar kurskodsextraktion och att kandidatmatchningens tvetydighet bevaras. |
