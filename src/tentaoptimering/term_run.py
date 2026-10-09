@@ -210,7 +210,7 @@ def _staffing_tasks(
                 int(session["start_minute"]) + max(
                     demands[str(item)].duration_minutes for item in session["exam_demand_ids"]
                 ) + scenario.staffing_policy.closing_minutes,
-            ),
+            ) - scenario.staffing_policy.closing_minutes,
             room.building_id or room.room_id, participants, required_staff(participants, scenario.staffing_policy),
         ))
     return tuple(result)
