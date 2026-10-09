@@ -48,6 +48,7 @@ def load_term_model_inputs(processed_dir: Path, scenario: IntegratedTermScenario
             IntegratedDemand(
                 exam_demand_id=str(row.demand_id), participants=int(row.demand_value),
                 duration_minutes=duration_minutes(str(row.scheduled_time)), plan_area=plan_area,
+                course_code=_optional_text(row, "course_code"),
             )
         )
         traceability.append({
@@ -63,6 +64,8 @@ def load_term_model_inputs(processed_dir: Path, scenario: IntegratedTermScenario
                 room_id=str(row.room_id), capacity=int(row.capacity_seats),
                 plan_area=str(row.reference_city),
                 annual_cost_ore=int(row.capacity_seats) * scenario.room_cost_ore_per_seat,
+                building_id=_optional_text(row, "building_id") or str(row.room_id),
+                digital_capabilities=frozenset({"all"}) if scenario.digital_compatibility_mode.startswith("all_") else frozenset({"unknown"}),
             )
             for row in rooms.itertuples(index=False)
         ),
@@ -75,3 +78,11 @@ def load_term_model_inputs(processed_dir: Path, scenario: IntegratedTermScenario
             "model_ready_exam_demands": int(len(demands)),
         },
     )
+
+
+def _optional_text(row: object, name: str) -> str | None:
+    value = getattr(row, name, None)
+    if value is None or pd.isna(value):
+        return None
+    text = str(value).strip()
+    return text or None

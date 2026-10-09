@@ -17,6 +17,9 @@ class IntegratedDemand:
     duration_minutes: int
     plan_area: str
     allowed_pass_ids: frozenset[str] | None = None
+    course_code: str | None = None
+    program_ids: frozenset[str] = frozenset()
+    digital_requirement: str = "unknown"
 
 
 @dataclass(frozen=True)
@@ -25,6 +28,9 @@ class IntegratedRoom:
     capacity: int
     plan_area: str
     annual_cost_ore: int
+    building_id: str | None = None
+    digital_capabilities: frozenset[str] = frozenset({"unknown"})
+    available_slot_ids: frozenset[str] | None = None
 
 
 @dataclass(frozen=True)

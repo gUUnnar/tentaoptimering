@@ -8,6 +8,12 @@ end_date = "2026-03-31"
 allowed_weekdays = [1, 2, 3, 4, 5, 6, 7]
 turnaround_minutes = 30
 
+[[calendar.period]]
+period_id = "ordinarie_vintertermin"
+start_date = "2026-01-12"
+end_date = "2026-03-31"
+allowed_weekdays = [1, 2, 3, 4, 5, 6, 7]
+
 [[calendar.passes]]
 pass_id = "day"
 start_time = "08:00"
@@ -15,6 +21,10 @@ latest_end_time = "18:00"
 
 [compatibility]
 digital_compatibility_mode = "all_exploratory_candidate_rooms_assumed_compatible_with_observed_formats"
+
+[conflicts]
+policy = "same_course_hard_constraint; program_relation_when_source_available"
+program_relation_data_status = "missing_from_preliminary_input"
 
 [staffing]
 staff_per_room_session = 1
