@@ -12,6 +12,7 @@ from typing import Any
 import pandas as pd
 
 from .integrated_config import load_integrated_term_scenario
+from .cost_comparison import preliminary_cost_comparison
 from .integrated_inputs import load_term_model_inputs
 from .term_run import TermRunResult, run_first_term_schedule
 
@@ -40,7 +41,7 @@ def run_integrated_term(config_path: Path, processed_dir: Path, runs_dir: Path) 
             "scope_metrics": inputs.scope_metrics,
         }, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    payload = _payload(run_id, scenario, inputs.scope_metrics, result)
+    payload = _payload(run_id, scenario, inputs.scope_metrics, result, preliminary_cost_comparison(processed_dir, result.objective_ore))
     (run_dir / "result.json").write_text(
         json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
     )
@@ -68,7 +69,7 @@ def _room_input(item: Any) -> dict[str, Any]:
     return data
 
 
-def _payload(run_id: str, scenario: Any, scope_metrics: dict[str, int], result: TermRunResult) -> dict[str, Any]:
+def _payload(run_id: str, scenario: Any, scope_metrics: dict[str, int], result: TermRunResult, cost_comparison: dict[str, object]) -> dict[str, Any]:
     used_rooms = sorted({row["room_id"] for row in result.assignments})
     return {
         "run_id": run_id,
@@ -97,6 +98,7 @@ def _payload(run_id: str, scenario: Any, scope_metrics: dict[str, int], result: 
         },
         "model_completeness": result.model_completeness,
         "scope_metrics": scope_metrics,
+        "cost_comparison": cost_comparison,
         "limitations": [
             "Rumsinventariet saknar verifierad kalender och är endast ett explorativt scenario.",
             "Kostnaderna är ersättbara scenarioproxyer, inte realiserbar hyra eller avtalskostnad.",
@@ -110,6 +112,7 @@ def _payload(run_id: str, scenario: Any, scope_metrics: dict[str, int], result: 
 def _report(payload: dict[str, Any]) -> str:
     solution = payload["solution"]
     completeness = payload["model_completeness"]
+    comparison = payload["cost_comparison"]
     return "\n".join([
         f"# Terminskörning: {payload['scenario']['scenario_id']}", "",
         "## Utfall", "",
@@ -126,6 +129,12 @@ def _report(payload: dict[str, Any]) -> str:
         f"- Täckning av hela källpopulationen: {completeness['source_population_coverage']:.1%} "
         f"({completeness['included_source_activities']} av {completeness['source_activities_total']}).",
         f"- Oavgjorda källaktiviteter: {completeness['unresolved_source_activities']}.", "",
+        "## Kostnadsjämförelse", "",
+        f"- Status: `{comparison['status']}`.",
+        f"- Källans preliminära internhyreprofil: {comparison['source_baseline_preliminary_internal_rent_ore']} öre per år.",
+        f"- Scenariots antagandekostnad: {comparison['scenario_assumption_cost_ore']} öre per år.",
+        f"- Illustrativ, ej jämförbar differens: {comparison['illustrative_unverified_delta_ore']} öre per år.",
+        "- Teoretisk potential och verifierad realiserbar besparing: inte beräknade.", "",
         "## Begränsningar", "",
         *[f"- {item}" for item in payload["limitations"]], "",
         "## Antaganden", "",
