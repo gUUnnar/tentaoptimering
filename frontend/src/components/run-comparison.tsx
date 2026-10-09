@@ -1,0 +1,14 @@
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+
+type Run = { run_id: string; scenario_id: string; status: string }
+type Comparison = { runs: Array<{ run_id: string; scenario_id: string; objective_ore: number | null; room_count: number | null; staff_pool_size: number | null; placed: number | null; delta_from_first: Record<string, number | null> }>; parameter_changes: Array<{ parameter: string; baseline: unknown; candidate: unknown }> }
+
+export function RunComparison({ runs, compare }: { runs: Run[]; compare: (ids: string[]) => Promise<Comparison> }) {
+  const [selected, setSelected] = useState<string[]>([])
+  const [result, setResult] = useState<Comparison | null>(null)
+  const [error, setError] = useState("")
+  const toggle = (runId: string) => setSelected(current => current.includes(runId) ? current.filter(id => id !== runId) : current.length === 2 ? [current[1], runId] : [...current, runId])
+  const runComparison = async () => { try { setResult(await compare(selected)); setError("") } catch (reason) { setError((reason as Error).message) } }
+  return <section className="border-t pt-4"><div className="mb-2 flex items-center justify-between"><h3 className="text-sm font-semibold">Jämför två körningar</h3><Button size="sm" disabled={selected.length !== 2} onClick={runComparison}>Jämför valda</Button></div><div className="grid gap-1 md:grid-cols-2">{runs.map(run => <label className="flex items-center gap-2 rounded border p-2 text-xs" key={run.run_id}><input type="checkbox" checked={selected.includes(run.run_id)} onChange={() => toggle(run.run_id)}/><span>{run.scenario_id} · {run.run_id}</span></label>)}</div>{error && <p className="mt-2 text-xs text-red-700">{error}</p>}{result && <><div className="mt-4 overflow-x-auto"><table className="w-full text-xs"><thead><tr className="text-left text-slate-500"><th className="p-1">Körning</th><th>Målfunktion (öre)</th><th>Lokaler</th><th>Vaktpool</th><th>Placerade behov</th></tr></thead><tbody>{result.runs.map(row => <tr className="border-t" key={row.run_id}><td className="p-1">{row.scenario_id}</td><td>{row.objective_ore ?? "–"}</td><td>{row.room_count ?? "–"}</td><td>{row.staff_pool_size ?? "–"}</td><td>{row.placed ?? "–"}</td></tr>)}</tbody></table></div><h4 className="mt-4 text-xs font-semibold">Ändrade parametrar i frysta körningsscenarier</h4>{result.parameter_changes.length ? <div className="mt-1 overflow-x-auto"><table className="w-full text-xs"><thead><tr className="text-left text-slate-500"><th className="p-1">Parameter</th><th>Baslinje</th><th>Jämförelse</th></tr></thead><tbody>{result.parameter_changes.map(change => <tr className="border-t" key={change.parameter}><td className="p-1 font-mono">{change.parameter}</td><td>{String(change.baseline)}</td><td>{String(change.candidate)}</td></tr>)}</tbody></table></div> : <p className="mt-1 text-xs text-slate-500">Inga scenarieparametrar skiljer körningarna.</p>}</>}</section>
+}

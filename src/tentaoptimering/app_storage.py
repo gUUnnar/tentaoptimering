@@ -8,11 +8,13 @@ from pathlib import Path
 import re
 import tomllib
 from typing import Any
+from uuid import uuid4
 
 from .app_paths import bundled_parameters_path, bundled_scenarios_dir, default_app_data_dir
 
 
 _SAFE_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,79}$")
+_SAFE_RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,159}$")
 
 
 def _read_toml(path: Path) -> dict[str, Any]:
@@ -69,10 +71,11 @@ class AppStorage:
         self.root = root or default_app_data_dir()
         self.scenarios_dir = self.root / "scenarios"
         self.runs_dir = self.root / "runs"
+        self.snapshots_dir = self.runs_dir / ".snapshots"
         self.processed_dir = self.root / "data" / "processed"
         self.reports_dir = self.root / "reports"
         self.settings_path = self.root / "settings.json"
-        for path in (self.scenarios_dir, self.runs_dir, self.processed_dir, self.reports_dir):
+        for path in (self.scenarios_dir, self.runs_dir, self.snapshots_dir, self.processed_dir, self.reports_dir):
             path.mkdir(parents=True, exist_ok=True)
 
     def settings(self) -> dict[str, str | None]:
@@ -137,23 +140,38 @@ class AppStorage:
             raise PermissionError("Endast användarscenarier kan ändras. Kopiera först det inbyggda scenariot.")
         if content.get("scenario_id") != scenario_id:
             raise ValueError("scenario_id i innehållet måste matcha scenarie-id.")
-        path.write_text(dump_toml(content), encoding="utf-8")
+        temporary = path.with_suffix(".pending.toml")
+        try:
+            temporary.write_text(dump_toml(content), encoding="utf-8")
+            self._validate_path(temporary, _scenario_engine(content))
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
         return self.scenario(scenario_id)
 
     def validate_scenario(self, scenario_id: str) -> dict[str, Any]:
         scenario = self.scenario(scenario_id)
         path = self._user_path(scenario_id) if scenario["origin"] == "user" else bundled_scenarios_dir() / f"{scenario_id}.toml"
-        if scenario["engine"] == "integrated_term":
-            from .integrated_config import load_integrated_term_scenario
-            load_integrated_term_scenario(path)
-        else:
-            from .optimizer_config import load_scenario_config
-            load_scenario_config(path)
+        self._validate_path(path, scenario["engine"])
         return {"valid": True, "engine": scenario["engine"], "scenario_id": scenario_id}
 
     def scenario_path(self, scenario_id: str) -> Path:
         scenario = self.scenario(scenario_id)
         return self._user_path(scenario_id) if scenario["origin"] == "user" else bundled_scenarios_dir() / f"{scenario_id}.toml"
+
+    def create_run_snapshot(self, scenario_id: str) -> dict[str, str]:
+        """Freeze validated scenario bytes before queuing a calculation."""
+        scenario = self.scenario(scenario_id)
+        source = self.scenario_path(scenario_id)
+        snapshot_id = uuid4().hex
+        target = self.snapshots_dir / f"{snapshot_id}.toml"
+        target.write_bytes(source.read_bytes())
+        try:
+            self._validate_path(target, scenario["engine"])
+        except Exception:
+            target.unlink(missing_ok=True)
+            raise
+        return {"snapshot_id": snapshot_id, "path": str(target), "engine": scenario["engine"]}
 
     def list_runs(self) -> list[dict[str, Any]]:
         runs: list[dict[str, Any]] = []
@@ -167,14 +185,38 @@ class AppStorage:
         return sorted(runs, key=lambda item: item["created_at"], reverse=True)
 
     def run(self, run_id: str) -> dict[str, Any]:
-        path = self.runs_dir / run_id / "result.json"
+        path = self._run_dir(run_id) / "result.json"
         if not path.is_file():
             raise FileNotFoundError("Körningen finns inte.")
         return json.loads(path.read_text(encoding="utf-8"))
 
     def validation(self, run_id: str) -> dict[str, Any] | None:
-        path = self.runs_dir / run_id / "validation.json"
+        path = self._run_dir(run_id) / "validation.json"
         return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
+
+    def run_scenario_content(self, run_id: str) -> dict[str, Any]:
+        path = self._run_dir(run_id) / "scenario.toml"
+        if not path.is_file():
+            raise FileNotFoundError("Körningens frysta scenario saknas.")
+        return _read_toml(path)
+
+    def _run_dir(self, run_id: str) -> Path:
+        if not _SAFE_RUN_ID.fullmatch(run_id):
+            raise ValueError("Körnings-id har ogiltigt format.")
+        candidate = (self.runs_dir / run_id).resolve()
+        root = self.runs_dir.resolve()
+        if candidate.parent != root:
+            raise ValueError("Körnings-id måste peka direkt under resultatkatalogen.")
+        return candidate
+
+    @staticmethod
+    def _validate_path(path: Path, engine: str) -> None:
+        if engine == "integrated_term":
+            from .integrated_config import load_integrated_term_scenario
+            load_integrated_term_scenario(path)
+        else:
+            from .optimizer_config import load_scenario_config
+            load_scenario_config(path)
 
     def import_bundled_frontend(self) -> None:
         """Kept for packaging hooks; user state never contains web assets."""

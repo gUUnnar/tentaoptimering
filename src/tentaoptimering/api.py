@@ -57,6 +57,27 @@ def _summarize_run(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _flatten_parameters(value: Any, prefix: str = "") -> dict[str, object]:
+    if isinstance(value, dict):
+        return {
+            key: item
+            for name, child in value.items()
+            for key, item in _flatten_parameters(child, f"{prefix}.{name}" if prefix else name).items()
+        }
+    if isinstance(value, list):
+        return {prefix: value}
+    return {prefix: value}
+
+
+def _parameter_changes(baseline: dict[str, Any], candidate: dict[str, Any]) -> list[dict[str, object]]:
+    first, second = _flatten_parameters(baseline), _flatten_parameters(candidate)
+    return [
+        {"parameter": key, "baseline": first.get(key), "candidate": second.get(key)}
+        for key in sorted(set(first) | set(second))
+        if first.get(key) != second.get(key)
+    ]
+
+
 def create_app(storage_root: Path | None = None) -> FastAPI:
     storage = AppStorage(storage_root)
     jobs = LocalJobManager()
@@ -80,6 +101,8 @@ def create_app(storage_root: Path | None = None) -> FastAPI:
     @app.put("/api/settings")
     def update_settings(update: SettingsUpdate) -> dict[str, Any]:
         try:
+            if jobs.has_active_job():
+                raise RuntimeError("Källdatakatalog kan inte ändras medan ett jobb körs.")
             return {"settings": storage.save_settings(update.source_dir)}
         except Exception as error:
             raise _error(error) from error
@@ -130,9 +153,8 @@ def create_app(storage_root: Path | None = None) -> FastAPI:
     @app.post("/api/simulations")
     def start_simulation(scenario_id: str) -> dict[str, Any]:
         try:
-            validation = storage.validate_scenario(scenario_id)
-            path = storage.scenario_path(scenario_id)
-            return jobs.start(lambda: _run(storage, path, validation["engine"]))
+            snapshot = storage.create_run_snapshot(scenario_id)
+            return jobs.start(lambda: _run(storage, Path(snapshot["path"]), snapshot["engine"]))
         except HTTPException:
             raise
         except Exception as error:
@@ -168,10 +190,11 @@ def create_app(storage_root: Path | None = None) -> FastAPI:
 
     @app.post("/api/runs/compare")
     def compare_runs(run_ids: list[str]) -> dict[str, Any]:
-        if len(run_ids) < 2:
-            raise HTTPException(status_code=422, detail="Välj minst två körningar att jämföra.")
+        if len(run_ids) != 2:
+            raise HTTPException(status_code=422, detail="Välj exakt två körningar att jämföra.")
         try:
             rows = [_summarize_run(storage.run(run_id)) for run_id in run_ids]
+            scenarios = [storage.run_scenario_content(run_id) for run_id in run_ids]
         except Exception as error:
             raise _error(error) from error
         baseline = rows[0]
@@ -180,7 +203,10 @@ def create_app(storage_root: Path | None = None) -> FastAPI:
                 key: row[key] - baseline[key] if isinstance(row[key], (int, float)) and isinstance(baseline[key], (int, float)) else None
                 for key in ("objective_ore", "room_count", "staff_pool_size", "placed", "source_coverage")
             }
-        return {"baseline_run_id": baseline["run_id"], "runs": rows}
+        return {
+            "baseline_run_id": baseline["run_id"], "runs": rows,
+            "parameter_changes": _parameter_changes(scenarios[0], scenarios[1]),
+        }
 
     dist = frontend_dist_dir()
     if dist.is_dir():
@@ -188,8 +214,13 @@ def create_app(storage_root: Path | None = None) -> FastAPI:
 
         @app.get("/{path:path}", include_in_schema=False)
         def frontend(path: str) -> FileResponse:
-            candidate = dist / path
-            return FileResponse(candidate if path and candidate.is_file() else dist / "index.html")
+            if path.startswith("api/"):
+                raise HTTPException(status_code=404, detail="API-resursen finns inte.")
+            candidate = (dist / path).resolve()
+            root = dist.resolve()
+            if path and candidate.is_file() and candidate.is_relative_to(root):
+                return FileResponse(candidate)
+            return FileResponse(dist / "index.html")
 
     return app
 

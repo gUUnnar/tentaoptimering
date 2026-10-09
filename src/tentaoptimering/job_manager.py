@@ -24,7 +24,7 @@ class LocalJobManager:
             self._jobs[job_id] = job
             future = self._executor.submit(self._execute, job_id, action)
             job["future"] = future
-            return self.public(job_id)
+            return self._public_job(job)
 
     def _execute(self, job_id: str, action: Callable[[], dict[str, Any]]) -> None:
         with self._lock:
@@ -43,7 +43,15 @@ class LocalJobManager:
         with self._lock:
             if job_id not in self._jobs:
                 raise KeyError("Körningsjobbet finns inte.")
-            return {key: value for key, value in self._jobs[job_id].items() if key != "future"}
+            return self._public_job(self._jobs[job_id])
+
+    def has_active_job(self) -> bool:
+        with self._lock:
+            return any(job["status"] in {"queued", "running"} for job in self._jobs.values())
+
+    @staticmethod
+    def _public_job(job: dict[str, Any]) -> dict[str, Any]:
+        return {key: value for key, value in job.items() if key != "future"}
 
 
 def _now() -> str:

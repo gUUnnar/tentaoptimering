@@ -31,6 +31,6 @@ Före leverans ska distributionen provas på en dator utan utvecklingsverktyg oc
 
 ## API-kontrakt
 
-`/api/parameters` visar status för implementation och verifiering. `/api/scenarios` hanterar inbyggda mallar och redigerbara användarkopior. `/api/preparation` och `/api/simulations` returnerar jobb-id:n; en lokal arbetskö med exakt en arbetare hindrar konkurrerande skrivningar till resultatfiler. `/api/runs`, `/api/runs/{id}/validation` och `/api/runs/compare` exponerar sparade resultat, fristående eftervalidering och jämförelse.
+`/api/parameters` visar status för implementation och verifiering. Terminsmallen har typade kontroller för kalender, skrivpass, ställtid, bemanningstrappa och kostnadsantaganden; JSON är enbart ett avancerat alternativ. `/api/scenarios` hanterar inbyggda mallar och redigerbara användarkopior och validerar nya innehåll atomiskt före lagring. `/api/preparation` och `/api/simulations` returnerar jobb-id:n; en lokal arbetskö med exakt en arbetare hindrar konkurrerande skrivningar till resultatfiler. Vid jobbinlämning kopieras scenariot till en oföränderlig snapshot som sedan följer med körningsartefakten. `/api/runs`, `/api/runs/{id}/validation` och `/api/runs/compare` exponerar sparade resultat, fristående eftervalidering samt både parameter- och resultatskillnader mellan frysta körningar.
 
 Äldre kapacitetsscenarier är läsbara för spårbarhet men har inte den nya termins-eftervalideringsartefakten. Gränssnittet gör den begränsningen synlig.
