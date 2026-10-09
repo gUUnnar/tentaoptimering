@@ -28,13 +28,24 @@ def run_integrated_term(config_path: Path, processed_dir: Path, runs_dir: Path) 
     _write_csv(run_dir / "assignments.csv", result.assignments)
     _write_csv(run_dir / "room_sessions.csv", result.room_sessions)
     _write_csv(run_dir / "demand_traceability.csv", inputs.demand_traceability)
+    (run_dir / "model_inputs.json").write_text(
+        json.dumps({
+            "demands": [
+                {**asdict(item), "allowed_pass_ids": sorted(item.allowed_pass_ids) if item.allowed_pass_ids else None}
+                for item in inputs.demands
+            ],
+            "rooms": [asdict(item) for item in inputs.rooms],
+            "demand_traceability": list(inputs.demand_traceability),
+            "scope_metrics": inputs.scope_metrics,
+        }, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     payload = _payload(run_id, scenario, inputs.scope_metrics, result)
     (run_dir / "result.json").write_text(
         json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     (run_dir / "report.md").write_text(_report(payload), encoding="utf-8")
     return {"run_id": run_id, "result": payload, "artifacts": {name: str((run_dir / name).resolve()) for name in (
-        "scenario.toml", "assignments.csv", "room_sessions.csv", "demand_traceability.csv", "result.json", "report.md",
+        "scenario.toml", "assignments.csv", "room_sessions.csv", "demand_traceability.csv", "model_inputs.json", "result.json", "report.md",
     )}}
 
 
