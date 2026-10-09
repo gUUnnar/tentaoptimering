@@ -131,15 +131,28 @@ def _prepare_events(ready: pd.DataFrame, values: dict[str, Any]) -> list[dict[st
     return events
 
 
+_DIGITAL_SEPARATORS = re.compile(r"\s*[|;,/]\s*")
+
+
 def _digital_requirement(raw: pd.Series, values: dict[str, Any]) -> tuple[str, str]:
-    """Never turn a missing or mixed digital flag into a verified paper exam."""
-    seen = {str(value).strip().lower() for value in raw.dropna()}
-    if seen == {"nej"}:
-        return "paper", "observed_nej"
-    if seen == {"ja"}:
-        return "e_exam", "observed_ja"
-    if {"ja", "nej"} <= seen:
+    """Classify the digital flag; a merged value such as ``Ja | Nej`` is never paper.
+
+    The preparation step joins distinct booking values with `` | ``. Every value is split into
+    tokens first, so a mixed event is recognised whether it arrives as several rows or as one
+    merged value. Unrecognised content is never treated as paper.
+    """
+    tokens: set[str] = set()
+    for value in raw.dropna():
+        tokens.update(
+            token for token in (part.strip().lower() for part in _DIGITAL_SEPARATORS.split(str(value))) if token
+        )
+    unrecognised = tokens - {"ja", "nej"}
+    if "ja" in tokens and "nej" in tokens:
         return "e_exam", "observed_mixed"
+    if "ja" in tokens:
+        return "e_exam", "observed_mixed" if unrecognised else "observed_ja"
+    if tokens == {"nej"}:
+        return "paper", "observed_nej"
     if values["digital.unknown_demand_policy"] == "assume_paper":
         return "paper", "unobserved"
     return "e_exam", "unobserved"
