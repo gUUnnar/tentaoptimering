@@ -14,12 +14,29 @@ class CalendarPass:
 
 
 @dataclass(frozen=True)
+class CalendarPeriod:
+    """A business-approved subset of the term calendar.
+
+    Periods make examination windows explicit.  An empty period list retains the
+    backwards-compatible whole-window behaviour of ``TermCalendar``.
+    """
+
+    period_id: str
+    start_date: date
+    end_date: date
+    allowed_weekdays: tuple[int, ...] | None = None
+
+
+@dataclass(frozen=True)
 class TermCalendar:
     start_date: date
     end_date: date
     allowed_weekdays: tuple[int, ...]
     passes: tuple[CalendarPass, ...]
     turnaround_minutes: int
+    periods: tuple[CalendarPeriod, ...] = ()
+    allowed_dates: tuple[date, ...] | None = None
+    blocked_dates: tuple[date, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -47,7 +64,7 @@ def generate_calendar_slots(calendar: TermCalendar) -> tuple[CalendarSlot, ...]:
     slots: list[CalendarSlot] = []
     current = calendar.start_date
     while current <= calendar.end_date:
-        if current.isoweekday() in calendar.allowed_weekdays:
+        if _is_allowed_date(calendar, current):
             for exam_pass in calendar.passes:
                 slots.append(
                     CalendarSlot(
@@ -60,6 +77,26 @@ def generate_calendar_slots(calendar: TermCalendar) -> tuple[CalendarSlot, ...]:
                 )
         current += timedelta(days=1)
     return tuple(slots)
+
+
+def _is_allowed_date(calendar: TermCalendar, current: date) -> bool:
+    """Apply explicit dates, business periods, weekdays, and blackout dates."""
+    if current in calendar.blocked_dates:
+        return False
+    if calendar.allowed_dates is not None and current not in calendar.allowed_dates:
+        return False
+    matching_periods = [
+        period for period in calendar.periods
+        if period.start_date <= current <= period.end_date
+    ]
+    if calendar.periods and not matching_periods:
+        return False
+    if matching_periods:
+        return any(
+            current.isoweekday() in (period.allowed_weekdays or calendar.allowed_weekdays)
+            for period in matching_periods
+        )
+    return current.isoweekday() in calendar.allowed_weekdays
 
 
 def eligible_slots(
@@ -90,3 +127,17 @@ def _validate_calendar(calendar: TermCalendar) -> None:
     for item in calendar.passes:
         if clock_minutes(item.start_time) >= clock_minutes(item.latest_end_time):
             raise ValueError(f"Passet {item.pass_id} slutar före eller vid sin start.")
+    if calendar.allowed_dates is not None and not calendar.allowed_dates:
+        raise ValueError("allowed_dates får inte vara en tom lista när den anges.")
+    if len(set(calendar.blocked_dates)) != len(calendar.blocked_dates):
+        raise ValueError("Spärrade kalenderdatum måste vara unika.")
+    period_ids = [period.period_id for period in calendar.periods]
+    if len(set(period_ids)) != len(period_ids) or any(not item.strip() for item in period_ids):
+        raise ValueError("Kalenderperiodernas identifierare måste vara unika och ifyllda.")
+    for period in calendar.periods:
+        if period.end_date < period.start_date:
+            raise ValueError(f"Kalenderperioden {period.period_id} slutar före sin start.")
+        if period.allowed_weekdays is not None and (
+            not period.allowed_weekdays or any(day not in range(1, 8) for day in period.allowed_weekdays)
+        ):
+            raise ValueError(f"Kalenderperioden {period.period_id} har ogiltiga veckodagar.")

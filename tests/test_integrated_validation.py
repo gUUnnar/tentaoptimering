@@ -177,6 +177,46 @@ class IntegratedValidationTests(unittest.TestCase):
         self.assertEqual(rules["digital_compatibility"]["status"], "not_evaluated")
         self.assertEqual(rules["room_availability"]["status"], "not_evaluated")
 
+    def test_detects_explicit_digital_availability_and_course_conflict_failures(self) -> None:
+        directory = self._run_dir([
+            {"exam_demand_id": "demand-1", "room_id": "room-u", "slot_id": "2026-01-12-am", "participants": 10},
+            {"exam_demand_id": "demand-2", "room_id": "room-u2", "slot_id": "2026-01-12-pm", "participants": 10},
+        ], staff_pool=2)
+        scenario = (directory / "scenario.toml").read_text(encoding="utf-8")
+        (directory / "scenario.toml").write_text(
+            scenario.replace('start_time = "10:00"', 'start_time = "09:00"')
+            + '\n[conflicts]\npolicy = "same_course_hard_constraint; program_relation_when_source_available"\nprogram_relation_data_status = "verified"\n',
+            encoding="utf-8",
+        )
+        inputs = json.loads((directory / "model_inputs.json").read_text(encoding="utf-8"))
+        for demand in inputs["demands"]:
+            demand["course_code"] = "COURSE"
+            demand["digital_requirement"] = "e_exam"
+        inputs["rooms"][0]["digital_capabilities"] = ["paper"]
+        inputs["rooms"][0]["available_slot_ids"] = ["2026-01-12-pm"]
+        inputs["rooms"][1]["digital_capabilities"] = ["e_exam"]
+        (directory / "model_inputs.json").write_text(json.dumps(inputs), encoding="utf-8")
+
+        rules = self._rules(validate_integrated_term_run(directory))
+
+        self.assertEqual(rules["digital_compatibility"]["status"], "fail")
+        self.assertEqual(rules["room_availability"]["status"], "fail")
+        self.assertEqual(rules["course_program_conflicts"]["status"], "fail")
+
+    def test_validates_persisted_individual_staffing_assignments(self) -> None:
+        directory = self._run_dir([
+            {"exam_demand_id": "demand-1", "room_id": "room-u", "slot_id": "2026-01-12-am", "participants": 10},
+            {"exam_demand_id": "demand-2", "room_id": "room-u2", "slot_id": "2026-01-12-pm", "participants": 10},
+        ], staff_pool=2)
+        pd.DataFrame([
+            {"staff_id": "staff-1", "task_id": "room-u|2026-01-12-am", "scheduled_date": "2026-01-12", "start_minute": 480, "end_minute": 630, "building_id": "room-u", "travel_before_minutes": 0},
+            {"staff_id": "staff-2", "task_id": "room-u2|2026-01-12-pm", "scheduled_date": "2026-01-12", "start_minute": 600, "end_minute": 750, "building_id": "room-u2", "travel_before_minutes": 0},
+        ]).to_csv(directory / "staff_assignments.csv", index=False, encoding="utf-8-sig")
+
+        rules = self._rules(validate_integrated_term_run(directory))
+
+        self.assertEqual(rules["individual_staffing_constraints"]["status"], "pass")
+
 
 if __name__ == "__main__":
     unittest.main()

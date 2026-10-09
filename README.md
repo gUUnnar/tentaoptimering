@@ -35,7 +35,7 @@ Den första integrerade terminskörningen använder en separat, versionshanterad
 .\.venv\Scripts\python.exe -m tentaoptimering.cli optimize-term --config config\scenarios\integrated_term_exploratory.toml
 ```
 
-Körningen sparar spårbarhets- och resultatfiler under `runs/`, som inte versionshanteras. Den är explorativ: rumstillgänglighet, digital kompatibilitet, kostnader och anonym bemanning är uttryckliga, ersättbara scenarioantaganden. Resultatet är inte ett operativt schema och den konstruktiva heltermsmetoden redovisar inget optimalitetsgap.
+Körningen sparar spårbarhets- och resultatfiler under `runs/`, som inte versionshanteras. Den är explorativ: rumstillgänglighet, digital kompatibilitet, kostnader och bemanningsregler är uttryckliga, ersättbara scenarioantaganden. Den skapar anonymiserade vaktuppgifter och kontrollerar arbetspass, raster, vila och byggnadsbyten. Resultatet är inte ett operativt schema och den konstruktiva heltermsmetoden redovisar inget optimalitetsgap.
 
 Eftervalideringen läser en sparad körnings egna modellindata, scenario och placeringsrader, och kan köras utan att placeringsmetoden körs igen:
 
@@ -43,7 +43,7 @@ Eftervalideringen läser en sparad körnings egna modellindata, scenario och pla
 .\.venv\Scripts\python.exe -m tentaoptimering.cli validate-term-run --run-id <körnings-id>
 ```
 
-Den skriver `validation.json` och `validation.md` i körningsmappen. Full teknisk placering innebär inte verksamhetsmässig genomförbarhet: regler som bara täcks av antaganden eller saknar data/modellstöd redovisas separat och ger status `not_verified`.
+Den skriver `validation.json` och `validation.md` i körningsmappen. Full teknisk placering innebär inte verksamhetsmässig genomförbarhet: regler som bara täcks av antaganden eller saknar data/modellstöd redovisas separat och ger status `not_verified`. Resultatets kostnadsjämförelse visar endast separata, ej jämförbara kostnadsprofiler och redovisar aldrig en differens eller verifierad besparing utan avtalskopplingar.
 
 ## Aktuell implementation
 
