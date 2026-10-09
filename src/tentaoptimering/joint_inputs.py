@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import date, timedelta
 import hashlib
 import json
-import math
 from pathlib import Path
 import re
 import time
@@ -39,7 +38,10 @@ def build_real_subset_problem(
     processed_dir: Path,
     catalog_path: Path,
 ) -> JointOptimizationInput:
-    """Adapt named real exam events without silently expanding or shrinking the subset."""
+    """Adapt named real exam events without silently expanding or shrinking the subset.
+
+    Every behaviour below is driven by the frozen parameter values, never by raw scenario keys.
+    """
     config = tomllib.loads(config_path.read_text(encoding="utf-8"))
     if config.get("schema_version") != "joint-real-subset-v1":
         raise ValueError(f"Okänd konfigurationsversion: {config.get('schema_version')}")
@@ -55,106 +57,29 @@ def build_real_subset_problem(
     if found != set(selected_events):
         raise ValueError(f"Det verkliga delmängdsfallet saknar event: {sorted(set(selected_events) - found)}")
 
-    parameter_overrides = _parameter_overrides(config)
     catalog = load_parameter_catalog(catalog_path)
-    parameters = freeze_parameter_values(catalog, parameter_overrides, _rationales(config))
+    parameters = freeze_parameter_values(catalog, _parameter_overrides(config), _rationales(config))
     values = {item.parameter_id: item.value for item in parameters}
-    slots = _slots(config)
-    slot_by_date_time = {
-        (item.scheduled_date.isoformat(), _clock_text(item.start_minute)): item.slot_id for item in slots
-    }
-    demands = []
-    for event_id, frame in ready.groupby("exam_event_id", sort=True):
-        dates = set(frame["scheduled_date"].astype(str))
-        starts = set(frame["booking_start_time"].astype(str))
-        if len(dates) != 1 or len(starts) != 1:
-            raise ValueError(f"Samtentan {event_id} saknar gemensamt ursprungstillfälle.")
-        original_date = next(iter(dates))
-        original_start = next(iter(starts))[:5]
-        original_slot = slot_by_date_time.get((original_date, original_start))
-        if original_slot is None:
-            raise ValueError(f"Ursprungspasset {original_date} {original_start} saknas för {event_id}.")
-        exam_types = [value.lower() for value in set(frame["observed_exam_types"].fillna("").astype(str))]
-        exam_type = " ".join(sorted(exam_types))
-        requires_room = not all("hemtenta" in value or "hemma" in value for value in exam_types)
-        movable = any(token in exam_type for token in values["flex.movable_types"])
-        durations = {int(duration_minutes(str(value))) for value in frame["scheduled_time"]}
-        if len(durations) != 1:
-            raise ValueError(f"Samtentan {event_id} har flera skrivtider: {sorted(durations)}")
-        duration = next(iter(durations))
-        candidates = _candidate_slots(
-            slots,
-            date.fromisoformat(original_date),
-            int(values["window.earlier_days"]) if movable else 0,
-            int(values["window.later_days"]) if movable else 0,
-            duration,
-        )
-        if original_slot not in candidates:
-            candidates = tuple(sorted(set(candidates) | {original_slot}))
-        groups = tuple(
-            ParticipantGroup(
-                group_id=f"{event_id}-group-{index:02d}",
-                participant_count=_scaled_count(
-                    int(row.demand_value), int(values["demand.variation_pct"]), str(values["demand.rounding"])
-                ),
-                source_activity_ids=(str(row.activity_id),),
-                count_basis=str(row.demand_measure_source_field),
-            )
-            for index, row in enumerate(frame.sort_values("activity_id").itertuples(index=False), start=1)
-        )
-        course_codes = sorted(set(frame["course_code"].dropna().astype(str)))
-        digital_values = {str(value).strip().lower() for value in frame["observed_digital_exam_values"].dropna()}
-        demands.append(
-            ExamDemand(
-                exam_demand_id=f"exam-{event_id}",
-                participant_groups=groups,
-                duration_minutes=duration,
-                plan_area=str(frame.iloc[0]["observed_cities"]),
-                candidate_slot_ids=candidates,
-                original_slot_id=original_slot,
-                requires_room=requires_room,
-                course_code=course_codes[0] if len(course_codes) == 1 else None,
-                conflict_group_ids=tuple(f"course:{code}" for code in course_codes),
-                digital_requirement="e_exam" if "ja" in digital_values else "paper",
-                max_rooms=int(values["rooms.max_rooms_per_exam"]),
-                allow_split_across_buildings=bool(values["rooms.allow_split_across_buildings"]),
-            )
-        )
+    if values["demand.measure"] != "registered_count":
+        raise ValueError("Endast efterfrågemåttet registered_count stöds av dataadaptern.")
+    earlier, later = int(values["window.earlier_days"]), int(values["window.later_days"])
 
-    selected_room_ids = set(str(value) for value in values["rooms.selection"])
-    room_rows = rooms_frame[
-        rooms_frame["eligible_for_exploratory_capacity_poc"].astype(bool)
-        & (rooms_frame["reference_city"] == config["subset"]["plan_area"])
-    ].copy()
-    if selected_room_ids:
-        room_rows = room_rows[room_rows["room_id"].isin(selected_room_ids)]
-    rooms = tuple(
-        Room(
-            room_id=str(row.room_id),
-            building_id=_building_id(str(row.reference_address)),
-            plan_area=str(row.reference_city),
-            capacity=int(row.capacity_seats),
-            annual_fixed_cost_ore=int(row.capacity_seats) * int(values["cost.room_annual_per_seat_ore"]),
-            external_session_cost_ore=0,
-            digital_capabilities=("paper", "e_exam") if str(row.digital_capability_status).startswith("all_places") else ("paper",),
-            available_slot_ids=tuple(
-                slot.slot_id for slot in slots
-                if _date_available(slot.scheduled_date, row.available_from, row.available_to)
-            ),
-        )
-        for row in room_rows.itertuples(index=False)
-    )
+    events = _prepare_events(ready, values)
+    slots = _slots(values, events, earlier, later)
+    slot_by_key = {(item.scheduled_date, item.start_minute): item for item in slots}
+    demands = tuple(_demand(event, slot_by_key, slots, values, earlier, later) for event in events)
+
+    rooms = _rooms(rooms_frame, config["subset"]["plan_area"], slots, values)
     ladder = tuple(
         StaffingStep(int(item["max_participants"]), int(item["required_staff"]))
         for item in values["staffing.ladder"]
     )
-    modeled_activities = sum(len(group.source_activity_ids) for demand in demands for group in demand.participant_groups)
     return JointOptimizationInput(
         schema_version=INPUT_SCHEMA_VERSION,
         problem_id=str(config["scenario"]["id"]),
         dataset_hash=_dataset_hash(processed_dir),
         slots=slots,
-        demands=tuple(demands),
+        demands=demands,
         rooms=rooms,
         staffing=StaffingCostPolicy(
             ladder=ladder,
@@ -164,7 +89,7 @@ def build_real_subset_problem(
             closing_minutes=int(values["staffing.closing_minutes"]),
         ),
         solver=SolverSettings(
-            float(values["solver.time_limit_seconds"]), int(values["solver.seed"]), 1
+            float(values["solver.time_limit_seconds"]), int(values["solver.seed"]), int(values["solver.workers"])
         ),
         parameters=parameters,
         scope=ScopeSummary(
@@ -177,6 +102,144 @@ def build_real_subset_problem(
         ),
         turnaround_minutes=int(values["calendar.turnaround_minutes"]),
     )
+
+
+def _prepare_events(ready: pd.DataFrame, values: dict[str, Any]) -> list[dict[str, Any]]:
+    """Resolve each named exam event to one historical occasion, duration and type."""
+    events = []
+    for event_id, frame in ready.groupby("exam_event_id", sort=True):
+        dates = set(frame["scheduled_date"].astype(str))
+        starts = set(str(value)[:5] for value in frame["booking_start_time"])
+        if len(dates) != 1 or len(starts) != 1:
+            raise ValueError(f"Samtentan {event_id} saknar gemensamt ursprungstillfälle.")
+        durations = {int(duration_minutes(str(value))) for value in frame["scheduled_time"]}
+        if len(durations) != 1:
+            raise ValueError(f"Samtentan {event_id} har flera skrivtider: {sorted(durations)}")
+        exam_types = sorted({str(value).lower() for value in frame["observed_exam_types"].fillna("")})
+        exam_type = " ".join(exam_types)
+        requirement, basis = _digital_requirement(frame["observed_digital_exam_values"], values)
+        events.append({
+            "event_id": str(event_id), "frame": frame,
+            "original_date": date.fromisoformat(next(iter(dates))),
+            "original_start": _clock_minutes(next(iter(starts))),
+            "duration": next(iter(durations)),
+            "requires_room": not all("hemtenta" in value or "hemma" in value for value in exam_types),
+            "movable": any(token in exam_type for token in values["flex.movable_types"]),
+            "digital_requirement": requirement, "digital_basis": basis,
+        })
+    return events
+
+
+def _digital_requirement(raw: pd.Series, values: dict[str, Any]) -> tuple[str, str]:
+    """Never turn a missing or mixed digital flag into a verified paper exam."""
+    seen = {str(value).strip().lower() for value in raw.dropna()}
+    if seen == {"nej"}:
+        return "paper", "observed_nej"
+    if seen == {"ja"}:
+        return "e_exam", "observed_ja"
+    if {"ja", "nej"} <= seen:
+        return "e_exam", "observed_mixed"
+    if values["digital.unknown_demand_policy"] == "assume_paper":
+        return "paper", "unobserved"
+    return "e_exam", "unobserved"
+
+
+def _demand(
+    event: dict[str, Any],
+    slot_by_key: dict[tuple[date, int], CandidateSlot],
+    slots: tuple[CandidateSlot, ...],
+    values: dict[str, Any],
+    earlier: int,
+    later: int,
+) -> ExamDemand:
+    original_key = (event["original_date"], event["original_start"])
+    original_slot = slot_by_key.get(original_key)
+    if event["movable"]:
+        low, high = event["original_date"] - timedelta(days=earlier), event["original_date"] + timedelta(days=later)
+        # The historical occasion competes only if it satisfies every user setting.
+        candidates = tuple(
+            slot.slot_id for slot in slots
+            if not slot.reference_only and low <= slot.scheduled_date <= high
+            and slot.start_minute + event["duration"] <= _latest_end_limit(values)
+        )
+    else:
+        candidates = (original_slot.slot_id,) if original_slot is not None else ()
+    frame = event["frame"]
+    groups = tuple(
+        ParticipantGroup(
+            group_id=f"{event['event_id']}-group-{index:02d}",
+            participant_count=_scaled_count(
+                int(row.demand_value), int(values["demand.variation_pct"]), str(values["demand.rounding"])
+            ),
+            source_activity_ids=(str(row.activity_id),),
+            count_basis=str(row.demand_measure_source_field),
+        )
+        for index, row in enumerate(frame.sort_values("activity_id").itertuples(index=False), start=1)
+    )
+    course_codes = sorted(set(frame["course_code"].dropna().astype(str)))
+    max_rooms = int(values["rooms.max_rooms_per_exam"]) if values["rooms.allow_split"] else 1
+    return ExamDemand(
+        exam_demand_id=f"exam-{event['event_id']}",
+        participant_groups=groups,
+        duration_minutes=event["duration"],
+        plan_area=str(frame.iloc[0]["observed_cities"]),
+        candidate_slot_ids=candidates,
+        original_slot_id=original_slot.slot_id if original_slot is not None else None,
+        requires_room=event["requires_room"],
+        course_code=course_codes[0] if len(course_codes) == 1 else None,
+        conflict_group_ids=tuple(f"course:{code}" for code in course_codes),
+        digital_requirement=event["digital_requirement"],
+        max_rooms=max_rooms,
+        allow_split_across_buildings=bool(values["rooms.allow_split_across_buildings"]),
+        original_date=event["original_date"],
+        original_start_minute=event["original_start"],
+        movable=event["movable"],
+        participant_group_basis="assumed_disjoint_groups_sum" if len(groups) > 1 else "single_activity",
+        digital_requirement_basis=event["digital_basis"],
+    )
+
+
+def _rooms(
+    rooms_frame: pd.DataFrame, plan_area: str, slots: tuple[CandidateSlot, ...], values: dict[str, Any]
+) -> tuple[Room, ...]:
+    selected = set(str(value) for value in values["rooms.selection"])
+    rows = rooms_frame[
+        rooms_frame["eligible_for_exploratory_capacity_poc"].astype(bool)
+        & (rooms_frame["reference_city"] == plan_area)
+    ].copy()
+    if selected:
+        rows = rows[rows["room_id"].isin(selected)]
+    result = []
+    for row in rows.itertuples(index=False):
+        capabilities, basis = _room_digital(str(row.digital_capability_status), values)
+        result.append(
+            Room(
+                room_id=str(row.room_id),
+                building_id=_building_id(str(row.reference_address)),
+                plan_area=str(row.reference_city),
+                capacity=int(row.capacity_seats),
+                annual_fixed_cost_ore=int(row.capacity_seats) * int(values["cost.room_annual_per_seat_ore"]),
+                external_session_cost_ore=0,
+                digital_capabilities=capabilities,
+                available_slot_ids=tuple(
+                    slot.slot_id for slot in slots
+                    if _date_available(slot.scheduled_date, row.available_from, row.available_to)
+                ),
+                digital_support_basis=basis,
+            )
+        )
+    return tuple(result)
+
+
+def _room_digital(status: str, values: dict[str, Any]) -> tuple[tuple[str, ...], str]:
+    """Published support is documented capacity; partial support is allowed only as an unverified policy."""
+    if status.startswith("all_places"):
+        return ("paper", "e_exam"), "all_places"
+    if status.startswith("supports_e_exam"):
+        if values["digital.partial_support_policy"] == "allow_unverified":
+            return ("paper", "e_exam"), "some_places_unquantified"
+        return ("paper",), "some_places_unquantified"
+    return ("paper",), "unknown"
 
 
 def run_real_subset(
@@ -209,34 +272,49 @@ def run_real_subset(
     }
 
 
-def _slots(config: dict[str, Any]) -> tuple[CandidateSlot, ...]:
-    start = date.fromisoformat(config["calendar"]["start_date"])
-    end = date.fromisoformat(config["calendar"]["end_date"])
-    weekdays = set(int(value) for value in config["parameters"]["calendar.weekdays"])
-    result = []
-    current = start
-    while current <= end:
-        if current.isoweekday() in weekdays:
-            for item in config["calendar"]["pass"]:
-                start_minute = _clock_minutes(str(item["start_time"]))
-                result.append(
-                    CandidateSlot(
-                        f"{current.isoformat()}-{item['pass_id']}", current, str(item["pass_id"]),
-                        start_minute, _clock_minutes(str(item["latest_end_time"])),
-                    )
-                )
+def _latest_end_limit(values: dict[str, Any]) -> int:
+    return _clock_minutes(str(values["calendar.latest_end_time"]))
+
+
+def _slots(
+    values: dict[str, Any], events: list[dict[str, Any]], earlier: int, later: int
+) -> tuple[CandidateSlot, ...]:
+    """Generate allowed (date, start) occasions, plus reference occasions for fixed exams."""
+    originals = [item["original_date"] for item in events]
+    first = date.fromisoformat(str(values["calendar.start_date"])) if values["calendar.start_date"] else min(originals) - timedelta(days=earlier)
+    last = date.fromisoformat(str(values["calendar.end_date"])) if values["calendar.end_date"] else max(originals) + timedelta(days=later)
+    weekdays = set(int(value) for value in values["calendar.weekdays"])
+    blocked = [
+        (date.fromisoformat(str(item["start"])), date.fromisoformat(str(item["end"])))
+        for item in values["calendar.blocked_ranges"]
+    ]
+    earliest = _clock_minutes(str(values["calendar.earliest_start_time"]))
+    latest = _latest_end_limit(values)
+    starts = sorted({
+        _clock_minutes(str(value)) for value in values["calendar.start_times"]
+        if _clock_minutes(str(value)) >= earliest
+    })
+    needed_end: dict[tuple[date, int], int] = {}
+    for item in events:
+        if not item["movable"]:
+            key = (item["original_date"], item["original_start"])
+            needed_end[key] = max(needed_end.get(key, 0), item["original_start"] + item["duration"])
+    slots: dict[tuple[date, int], CandidateSlot] = {}
+    current = first
+    while current <= last:
+        if current.isoweekday() in weekdays and not any(low <= current <= high for low, high in blocked):
+            for start in starts:
+                slots[current, start] = _slot(current, start, max(latest, needed_end.get((current, start), 0)), False)
         current += timedelta(days=1)
-    return tuple(result)
+    for (day, start), end in needed_end.items():
+        if (day, start) not in slots:
+            slots[day, start] = _slot(day, start, max(latest, end), True)
+    return tuple(sorted(slots.values(), key=lambda item: (item.scheduled_date, item.start_minute)))
 
 
-def _candidate_slots(
-    slots: tuple[CandidateSlot, ...], original_date: date, earlier: int, later: int, duration: int
-) -> tuple[str, ...]:
-    return tuple(
-        slot.slot_id for slot in slots
-        if original_date - timedelta(days=earlier) <= slot.scheduled_date <= original_date + timedelta(days=later)
-        and slot.start_minute + duration <= slot.latest_end_minute
-    )
+def _slot(day: date, start: int, latest_end: int, reference_only: bool) -> CandidateSlot:
+    label = _clock_text(start)
+    return CandidateSlot(f"{day.isoformat()}T{label}", day, label, start, latest_end, reference_only)
 
 
 def _parameter_overrides(config: dict[str, Any]) -> dict[str, Any]:
@@ -248,13 +326,14 @@ def _rationales(config: dict[str, Any]) -> dict[str, str]:
 
 
 def _scaled_count(count: int, percentage: int, rounding: str) -> int:
-    value = count * (100 + percentage) / 100
+    """Scale with exact integer arithmetic so rounding never depends on float noise."""
+    numerator = count * (100 + percentage)
     if rounding == "up":
-        return max(1, math.ceil(value))
+        return max(1, -(-numerator // 100))
     if rounding == "nearest":
-        return max(1, int(value + 0.5))
+        return max(1, (numerator + 50) // 100)
     if rounding == "down":
-        return max(1, math.floor(value))
+        return max(1, numerator // 100)
     raise ValueError(f"Okänd avrundningsregel: {rounding}")
 
 
@@ -298,6 +377,8 @@ def _report(problem: JointOptimizationInput, result: Any) -> str:
         f"- Behov/deltagare: {result.coverage.exam_demands_scheduled}/{result.coverage.exam_demands_total}, {result.coverage.participants_total} deltagare.",
         f"- Bemanningspool: {result.staff_pool_size} anonyma samtidiga resurser.",
         f"- Ändrade tentamenstillfällen: {result.changed_exam_demands}.", "",
+        "## Verifieringsstatus", "",
+        *[f"- {key}: {value}" for key, value in (result.verification or {}).items()], "",
         "## Kostnadskomponenter", "",
         f"- Långsiktiga salar: {costs.annual_room_cost_ore if costs else None} öre.",
         f"- Externa salstillfällen: {costs.external_room_session_cost_ore if costs else None} öre.",

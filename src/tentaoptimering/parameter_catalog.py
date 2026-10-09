@@ -26,6 +26,7 @@ class ParameterDefinition:
     help_text: str
     engine_support: str
     honored_by: str | None
+    legacy_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -48,6 +49,7 @@ def load_parameter_catalog(path: Path) -> ParameterCatalog:
             help_text=str(item["help_text"]),
             engine_support=str(item["engine_support"]),
             honored_by=str(item["honored_by"]) if item.get("honored_by") else None,
+            legacy_ids=tuple(str(value) for value in item.get("legacy_ids", ())),
         )
         for item in payload["parameter"]
     )
@@ -90,5 +92,10 @@ def freeze_parameter_values(
         )
         if basis == "assumption" and not rationale.strip():
             raise ValueError(f"Antagandet {item.parameter_id} kräver motivering.")
-        values.append(ParameterValue(item.parameter_id, value, basis, rationale, item.engine_support))
+        values.append(
+            ParameterValue(
+                item.parameter_id, value, basis, rationale, item.engine_support,
+                changed_from_default=overridden and value != item.default,
+            )
+        )
     return tuple(values)

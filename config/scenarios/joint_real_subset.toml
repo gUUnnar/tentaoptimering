@@ -21,25 +21,13 @@ exam_event_ids = [
   "exam-event-0004309",
 ]
 
-[calendar]
-start_date = "2026-01-12"
-end_date = "2026-01-14"
-
-[[calendar.pass]]
-pass_id = "morning"
-start_time = "08:00"
-latest_end_time = "14:00"
-
-[[calendar.pass]]
-pass_id = "afternoon"
-start_time = "14:00"
-latest_end_time = "20:00"
-
 [parameters]
 "demand.variation_pct" = 0
 "demand.rounding" = "up"
 "window.earlier_days" = 1
 "window.later_days" = 1
+"calendar.start_date" = "2026-01-12"
+"calendar.end_date" = "2026-01-14"
 "calendar.weekdays" = [1, 2, 3]
 "calendar.start_times" = ["08:00", "14:00"]
 "calendar.turnaround_minutes" = 30

@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import Any
 
 
-INPUT_SCHEMA_VERSION = "joint-optimization-input-v1"
-RESULT_SCHEMA_VERSION = "joint-optimization-result-v1"
+INPUT_SCHEMA_VERSION = "joint-optimization-input-v2"
+RESULT_SCHEMA_VERSION = "joint-optimization-result-v2"
 
 
 @dataclass(frozen=True)
@@ -20,6 +20,7 @@ class ParameterValue:
     basis: str
     rationale: str
     engine_support: str
+    changed_from_default: bool = False
 
 
 @dataclass(frozen=True)
@@ -37,6 +38,7 @@ class CandidateSlot:
     pass_id: str
     start_minute: int
     latest_end_minute: int
+    reference_only: bool = False
 
 
 @dataclass(frozen=True)
@@ -53,6 +55,11 @@ class ExamDemand:
     digital_requirement: str = "none"
     max_rooms: int = 8
     allow_split_across_buildings: bool = False
+    original_date: date | None = None
+    original_start_minute: int | None = None
+    movable: bool = True
+    participant_group_basis: str = "single_activity"
+    digital_requirement_basis: str = "observed"
 
     @property
     def participant_count(self) -> int:
@@ -70,6 +77,7 @@ class Room:
     external_session_cost_ore: int = 0
     digital_capabilities: tuple[str, ...] = ("paper",)
     available_slot_ids: tuple[str, ...] | None = None
+    digital_support_basis: str = "not_stated"
 
 
 @dataclass(frozen=True)
@@ -162,6 +170,7 @@ class JointOptimizationResult:
     room_sessions: tuple[dict[str, Any], ...]
     schedule: tuple[dict[str, Any], ...]
     limitations: tuple[str, ...]
+    verification: dict[str, str] | None = None
 
 
 def write_problem(problem: JointOptimizationInput, path: Path) -> None:
@@ -184,6 +193,9 @@ def read_problem(path: Path) -> JointOptimizationInput:
                 ),
                 "candidate_slot_ids": tuple(item["candidate_slot_ids"]),
                 "conflict_group_ids": tuple(item.get("conflict_group_ids", ())),
+                "original_date": (
+                    date.fromisoformat(item["original_date"]) if item.get("original_date") else None
+                ),
             }
         )
         for item in payload["demands"]
@@ -259,10 +271,10 @@ def validate_problem(problem: JointOptimizationInput) -> None:
     for demand in problem.demands:
         if demand.duration_minutes <= 0 or demand.max_rooms <= 0 or not demand.participant_groups:
             raise ValueError(f"Ogiltigt tentamensbehov: {demand.exam_demand_id}")
-        if not set(demand.candidate_slot_ids) <= known_slots or not demand.candidate_slot_ids:
-            raise ValueError(f"Okända eller tomma kandidatpass för {demand.exam_demand_id}.")
-        if demand.original_slot_id is not None and demand.original_slot_id not in demand.candidate_slot_ids:
-            raise ValueError(f"Originalpasset saknas bland kandidaterna för {demand.exam_demand_id}.")
+        if not set(demand.candidate_slot_ids) <= known_slots:
+            raise ValueError(f"Okända kandidatpass för {demand.exam_demand_id}.")
+        if demand.original_slot_id is not None and demand.original_slot_id not in known_slots:
+            raise ValueError(f"Okänt originalpass för {demand.exam_demand_id}.")
         group_ids = [group.group_id for group in demand.participant_groups]
         if len(group_ids) != len(set(group_ids)):
             raise ValueError(f"Dubblerad delgrupp i {demand.exam_demand_id}.")

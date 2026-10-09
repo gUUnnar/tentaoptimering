@@ -37,6 +37,9 @@ class _Variables:
 def solve_joint_optimization(problem: JointOptimizationInput) -> JointOptimizationResult:
     """Solve the complete modeled demand; partial placement is never an objective option."""
     validate_problem(problem)
+    blocked = tuple(item.exam_demand_id for item in problem.demands if not item.candidate_slot_ids)
+    if blocked:
+        return _blocked_result(problem, blocked)
     model = cp_model.CpModel()
     slots = {slot.slot_id: slot for slot in problem.slots}
     variables = _build_variables_and_constraints(model, problem, slots)
@@ -94,10 +97,11 @@ def solve_joint_optimization(problem: JointOptimizationInput) -> JointOptimizati
     assignments, sessions, schedule = _extract(problem, solver, variables, slots)
     physical_assigned = sum(row["participants"] for row in assignments)
     non_room = sum(demand.participant_count for demand in problem.demands if not demand.requires_room)
+    demand_by_id = {item.exam_demand_id: item for item in problem.demands}
     changed = sum(
         1
         for row in schedule
-        if row["original_slot_id"] is not None and row["slot_id"] != row["original_slot_id"]
+        if _is_changed(demand_by_id[row["exam_demand_id"]], row["slot_id"], slots)
     )
     costs = CostBreakdown(
         annual_room_cost_ore=int(solver.Value(room_cost)),
@@ -134,6 +138,7 @@ def solve_joint_optimization(problem: JointOptimizationInput) -> JointOptimizati
         room_sessions=sessions,
         schedule=schedule,
         limitations=_limitations(problem),
+        verification=_verification(problem, economic_status == cp_model.OPTIMAL, assignments),
     )
 
 
@@ -334,11 +339,20 @@ def _staff_lookup(capacity: int, problem: JointOptimizationInput) -> list[int]:
 
 
 def _change_terms(problem: JointOptimizationInput, selected: dict[tuple[str, str], cp_model.IntVar]) -> list[Any]:
+    """Only demands whose historical slot is an allowed candidate can avoid a change."""
     return [
         1 - selected[demand.exam_demand_id, demand.original_slot_id]
         for demand in problem.demands
-        if demand.original_slot_id is not None
+        if demand.original_slot_id is not None and demand.original_slot_id in demand.candidate_slot_ids
     ]
+
+
+def _is_changed(demand: ExamDemand, slot_id: str, slots: dict[str, Any]) -> bool:
+    """A demand has changed when it is not at its historical date and start."""
+    slot = slots[slot_id]
+    if demand.original_date is not None and demand.original_start_minute is not None:
+        return (slot.scheduled_date, slot.start_minute) != (demand.original_date, demand.original_start_minute)
+    return demand.original_slot_id is not None and slot_id != demand.original_slot_id
 
 
 def _extract(
@@ -358,6 +372,8 @@ def _extract(
             "exam_demand_id": demand.exam_demand_id,
             "slot_id": slot_id,
             "original_slot_id": demand.original_slot_id,
+            "original_date": demand.original_date.isoformat() if demand.original_date else None,
+            "original_start_minute": demand.original_start_minute,
             "requires_room": demand.requires_room,
             "participants": demand.participant_count,
         })
@@ -422,6 +438,68 @@ def _empty_result(problem: JointOptimizationInput, solver: cp_model.CpSolver, st
     )
 
 
+def _blocked_result(problem: JointOptimizationInput, blocked: tuple[str, ...]) -> JointOptimizationResult:
+    """Report impossible candidate generation as a blocking requirement, not as a crash."""
+    shown = ", ".join(blocked[:10]) + (" …" if len(blocked) > 10 else "")
+    return JointOptimizationResult(
+        RESULT_SCHEMA_VERSION,
+        problem.problem_id,
+        SolverSummary("infeasible", "blocked_before_solve", None, None, None, 0.0, "not_run"),
+        None,
+        CoverageSummary(len(problem.demands), 0, sum(item.participant_count for item in problem.demands), 0, 0, False),
+        None,
+        None,
+        (),
+        (),
+        (),
+        (
+            f"Blockerande krav: {len(blocked)} tentamensbehov saknar tillåtet tillfälle med nuvarande "
+            f"fönster, veckodagar, starttider och spärrar: {shown}.",
+            *_limitations(problem),
+        ),
+        {
+            "solver": "infeasible_before_solve",
+            "independent_validation": "not_performed",
+            "blocking_demands": ",".join(blocked),
+        },
+    )
+
+
+def _verification(
+    problem: JointOptimizationInput, proven_optimal: bool, assignments: tuple[dict[str, Any], ...]
+) -> dict[str, str]:
+    """State what has and has not been verified; a solver status is not an independent check."""
+    demands = {item.exam_demand_id: item for item in problem.demands}
+    rooms = {item.room_id: item for item in problem.rooms}
+    unquantified = {
+        row["exam_demand_id"] for row in assignments
+        if demands[row["exam_demand_id"]].digital_requirement == "e_exam"
+        and rooms[row["room_id"]].digital_support_basis != "all_places"
+    }
+    unobserved = {
+        item.exam_demand_id for item in problem.demands
+        if item.digital_requirement == "e_exam" and item.digital_requirement_basis in {"unobserved", "observed_mixed"}
+    }
+    if unquantified or unobserved:
+        digital = (
+            f"assumed_not_verified: {len(unquantified)} digitala behov i salar med ej kvantifierat digitalstöd, "
+            f"{len(unobserved)} behov med okänd eller blandad digital status"
+        )
+    else:
+        digital = "consistent_with_published_room_support_not_verified_for_period"
+    multi = sum(1 for item in problem.demands if item.participant_group_basis != "single_activity")
+    return {
+        "solver": "optimal_proven" if proven_optimal else "feasible_not_proven",
+        "independent_validation": "not_performed",
+        "digital_compatibility": digital,
+        "group_disjointness": (
+            f"assumed_not_verified: {multi} samtentor summerar deltagare från flera Ladokaktiviteter"
+            if multi else "not_applicable"
+        ),
+        "student_overlap": "not_evaluated",
+    }
+
+
 def _limitations(problem: JointOptimizationInput) -> tuple[str, ...]:
     unsupported = sorted(
         item.parameter_id for item in problem.parameters if item.engine_support != "implemented"
@@ -432,6 +510,13 @@ def _limitations(problem: JointOptimizationInput) -> tuple[str, ...]:
     ]
     if unsupported:
         result.append("Parametrar utan motorstöd: " + ", ".join(unsupported) + ".")
+    ignored = sorted(
+        item.parameter_id for item in problem.parameters
+        if item.engine_support != "implemented" and item.changed_from_default
+    )
+    if ignored:
+        result.append("Parametrar med ändrat värde men utan motorstöd (ignoreras): " + ", ".join(ignored) + ".")
+    result.append("Resultatet är solververifierat men inte oberoende eftervaliderat.")
     if problem.scope.unresolved_source_activities:
         result.append(
             f"{problem.scope.unresolved_source_activities} källaktiviteter är oavgjorda utanför den modellerade omfattningen."
