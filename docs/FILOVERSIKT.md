@@ -58,6 +58,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `api.py` | FastAPI-lager för parametrar, scenarier, asynkrona lokala körningar, resultat och eftervalidering. |
 | `app_paths.py` | Resurs- och användarskrivbara sökvägar för utveckling och paketerad applikation. |
 | `app_storage.py` | TOML-baserade användarscenarier, inställningar och resultatinspektion utan databasserver. |
+| `scenario_consistency.py` | Synkroniserar redigerbara terminsparametrar, kalenderperioder och de spårbarhetsantaganden som redovisar samma värden. |
 | `desktop.py` | Windowsstartpunkt som startar localhost-server och öppnar standardwebbläsaren. |
 | `job_manager.py` | Enkeltrådig lokal jobbkö som hindrar samtidiga resultatskrivningar. |
 | `cost_model.py` | Datatyper och spärrat resultat för kostnader tills verifierade avtalskopplingar finns. |

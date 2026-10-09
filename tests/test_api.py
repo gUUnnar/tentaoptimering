@@ -76,6 +76,7 @@ class ApiWorkflowTest(unittest.TestCase):
         status, parameters = self._request("GET", "/api/parameters")
         self.assertEqual(status, 200)
         self.assertTrue(parameters["parameters"])
+        self.assertTrue(any(item["engine_binding"] == "staffing.shift" for item in parameters["term_parameter_bindings"]))
         first = self._create_and_update("workflow-one", 100000)
         content = deepcopy(first["content"])
         del content["calendar"]["passes"]

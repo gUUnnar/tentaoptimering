@@ -11,10 +11,31 @@ from typing import Any
 from uuid import uuid4
 
 from .app_paths import bundled_parameters_path, bundled_scenarios_dir, default_app_data_dir
+from .scenario_consistency import synchronize_integrated_scenario
 
 
 _SAFE_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,79}$")
 _SAFE_RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,159}$")
+
+_TERM_PARAMETER_BINDINGS = (
+    ("term_start_date", "calendar.start_date", "Terminsstart", "date", "implemented_in_term_engine", "scenario_value"),
+    ("term_end_date", "calendar.end_date", "Terminslut", "date", "implemented_in_term_engine", "scenario_value"),
+    ("allowed_weekdays", "calendar.allowed_weekdays", "Tillåtna veckodagar", "weekday_set", "implemented_in_term_engine", "requires_verification"),
+    ("turnaround_minutes", "calendar.turnaround_minutes", "Ställtid", "minutes", "implemented_in_term_engine", "unverified_replaceable"),
+    ("calendar_passes", "calendar.passes", "Skrivpass", "pass_set", "implemented_in_term_engine", "requires_verification"),
+    ("calendar_periods", "calendar.period", "Kalenderperioder", "period_set", "implemented_in_term_engine", "requires_verification"),
+    ("minimum_invigilator_staffing", "staffing.ladder", "Bemanningstrappa", "staffing_rule", "implemented_in_term_engine", "unverified_replaceable"),
+    ("staff_shifts", "staffing.shift", "Arbetspass", "shift_set", "implemented_in_term_engine", "unverified_replaceable"),
+    ("minimum_break_minutes", "staffing.minimum_break_minutes", "Minsta rast", "minutes", "implemented_in_term_engine", "unverified_replaceable"),
+    ("maximum_continuous_minutes", "staffing.maximum_continuous_minutes", "Max sammanhängande arbetstid", "minutes", "implemented_in_term_engine", "unverified_replaceable"),
+    ("maximum_daily_minutes", "staffing.maximum_daily_minutes", "Max arbetstid per dygn", "minutes", "implemented_in_term_engine", "unverified_replaceable"),
+    ("minimum_daily_rest_minutes", "staffing.minimum_daily_rest_minutes", "Minsta dygnsvila", "minutes", "implemented_in_term_engine", "unverified_replaceable"),
+    ("travel_time_minutes", "staffing.travel_minutes_between_buildings", "Restid mellan byggnader", "minutes", "implemented_in_term_engine", "unverified_replaceable"),
+    ("annual_staff_cost", "staffing.annual_cost_ore_per_staff", "Årskostnad per vakt", "ore_per_year", "implemented_in_term_engine", "unverified_replaceable"),
+    ("annual_room_cost", "costs.annual_room_cost_ore_per_seat", "Årskostnad per lokalplats", "ore_per_seat_year", "implemented_in_term_engine", "unverified_replaceable"),
+    ("digital_compatibility", "compatibility.digital_compatibility_mode", "Digital kompatibilitet", "compatibility_mode", "implemented_in_term_engine", "unverified_replaceable"),
+    ("course_program_conflicts", "conflicts.policy", "Krockpolicy", "policy", "implemented_in_term_engine", "missing_program_data"),
+)
 
 
 def _read_toml(path: Path) -> dict[str, Any]:
@@ -91,7 +112,17 @@ class AppStorage:
         return payload
 
     def parameters(self) -> list[dict[str, Any]]:
-        return _read_toml(bundled_parameters_path())["parameter"]
+        bindings = {item[0]: item[1] for item in _TERM_PARAMETER_BINDINGS}
+        return [
+            {**item, "engine_binding": bindings.get(item["id"]), "implementation_status": "implemented_in_term_engine" if item["id"] in bindings else "not_implemented_in_current_term_engine"}
+            for item in _read_toml(bundled_parameters_path())["parameter"]
+        ]
+
+    def term_parameter_bindings(self) -> list[dict[str, str]]:
+        return [
+            {"id": item[0], "engine_binding": item[1], "name_sv": item[2], "unit": item[3], "implementation_status": item[4], "verification_status": item[5], "source": "scenario_toml"}
+            for item in _TERM_PARAMETER_BINDINGS
+        ]
 
     def _user_path(self, scenario_id: str) -> Path:
         if not _SAFE_ID.fullmatch(scenario_id):
@@ -131,6 +162,7 @@ class AppStorage:
         content = deepcopy(source["content"])
         content["scenario_id"] = scenario_id
         content["description"] = f"Kopia av {source['name']}."
+        content = synchronize_integrated_scenario(content)
         target.write_text(dump_toml(content), encoding="utf-8")
         return self.scenario(scenario_id)
 
@@ -140,6 +172,7 @@ class AppStorage:
             raise PermissionError("Endast användarscenarier kan ändras. Kopiera först det inbyggda scenariot.")
         if content.get("scenario_id") != scenario_id:
             raise ValueError("scenario_id i innehållet måste matcha scenarie-id.")
+        content = synchronize_integrated_scenario(content, _read_toml(path))
         temporary = path.with_suffix(".pending.toml")
         try:
             temporary.write_text(dump_toml(content), encoding="utf-8")

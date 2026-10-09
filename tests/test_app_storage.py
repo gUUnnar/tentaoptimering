@@ -7,6 +7,8 @@ from copy import deepcopy
 from pathlib import Path
 
 from tentaoptimering.app_storage import AppStorage, dump_toml
+from tentaoptimering.integrated_config import load_integrated_term_scenario
+from tentaoptimering.term_calendar import generate_calendar_slots
 
 
 class AppStorageTest(unittest.TestCase):
@@ -43,3 +45,24 @@ class AppStorageTest(unittest.TestCase):
             for run_id in ("../outside", "..\\outside", "/outside"):
                 with self.assertRaises(ValueError):
                     storage.run(run_id)
+
+    def test_saved_controls_synchronize_assumptions_and_calendar_period(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            storage = AppStorage(Path(temporary))
+            content = storage.create_scenario("synchronized")["content"]
+            content["calendar"]["start_date"] = "2026-02-01"
+            content["calendar"]["end_date"] = "2026-02-28"
+            content["calendar"]["turnaround_minutes"] = 15
+            content["staffing"]["minimum_break_minutes"] = 20
+            storage.update_scenario("synchronized", content)
+            saved = storage.scenario("synchronized")["content"]
+            assumptions = {item["id"]: item["value"] for item in saved["assumption"]}
+            self.assertEqual(assumptions["room_turnaround"], "15")
+            self.assertIn("break 20 min", assumptions["individual_staffing_rules"])
+            self.assertEqual(saved["calendar"]["period"][0]["start_date"], "2026-02-01")
+            self.assertEqual(saved["calendar"]["period"][0]["end_date"], "2026-02-28")
+            scenario = load_integrated_term_scenario(storage.scenario_path("synchronized"))
+            slots = generate_calendar_slots(scenario.calendar)
+            self.assertTrue(slots)
+            self.assertGreaterEqual(min(item.scheduled_date.isoformat() for item in slots), "2026-02-01")
+            self.assertLessEqual(max(item.scheduled_date.isoformat() for item in slots), "2026-02-28")

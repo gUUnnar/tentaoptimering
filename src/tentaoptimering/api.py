@@ -112,7 +112,7 @@ def create_app(storage_root: Path | None = None) -> FastAPI:
 
     @app.get("/api/parameters")
     def parameters() -> dict[str, Any]:
-        return {"parameters": storage.parameters()}
+        return {"parameters": storage.parameters(), "term_parameter_bindings": storage.term_parameter_bindings()}
 
     @app.get("/api/scenarios")
     def list_scenarios() -> dict[str, Any]:
