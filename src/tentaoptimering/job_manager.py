@@ -49,6 +49,9 @@ class LocalJobManager:
         with self._lock:
             return any(job["status"] in {"queued", "running"} for job in self._jobs.values())
 
+    def shutdown(self) -> None:
+        self._executor.shutdown(wait=False, cancel_futures=True)
+
     @staticmethod
     def _public_job(job: dict[str, Any]) -> dict[str, Any]:
         return {key: value for key, value in job.items() if key != "future"}

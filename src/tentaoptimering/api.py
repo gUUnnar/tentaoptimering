@@ -84,7 +84,10 @@ def create_app(storage_root: Path | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
-        yield
+        try:
+            yield
+        finally:
+            jobs.shutdown()
 
     app = FastAPI(title="Tentaoptimering", version="0.1.0", lifespan=lifespan)
     app.state.storage = storage
