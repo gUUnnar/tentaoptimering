@@ -11,6 +11,7 @@ from .integrated_config import IntegratedTermScenario
 from .integrated_inputs import TermModelInputs
 from .integrated_term import AggregateStaffing, IntegratedDemand, IntegratedRoom
 from .term_calendar import CalendarSlot, eligible_slots
+from .term_rules import demands_conflict, room_is_compatible, slots_overlap
 
 
 @dataclass(frozen=True)
@@ -97,16 +98,24 @@ def _schedule_portfolio(
     loads = {slot_id: 0 for slot_id, _room_id in remaining}
     chosen: list[dict[str, Any]] = []
     by_id = {item.exam_demand_id: item for item in demands}
+    placed_slots: dict[str, CalendarSlot] = {}
     for demand in sorted(demands, key=lambda item: (-item.participants, item.exam_demand_id)):
         compatible = [room for room in portfolio if room.plan_area == demand.plan_area]
         allocation = None
         for slot in sorted(slots_by_demand[demand.exam_demand_id], key=lambda item: (loads[item.slot_id], item.slot_id)):
-            free = sum(remaining.get((slot.slot_id, room.room_id), 0) for room in compatible)
+            if any(
+                demands_conflict(demand, other)
+                and slots_overlap(slot, demand.duration_minutes, placed_slots[other.exam_demand_id], other.duration_minutes)
+                for other in demands if other.exam_demand_id in placed_slots
+            ):
+                continue
+            compatible_at_slot = [room for room in compatible if room_is_compatible(demand, room, slot)]
+            free = sum(remaining.get((slot.slot_id, room.room_id), 0) for room in compatible_at_slot)
             if free < demand.participants:
                 continue
             left = demand.participants
             rows: list[dict[str, Any]] = []
-            for room in sorted(compatible, key=lambda item: (-remaining[(slot.slot_id, item.room_id)], item.room_id)):
+            for room in sorted(compatible_at_slot, key=lambda item: (-remaining[(slot.slot_id, item.room_id)], item.room_id)):
                 seats = min(left, remaining[(slot.slot_id, room.room_id)])
                 if seats:
                     rows.append({
@@ -125,6 +134,7 @@ def _schedule_portfolio(
         for row in rows:
             remaining[slot.slot_id, row["room_id"]] -= int(row["participants"])
         loads[slot.slot_id] += demand.participants
+        placed_slots[demand.exam_demand_id] = slot
         chosen.extend(rows)
     sessions = _sessions(chosen, by_id, scenario, slots_by_demand)
     staff_pool = _peak_sessions(sessions, scenario)

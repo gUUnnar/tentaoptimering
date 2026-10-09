@@ -8,6 +8,7 @@ from typing import Any
 from ortools.sat.python import cp_model
 
 from .term_calendar import CalendarSlot, TermCalendar, eligible_slots
+from .term_rules import demands_conflict, room_is_compatible, slots_overlap
 
 
 @dataclass(frozen=True)
@@ -94,7 +95,10 @@ def solve_integrated_term(
             start[demand.exam_demand_id, slot.slot_id] = selected
             choices.append(selected)
             allocations: list[cp_model.IntVar] = []
-            for room in compatible_rooms:
+            slot_rooms = [room for room in compatible_rooms if room_is_compatible(demand, room, slot)]
+            if not slot_rooms:
+                model.Add(selected == 0)
+            for room in slot_rooms:
                 used = model.NewBoolVar(f"use_{demand.exam_demand_id}_{slot.slot_id}_{room.room_id}")
                 allocated = model.NewIntVar(0, min(demand.participants, room.capacity), f"seats_{demand.exam_demand_id}_{slot.slot_id}_{room.room_id}")
                 use[demand.exam_demand_id, slot.slot_id, room.room_id] = used
@@ -106,6 +110,18 @@ def solve_integrated_term(
                 allocations.append(allocated)
             model.Add(sum(allocations) == demand.participants * selected)
         model.Add(sum(choices) == 1)
+    for index, left_demand in enumerate(demands):
+        for right_demand in demands[index + 1:]:
+            if not demands_conflict(left_demand, right_demand):
+                continue
+            for left_slot in candidates[left_demand.exam_demand_id]:
+                for right_slot in candidates[right_demand.exam_demand_id]:
+                    if slots_overlap(left_slot, left_demand.duration_minutes, right_slot, right_demand.duration_minutes):
+                        model.Add(
+                            start[left_demand.exam_demand_id, left_slot.slot_id]
+                            + start[right_demand.exam_demand_id, right_slot.slot_id]
+                            <= 1
+                        )
     for room in rooms:
         room_sessions = [sessions[room.room_id, slot_id] for slot_id in slots]
         model.Add(owned[room.room_id] <= sum(room_sessions))
