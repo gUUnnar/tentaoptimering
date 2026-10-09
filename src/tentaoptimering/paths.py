@@ -3,9 +3,25 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
+import sys
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+def _resource_root() -> Path:
+    """Find bundled resources, source-tree resources, or a local project checkout."""
+    bundled = getattr(sys, "_MEIPASS", None)
+    if bundled:
+        return Path(bundled)
+    module_path = Path(__file__).resolve()
+    for parent in module_path.parents:
+        if (parent / "config" / "parameters.toml").is_file():
+            return parent
+    current = Path.cwd()
+    if (current / "config" / "parameters.toml").is_file():
+        return current
+    return module_path.parents[2]
+
+
+REPO_ROOT = _resource_root()
 
 
 @dataclass(frozen=True)

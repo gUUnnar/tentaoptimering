@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { @apply border-slate-200; }
+  body { @apply m-0 bg-slate-50 font-sans text-slate-900; }
+  button, input, textarea, select { font: inherit; }
+}
+
+.nav-item { @apply flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-100; }
+.nav-item-active { @apply bg-sky-50 font-medium text-sky-900; }
+.field { @apply w-full rounded-md border bg-white px-2.5 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-700; }
+.label { @apply mb-1 block text-xs font-medium text-slate-600; }
+.status-pass { @apply bg-emerald-100 text-emerald-800; }
+.status-fail { @apply bg-red-100 text-red-800; }
+.status-neutral { @apply bg-amber-100 text-amber-800; }

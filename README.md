@@ -45,6 +45,10 @@ Eftervalideringen läser en sparad körnings egna modellindata, scenario och pla
 
 Den skriver `validation.json` och `validation.md` i körningsmappen. Full teknisk placering innebär inte verksamhetsmässig genomförbarhet: regler som bara täcks av antaganden eller saknar data/modellstöd redovisas separat och ger status `not_verified`.
 
+## Lokalt gränssnitt
+
+PoC:n har ett lokalt React- och FastAPI-gränssnitt för scenarier, parametrar, terminskörningar och eftervalidering. Se [lokalt gränssnitt](docs/LOKALT_GRANSSNITT.md) för utveckling, Windows-paketering och offlineverifiering.
+
 ## Aktuell implementation
 
 Projektet innehåller ett reproducerbart inläsnings- och analyslager, ett kanoniskt scope-/efterfrågelager och ett syntetiskt integrerat CP-SAT-bevisfall. Den äldre kapacitetsoptimeraren är explorativ och är inte ett kalenderverifierat schema eller en beräkning av realiserbar besparing.
