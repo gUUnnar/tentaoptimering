@@ -63,6 +63,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `integrated_inputs.py` | Adapter från reproducerbara scope- och optimeringsunderlag till terminsmodellens behov, rum och källspårbarhet. |
 | `integrated_runs.py` | Skapar granskningsbara körningsartefakter för integrerade terminsresultat. |
 | `integrated_validation.py` | Läser en sparad terminskörning och kontrollerar regelvis täckning, kapacitet, intervall, ort, antaganden och bemanning. |
+| `run_integrity.py` | Fryser specifikation, modellindata och resultatfiler med SHA-256 och verifierar att eftervalideringen läser oförändrade artefakter. |
 | `api.py` | FastAPI-lager för parametrar, scenarier, asynkrona lokala körningar, resultat och eftervalidering. |
 | `app_paths.py` | Resurs- och användarskrivbara sökvägar för utveckling och paketerad applikation. |
 | `app_storage.py` | TOML-baserade användarscenarier, inställningar och resultatinspektion utan databasserver. |

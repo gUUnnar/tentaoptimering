@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-10-08T13:27:16.770248+00:00",
+  "generated_at_utc": "2026-10-09T14:01:19.279829+00:00",
   "metrics": {
     "method": "candidate_key_course_code_scheduled_date_booking_start_time",
     "booking_placement_rows_total": 8466,
@@ -7,14 +7,14 @@
     "booking_placement_rows_without_extractable_course_code": 443,
     "booking_course_placement_rows_eligible": 10078,
     "booking_candidate_contexts": 6132,
-    "booking_candidate_contexts_with_ladok_candidate": 1368,
-    "booking_course_placement_rows_no_candidate": 7694,
-    "booking_course_placement_rows_single_candidate": 2228,
+    "booking_candidate_contexts_with_ladok_candidate": 1370,
+    "booking_course_placement_rows_no_candidate": 7690,
+    "booking_course_placement_rows_single_candidate": 2232,
     "booking_course_placement_rows_ambiguous_candidates": 156,
-    "candidate_pairs": 2556,
+    "candidate_pairs": 2560,
     "candidate_pairs_with_identical_location_key": 94,
     "ladok_activities_eligible": 1524,
     "ladok_activities_ineligible": 1,
-    "ladok_activities_with_booking_candidate": 1453
+    "ladok_activities_with_booking_candidate": 1455
   }
 }

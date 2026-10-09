@@ -8,9 +8,9 @@ En oavgjord aktivitet får inte räknas bort och förhindrar en fullständig ver
 | Mått | Värde |
 |---|---:|
 | `source_activity_count` | 1525 |
-| `included_activity_count` | 1258 |
+| `included_activity_count` | 1259 |
 | `excluded_activity_count` | 0 |
-| `unresolved_activity_count` | 267 |
+| `unresolved_activity_count` | 266 |
 | `scope_complete_for_whole_population` | False |
 | `scope_decision_basis_counts` | {"technical_preparation": 1524, "not_assessed": 1} |
 

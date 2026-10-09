@@ -24,7 +24,7 @@
     },
     "room_register": {
       "filename": "room_register.toml",
-      "sha256": "75385db32075bc87772a212cf9168d9a2d7f44b9d41217bcba821d9d5771a3c5"
+      "sha256": "e598fd0df665363a6e8a9b755cadc0686eb52fd7abc449f078801bef69785747"
     }
   },
   "artifacts": {
@@ -36,7 +36,7 @@
     "ladok_activities": {
       "filename": "ladok_activities.csv",
       "rows": 1525,
-      "sha256": "5d950bf0dc9dbdece181ed66faebe4467ad10bdae1fcfed98667eeffddb1e67d"
+      "sha256": "8350cb457cd131f4c6e21f08fdf2a343ae00c48f5b7ce225654f58a114c89f2d"
     },
     "lease_rows": {
       "filename": "lease_rows.csv",
@@ -46,7 +46,7 @@
     "candidate_linkage": {
       "filename": "candidate_linkage.csv",
       "rows": 10250,
-      "sha256": "eb1ed48ea63af4b96f82c42167a2cf809f88d853ac749aa3ac837c62581e9e4f"
+      "sha256": "12b1000c17f380c1d01f3e0c1bca1887a16f25f64711c45a340d922b4bf7b951"
     },
     "exam_events": {
       "filename": "exam_events.csv",
@@ -55,33 +55,33 @@
     },
     "activity_booking_candidates": {
       "filename": "activity_booking_candidates.csv",
-      "rows": 6487,
-      "sha256": "ae01d3d88911a47457390d49626f09358279c2c445260b2264c413b50b9d62b2"
+      "rows": 6485,
+      "sha256": "ef219ed09db53e9ad9b901e13fd11540d986ce0d7a852159a0d3afe87e51d2de"
     },
     "room_inventory": {
       "filename": "room_inventory.csv",
       "rows": 20,
-      "sha256": "b4b503cee174ae4d0865ab57b9bc5860af6dc45c0ffd0e10146c09d3e07047cf"
+      "sha256": "f8fbbdffdbce139ea637a9942d7dde6383b7295dff4774f362e3afd20f01b785"
     },
     "optimization_rooms": {
       "filename": "optimization_rooms.csv",
       "rows": 8,
-      "sha256": "d315d464cf61ce3d96ca024d83ad3f4069675812ec4151dd1e35fbf9db79ded4"
+      "sha256": "32ee8136763b70a6a806eb17381482f1ba313a7399110d526956dabcbe0a91bf"
     },
     "optimization_demands": {
       "filename": "optimization_demands.csv",
-      "rows": 1283,
-      "sha256": "18ae7415ae93f983314a0d55e375d76e9fe774c9e27cab78bec67b1d68abe825"
+      "rows": 1285,
+      "sha256": "00f51e8048c483598e6d184ae4c445a2699dabf82b6a871e948a9b02215d9f39"
     },
     "optimization_placements": {
       "filename": "optimization_placements.csv",
-      "rows": 2214,
-      "sha256": "d330c81f53623b8d1070d4ce097d96e4b5543458c5fbab5a7051b617543f62ca"
+      "rows": 2218,
+      "sha256": "bc366af17437f418fdaa5e1dd36f63958724f2312db88da8285a59413d7a9622"
     },
     "demand_scope": {
       "filename": "demand_scope.csv",
       "rows": 1525,
-      "sha256": "544942c81b1f2fd91f124b36957c7c06b2bcfc7d84d154a0bb586e89f40984e8"
+      "sha256": "4ef825b47c10da918071235fd2ca04735d559dd95d2465e735bab6e7a2109d16"
     }
   }
 }

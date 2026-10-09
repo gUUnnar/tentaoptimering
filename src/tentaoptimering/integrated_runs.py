@@ -14,6 +14,7 @@ import pandas as pd
 from .integrated_config import load_integrated_term_scenario
 from .cost_comparison import preliminary_cost_comparison
 from .integrated_inputs import load_term_model_inputs
+from .run_integrity import write_run_integrity_manifest
 from .term_run import TermRunResult, run_first_term_schedule
 
 
@@ -39,6 +40,7 @@ def run_integrated_term(config_path: Path, processed_dir: Path, runs_dir: Path) 
             "rooms": [_room_input(item) for item in inputs.rooms],
             "demand_traceability": list(inputs.demand_traceability),
             "scope_metrics": inputs.scope_metrics,
+            "scope_decisions": list(inputs.scope_decisions),
         }, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     payload = _payload(run_id, scenario, inputs.scope_metrics, result, preliminary_cost_comparison(processed_dir, result.objective_ore))
@@ -46,8 +48,11 @@ def run_integrated_term(config_path: Path, processed_dir: Path, runs_dir: Path) 
         json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     (run_dir / "report.md").write_text(_report(payload), encoding="utf-8")
+    integrity_path = write_run_integrity_manifest(
+        run_dir, "exploratory_constructive_term_v1"
+    )
     return {"run_id": run_id, "result": payload, "artifacts": {name: str((run_dir / name).resolve()) for name in (
-        "scenario.toml", "assignments.csv", "room_sessions.csv", "staff_assignments.csv", "demand_traceability.csv", "model_inputs.json", "result.json", "report.md",
+        "scenario.toml", "assignments.csv", "room_sessions.csv", "staff_assignments.csv", "demand_traceability.csv", "model_inputs.json", "result.json", "report.md", integrity_path.name,
     )}}
 
 

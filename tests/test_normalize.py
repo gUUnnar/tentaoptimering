@@ -4,11 +4,24 @@ import unittest
 
 import pandas as pd
 
-from tentaoptimering.normalize import key_text, normalize_bookings
+from tentaoptimering.normalize import key_text, normalize_bookings, normalize_ladok
 from tentaoptimering.validation import validate_bookings
 
 
 class NormalizeTests(unittest.TestCase):
+    def test_ladok_mojibake_is_repaired_before_keys_are_built(self) -> None:
+        frame = pd.DataFrame({
+            "course_code": ["3Ã–N002"], "name_sv": ["RÃ¥byvÃ¤gen"],
+            "start_date": ["2026-02-28"], "start_time": ["08:00"],
+            "activity_type": ["Tentamen"], "location": ["RÃ¥byvÃ¤gen 95"],
+            "registration_flag": [1], "total_count": [8], "registered_count": [8],
+            "cancelled_count": [0], "added_count": [0], "re_registered_or_early_term_count": [0],
+        })
+
+        result = normalize_ladok(frame)
+
+        self.assertEqual(result.loc[0, "course_code"], "3ÖN002")
+        self.assertEqual(result.loc[0, "location_key"], "råbyvägen-95")
     def test_key_text_normalizes_spaces_and_punctuation(self) -> None:
         self.assertEqual(key_text("  Bergsbrunnagatan 15, Sal 1 "), "bergsbrunnagatan-15-sal-1")
 
