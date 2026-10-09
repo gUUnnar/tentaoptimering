@@ -11,6 +11,7 @@ from typing import Any
 import pandas as pd
 
 from .integrated_config import IntegratedTermScenario, load_integrated_term_scenario
+from .run_integrity import verify_run_integrity
 from .staffing_validation import validate_staffing
 from .term_calendar import CalendarSlot, generate_calendar_slots
 
@@ -32,16 +33,19 @@ class RuleResult:
 
 def validate_integrated_term_run(run_dir: Path) -> dict[str, Any]:
     """Validate saved run artifacts without invoking its placement algorithm."""
+    integrity = verify_run_integrity(run_dir)
     scenario = load_integrated_term_scenario(run_dir / "scenario.toml")
     inputs = json.loads((run_dir / "model_inputs.json").read_text(encoding="utf-8"))
     result = json.loads((run_dir / "result.json").read_text(encoding="utf-8"))
-    assignments = pd.read_csv(run_dir / "assignments.csv", encoding="utf-8-sig")
+    assignments = _read_assignments(run_dir / "assignments.csv")
     staff_path = run_dir / "staff_assignments.csv"
-    staff_assignments = pd.read_csv(staff_path, encoding="utf-8-sig") if staff_path.is_file() else None
+    staff_assignments = _read_assignments(staff_path) if staff_path.is_file() else None
     model_inputs, demands, rooms = _model_inputs(inputs)
     slots = {item.slot_id: item for item in generate_calendar_slots(scenario.calendar)}
     assignment_rows, valid_assignments = _assignment_rows(assignments, demands, rooms, slots)
+    scope_rules, scope = _scope(inputs, demands)
     rules = (
+        RuleResult("run_artifact_integrity", integrity.status, integrity.reason, integrity.object_ids),
         model_inputs,
         assignment_rows,
         _coverage(valid_assignments, demands),
@@ -54,6 +58,7 @@ def validate_integrated_term_run(run_dir: Path) -> dict[str, Any]:
         _course_program_conflicts(valid_assignments, demands, slots, scenario),
         _aggregate_staffing(valid_assignments, demands, scenario, slots, result),
         _individual_staffing(valid_assignments, staff_assignments, demands, rooms, scenario, slots),
+        *scope_rules,
     )
     technical = _technical_status(rules)
     business = _business_status(rules)
@@ -63,8 +68,16 @@ def validate_integrated_term_run(run_dir: Path) -> dict[str, Any]:
         "validation_method": "independent_post_validation",
         "technical_placement_completeness": technical,
         "business_feasibility": business,
+        "scope": scope,
         "rules": [asdict(rule) for rule in rules],
     }
+
+
+def _read_assignments(path: Path) -> pd.DataFrame:
+    try:
+        return pd.read_csv(path, encoding="utf-8-sig")
+    except pd.errors.EmptyDataError:
+        return pd.DataFrame()
 
 
 def _model_inputs(inputs: dict[str, Any]) -> tuple[RuleResult, dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
@@ -94,6 +107,44 @@ def _model_inputs(inputs: dict[str, Any]) -> tuple[RuleResult, dict[str, dict[st
             continue
         rooms[room_id] = item
     return _result("model_inputs", failures, "Sparade behov och rum har giltiga identifierare, positiva heltalsantal och planeringsområden."), demands, rooms
+
+
+def _scope(inputs: dict[str, Any], demands: dict[str, dict[str, Any]]) -> tuple[tuple[RuleResult, RuleResult], dict[str, Any]]:
+    """Report every source activity; unresolved scope can never validate a business run."""
+    metrics = inputs.get("scope_metrics")
+    decisions = inputs.get("scope_decisions")
+    if not isinstance(metrics, dict) or not isinstance(decisions, list):
+        rule = RuleResult("source_scope_accounting", NOT_EVALUATED, "Sparade modellindata saknar komplett scope-redovisning.", ())
+        unresolved = RuleResult("unresolved_source_activities", NOT_EVALUATED, "Oavgjorda källaktiviteter kan inte fastställas utan sparade scope-beslut.", ())
+        return (rule, unresolved), {"status": NOT_EVALUATED}
+    statuses = {"included", "excluded", "unresolved"}
+    rows = [item for item in decisions if isinstance(item, dict)]
+    ids = [str(item.get("activity_id", "")).strip() for item in rows]
+    invalid = [f"scope:{index}" for index, item in enumerate(rows) if not str(item.get("activity_id", "")).strip() or item.get("scope_status") not in statuses]
+    counted = {status: sum(item.get("scope_status") == status for item in rows) for status in statuses}
+    metric_keys = ("source_activities_total", "included_source_activities", "unresolved_source_activities", "excluded_source_activities", "model_ready_exam_demands")
+    valid_metrics = all(isinstance(metrics.get(key), int) and metrics[key] >= 0 for key in metric_keys)
+    consistent = valid_metrics and len(set(ids)) == len(ids) and len(rows) == metrics["source_activities_total"] and counted["included"] == metrics["included_source_activities"] and counted["unresolved"] == metrics["unresolved_source_activities"] and counted["excluded"] == metrics["excluded_source_activities"]
+    traceable = {str(item.get("exam_demand_id", "")) for item in inputs.get("demand_traceability", []) if isinstance(item, dict)}
+    included_ids = {str(item.get("activity_id")) for item in rows if item.get("scope_status") == "included"}
+    if traceable != set(demands) or len(traceable) != metrics.get("model_ready_exam_demands") or included_ids != traceable:
+        invalid.append("included_demand_traceability")
+    if not consistent:
+        invalid.append("scope_metrics")
+    scope = {
+        "source_activities_total": metrics.get("source_activities_total"),
+        "included_source_activities": metrics.get("included_source_activities"),
+        "unresolved_source_activities": metrics.get("unresolved_source_activities"),
+        "excluded_source_activities": metrics.get("excluded_source_activities"),
+        "unresolved_activity_ids": sorted(str(item["activity_id"]) for item in rows if item.get("scope_status") == "unresolved"),
+    }
+    scope_rule = _result("source_scope_accounting", invalid, "Samtliga källaktiviteter har ett sparat och avstämbart scope-beslut.")
+    unresolved_ids = tuple(scope["unresolved_activity_ids"])
+    unresolved_rule = (
+        RuleResult("unresolved_source_activities", PASS, "Inga oavgjorda källaktiviteter återstår.", ())
+        if not unresolved_ids else RuleResult("unresolved_source_activities", NOT_EVALUATED, "Oavgjorda källaktiviteter ligger utanför den tekniskt placerade omfattningen.", unresolved_ids)
+    )
+    return (scope_rule, unresolved_rule), scope
 
 
 def write_validation_report(run_dir: Path) -> dict[str, Any]:
@@ -189,17 +240,20 @@ def _location(assignments: pd.DataFrame, demands: dict[str, dict[str, Any]], roo
 
 
 def _digital_compatibility(assignments: pd.DataFrame, demands: dict[str, dict[str, Any]], rooms: dict[str, dict[str, Any]], scenario: IntegratedTermScenario) -> RuleResult:
-    explicit = False
+    required = False
     failures = []
     missing = []
     for row in assignments.itertuples(index=False):
         demand, room = demands[str(row.exam_demand_id)], rooms[str(row.room_id)]
         requirement = str(demand.get("digital_requirement", "unknown"))
         capabilities = room.get("digital_capabilities")
-        if requirement in {"", "unknown", "none"}:
+        if requirement in {"", "unknown"}:
+            missing.append(f"{row.exam_demand_id}:{row.room_id}")
             continue
-        explicit = True
-        if not isinstance(capabilities, list):
+        if requirement == "none":
+            continue
+        required = True
+        if not isinstance(capabilities, list) or "all" in capabilities:
             missing.append(f"{row.exam_demand_id}:{row.room_id}")
         elif "all" not in capabilities and requirement not in capabilities:
             failures.append(f"{row.exam_demand_id}:{row.room_id}")
@@ -207,12 +261,9 @@ def _digital_compatibility(assignments: pd.DataFrame, demands: dict[str, dict[st
         return _result("digital_compatibility", failures, "Digital kompatibilitet respekteras.")
     if missing:
         return RuleResult("digital_compatibility", NOT_EVALUATED, "Digitalt krav saknar sparad kompatibilitetsmatris.", tuple(missing))
-    if explicit:
+    if required:
         return RuleResult("digital_compatibility", PASS, "Explicit digital kompatibilitetsmatris respekteras.", ())
-    expected = "all_exploratory_candidate_rooms_assumed_compatible_with_observed_formats"
-    if scenario.digital_compatibility_mode == expected:
-        return RuleResult("digital_compatibility", PASS, "Global kompatibilitet är ett aktivt scenarioantagande, inte verifierad matris.", (), True)
-    return RuleResult("digital_compatibility", NOT_EVALUATED, "Ingen aktiverad verifierbar kompatibilitetsmatris finns.", ())
+    return RuleResult("digital_compatibility", NOT_EVALUATED, "Digitalt format saknas eller bygger på ett globalt scenarioantagande.", tuple(missing))
 
 
 def _availability(assignments: pd.DataFrame, rooms: dict[str, dict[str, Any]], scenario: IntegratedTermScenario) -> RuleResult:
@@ -228,16 +279,11 @@ def _availability(assignments: pd.DataFrame, rooms: dict[str, dict[str, Any]], s
     if failures:
         return _result("room_availability", failures, "Salens explicita tillgänglighet respekteras.")
     if explicit:
-        return RuleResult("room_availability", PASS, "Explicit salstillgänglighet respekteras.", ())
-    values = {item.assumption_id: item.value for item in scenario.assumptions}
-    if values.get("room_availability") == "all selected candidate rooms available for every configured slot":
-        return RuleResult("room_availability", PASS, "Full tillgänglighet är ett aktivt scenarioantagande, inte verifierad kalender.", (), True)
+        return RuleResult("room_availability", NOT_EVALUATED, "Salstillgänglighet är avstämd mot sparade slotgränser men saknar verifierad bokningskalender.", ())
     return RuleResult("room_availability", NOT_EVALUATED, "Verifierad salbokningskalender saknas.", ())
 
 
 def _course_program_conflicts(assignments: pd.DataFrame, demands: dict[str, dict[str, Any]], slots: dict[str, CalendarSlot], scenario: IntegratedTermScenario) -> RuleResult:
-    if "same_course_hard_constraint" not in scenario.conflict_policy:
-        return RuleResult("course_program_conflicts", NOT_EVALUATED, "Ingen aktiv kurskrockspolicy är sparad i scenariot.", ())
     starts = {str(demand_id): str(rows.iloc[0]["slot_id"]) for demand_id, rows in assignments.groupby("exam_demand_id")}
     known = [item for item in demands.values() if str(item.get("course_code", "")).strip()]
     if not known:
@@ -254,9 +300,9 @@ def _course_program_conflicts(assignments: pd.DataFrame, demands: dict[str, dict
                 failures.append(f"{left['exam_demand_id']}:{right['exam_demand_id']}")
     if failures:
         return _result("course_program_conflicts", failures, "Kurs- och programkrockar respekteras.")
-    if scenario.program_conflict_data_status != "verified":
-        return RuleResult("course_program_conflicts", NOT_EVALUATED, "Kurskrockar är kontrollerade, men programrelationer saknar verifierad täckning.", ("program_relation_data_status",))
-    return RuleResult("course_program_conflicts", PASS, "Kurs- och programkrockar respekteras med verifierade relationer.", ())
+    if any(not item.get("program_ids") for item in demands.values()):
+        return RuleResult("course_program_conflicts", NOT_EVALUATED, "Kurskrockar är kontrollerade, men programrelationer saknar komplett data.", ())
+    return RuleResult("course_program_conflicts", PASS, "Explicita kurs- och programkrockar respekteras.", ())
 
 
 def _aggregate_staffing(assignments: pd.DataFrame, demands: dict[str, dict[str, Any]], scenario: IntegratedTermScenario, slots: dict[str, CalendarSlot], result: dict[str, Any]) -> RuleResult:
@@ -275,11 +321,9 @@ def _aggregate_staffing(assignments: pd.DataFrame, demands: dict[str, dict[str, 
 
 def _individual_staffing(assignments: pd.DataFrame, staff_assignments: pd.DataFrame | None, demands: dict[str, dict[str, Any]], rooms: dict[str, dict[str, Any]], scenario: IntegratedTermScenario, slots: dict[str, CalendarSlot]) -> RuleResult:
     status, reason, object_ids = validate_staffing(assignments, staff_assignments, demands, rooms, scenario, slots)
-    assumption_only = status == PASS and any(
-        item.assumption_id == "individual_staffing_rules" and item.status != "verified"
-        for item in scenario.assumptions
-    )
-    return RuleResult("individual_staffing_constraints", status, reason, object_ids, assumption_only)
+    if status == PASS:
+        return RuleResult("individual_staffing_constraints", NOT_EVALUATED, "Vaktuppgifterna är internt konsistenta, men arbetstidsreglerna är scenarioantaganden utan verifierat regelunderlag.", object_ids)
+    return RuleResult("individual_staffing_constraints", status, reason, object_ids)
 
 
 def _session_intervals(assignments: pd.DataFrame, demands: dict[str, dict[str, Any]], scenario: IntegratedTermScenario, slots: dict[str, CalendarSlot]) -> list[tuple[str, str, int, int, int]]:
@@ -319,9 +363,14 @@ def _positive_int(value: object) -> bool:
 
 
 def _technical_status(rules: tuple[RuleResult, ...]) -> dict[str, Any]:
-    relevant = {"model_inputs", "assignment_rows", "included_demand_coverage", "calendar_pass_constraints", "room_capacity", "room_time_intervals", "plan_area"}
+    relevant = {"run_artifact_integrity", "model_inputs", "assignment_rows", "included_demand_coverage", "calendar_pass_constraints", "room_capacity", "room_time_intervals", "plan_area"}
     failed = [item.rule_id for item in rules if item.rule_id in relevant and item.status == FAIL]
-    return {"status": PASS if not failed else FAIL, "reason": "Alla tekniska placeringsregler passerar." if not failed else "Teknisk placeringsregel bruten.", "failed_rules": failed}
+    unavailable = [item.rule_id for item in rules if item.rule_id in relevant and item.status == NOT_EVALUATED]
+    if failed:
+        return {"status": FAIL, "reason": "Teknisk placeringsregel eller körningsintegritet bruten.", "failed_rules": failed, "not_evaluated_rules": unavailable}
+    if unavailable:
+        return {"status": NOT_EVALUATED, "reason": "Teknisk placering kan inte bekräftas utan frusen specifikation och hashade körningsartefakter.", "failed_rules": [], "not_evaluated_rules": unavailable}
+    return {"status": PASS, "reason": "Alla tekniska placeringsregler passerar mot frusna körningsartefakter.", "failed_rules": [], "not_evaluated_rules": []}
 
 
 def _business_status(rules: tuple[RuleResult, ...]) -> dict[str, Any]:

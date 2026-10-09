@@ -14,15 +14,15 @@ Samma kandidatnyckel kan fortfarande beskriva olika aktiviteter, en samtenta ell
 | `booking_placement_rows_without_extractable_course_code` | 443 |
 | `booking_course_placement_rows_eligible` | 10078 |
 | `booking_candidate_contexts` | 6132 |
-| `booking_candidate_contexts_with_ladok_candidate` | 1368 |
-| `booking_course_placement_rows_no_candidate` | 7694 |
-| `booking_course_placement_rows_single_candidate` | 2228 |
+| `booking_candidate_contexts_with_ladok_candidate` | 1370 |
+| `booking_course_placement_rows_no_candidate` | 7690 |
+| `booking_course_placement_rows_single_candidate` | 2232 |
 | `booking_course_placement_rows_ambiguous_candidates` | 156 |
-| `candidate_pairs` | 2556 |
+| `candidate_pairs` | 2560 |
 | `candidate_pairs_with_identical_location_key` | 94 |
 | `ladok_activities_eligible` | 1524 |
 | `ladok_activities_ineligible` | 1 |
-| `ladok_activities_with_booking_candidate` | 1453 |
+| `ladok_activities_with_booking_candidate` | 1455 |
 
 ## Tolkning och avgränsning
 

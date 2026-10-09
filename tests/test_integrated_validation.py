@@ -8,6 +8,7 @@ import unittest
 import pandas as pd
 
 from tentaoptimering.integrated_validation import validate_integrated_term_run, write_validation_report
+from tentaoptimering.run_integrity import write_run_integrity_manifest
 
 
 SCENARIO = '''
@@ -60,12 +61,29 @@ class IntegratedValidationTests(unittest.TestCase):
                 {"room_id": "room-u3", "capacity": 10, "plan_area": "Uppsala", "annual_cost_ore": 1},
                 {"room_id": "room-v", "capacity": 10, "plan_area": "Visby", "annual_cost_ore": 1},
             ],
-            "demand_traceability": [{"exam_demand_id": "demand-1", "course_code": "COURSE"}],
-            "scope_metrics": {},
+            "demand_traceability": [
+                {"exam_demand_id": "demand-1", "source_activity_id": "demand-1", "course_code": "COURSE"},
+                {"exam_demand_id": "demand-2", "source_activity_id": "demand-2", "course_code": "COURSE"},
+            ],
+            "scope_metrics": {
+                "source_activities_total": 2,
+                "included_source_activities": 2,
+                "unresolved_source_activities": 0,
+                "excluded_source_activities": 0,
+                "model_ready_exam_demands": 2,
+            },
+            "scope_decisions": [
+                {"activity_id": "demand-1", "scope_status": "included", "scope_reason_code": "test"},
+                {"activity_id": "demand-2", "scope_status": "included", "scope_reason_code": "test"},
+            ],
         }
         (directory / "model_inputs.json").write_text(json.dumps(inputs), encoding="utf-8")
         (directory / "result.json").write_text(json.dumps({"run_id": "test", "solution": {"anonymous_staff_pool_size": staff_pool}}), encoding="utf-8")
         pd.DataFrame(assignments).to_csv(directory / "assignments.csv", index=False, encoding="utf-8-sig")
+        pd.DataFrame().to_csv(directory / "room_sessions.csv", index=False, encoding="utf-8-sig")
+        pd.DataFrame().to_csv(directory / "staff_assignments.csv", index=False, encoding="utf-8-sig")
+        pd.DataFrame(inputs["demand_traceability"]).to_csv(directory / "demand_traceability.csv", index=False, encoding="utf-8-sig")
+        write_run_integrity_manifest(directory, "test")
         return directory
 
     def _rules(self, report: dict[str, object]) -> dict[str, dict[str, object]]:
@@ -85,6 +103,64 @@ class IntegratedValidationTests(unittest.TestCase):
         write_validation_report(directory)
         self.assertTrue((directory / "validation.json").is_file())
         self.assertTrue((directory / "validation.md").is_file())
+
+    def test_rejects_changed_frozen_scenario_and_model_inputs(self) -> None:
+        directory = self._run_dir([
+            {"exam_demand_id": "demand-1", "room_id": "room-u", "slot_id": "2026-01-12-am", "participants": 10},
+            {"exam_demand_id": "demand-2", "room_id": "room-u2", "slot_id": "2026-01-12-pm", "participants": 10},
+        ], staff_pool=2)
+        scenario = (directory / "scenario.toml").read_text(encoding="utf-8")
+        (directory / "scenario.toml").write_text(scenario.replace('latest_end_time = "12:00"', 'latest_end_time = "11:00"'), encoding="utf-8")
+        rules = self._rules(validate_integrated_term_run(directory))
+
+        self.assertEqual(rules["run_artifact_integrity"]["status"], "fail")
+
+    def test_editable_status_cannot_promote_program_conflict_rule_to_pass(self) -> None:
+        directory = self._run_dir([
+            {"exam_demand_id": "demand-1", "room_id": "room-u", "slot_id": "2026-01-12-am", "participants": 10},
+            {"exam_demand_id": "demand-2", "room_id": "room-u2", "slot_id": "2026-01-12-pm", "participants": 10},
+        ], staff_pool=2)
+        scenario = (directory / "scenario.toml").read_text(encoding="utf-8")
+        (directory / "scenario.toml").write_text(
+            scenario + '\n[conflicts]\npolicy = "same_course_hard_constraint"\nprogram_relation_data_status = "verified"\n',
+            encoding="utf-8",
+        )
+        write_run_integrity_manifest(directory, "test")
+        rules = self._rules(validate_integrated_term_run(directory))
+
+        self.assertEqual(rules["run_artifact_integrity"]["status"], "pass")
+        self.assertEqual(rules["course_program_conflicts"]["status"], "not_evaluated")
+
+    def test_reports_unresolved_source_activities_without_marking_them_placed(self) -> None:
+        directory = self._run_dir([
+            {"exam_demand_id": "demand-1", "room_id": "room-u", "slot_id": "2026-01-12-am", "participants": 10},
+            {"exam_demand_id": "demand-2", "room_id": "room-u2", "slot_id": "2026-01-12-pm", "participants": 10},
+        ], staff_pool=2)
+        inputs = json.loads((directory / "model_inputs.json").read_text(encoding="utf-8"))
+        inputs["scope_metrics"].update({"source_activities_total": 3, "unresolved_source_activities": 1})
+        inputs["scope_decisions"].append({"activity_id": "unresolved-1", "scope_status": "unresolved", "scope_reason_code": "missing_link"})
+        (directory / "model_inputs.json").write_text(json.dumps(inputs), encoding="utf-8")
+        write_run_integrity_manifest(directory, "test")
+        report = validate_integrated_term_run(directory)
+        rules = self._rules(report)
+
+        self.assertEqual(report["technical_placement_completeness"]["status"], "pass")
+        self.assertEqual(rules["unresolved_source_activities"]["status"], "not_evaluated")
+        self.assertEqual(report["scope"]["unresolved_activity_ids"], ["unresolved-1"])
+
+    def test_rejects_scope_metrics_that_do_not_match_saved_decisions(self) -> None:
+        directory = self._run_dir([
+            {"exam_demand_id": "demand-1", "room_id": "room-u", "slot_id": "2026-01-12-am", "participants": 10},
+            {"exam_demand_id": "demand-2", "room_id": "room-u2", "slot_id": "2026-01-12-pm", "participants": 10},
+        ], staff_pool=2)
+        inputs = json.loads((directory / "model_inputs.json").read_text(encoding="utf-8"))
+        inputs["scope_metrics"]["included_source_activities"] = 3
+        (directory / "model_inputs.json").write_text(json.dumps(inputs), encoding="utf-8")
+        write_run_integrity_manifest(directory, "test")
+
+        rules = self._rules(validate_integrated_term_run(directory))
+
+        self.assertEqual(rules["source_scope_accounting"]["status"], "fail")
 
     def test_detects_missing_or_double_counted_participants_and_capacity(self) -> None:
         directory = self._run_dir([
@@ -215,7 +291,7 @@ class IntegratedValidationTests(unittest.TestCase):
 
         rules = self._rules(validate_integrated_term_run(directory))
 
-        self.assertEqual(rules["individual_staffing_constraints"]["status"], "pass")
+        self.assertEqual(rules["individual_staffing_constraints"]["status"], "not_evaluated")
 
 
 if __name__ == "__main__":

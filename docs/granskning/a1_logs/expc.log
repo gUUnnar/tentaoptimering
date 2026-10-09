@@ -1,0 +1,16 @@
+N 3 tentor 1255 orig topp 1586
+steg1: C* 598 OPTIMAL bound 598.0 flyttade (godtycklig losning, hint=original) 1043
+steg2: flyttade 114 FEASIBLE bound 106.0
+flyttade tentor vars ursprungsdag hade topp <= C*: 10 (platser 551 )
+dagar med original topp > C*: 17 av 73
+efter steg2: dagtoppar topp10 [598, 598, 598, 598, 598, 598, 598, 598, 598, 597] median 445 ; antal dagar inom 95% av C* 24
+orig:       topp10 [1586, 1568, 1365, 1247, 1162, 1099, 991, 991, 980, 974] median 312
+  topp <= 598: min flytt 117 FEASIBLE bound 105.0
+  topp <= 627: min flytt 90 OPTIMAL bound 90.0
+  topp <= 657: min flytt 78 OPTIMAL bound 78.0
+  topp <= 747: min flytt 52 OPTIMAL bound 52.0
+  topp <= 897: min flytt 27 OPTIMAL bound 27.0
+  topp <= 1119: min flytt 11 OPTIMAL bound 11.0
+  topp <= 1000: min flytt 15 OPTIMAL bound 15.0
+  topp <= 800: min flytt 44 OPTIMAL bound 44.0
+  topp <= 700: min flytt 63 OPTIMAL bound 63.0

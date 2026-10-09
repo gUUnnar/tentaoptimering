@@ -1,0 +1,4 @@
+N=1: tentor 1255 alternativ 3765 variabler 69766 villkor 151669 bygg 2.0s; analytisk pool-overskott i nuläge 1333
+  steg 1 overpk (sum av dagliga max-overflyt): OPTIMAL obj 0.0 bound 0.0 tid 227.7
+  steg 2 vaktpass: FEASIBLE obj 717.0 bound 380.0 tid 301.4 vals {'overpk': 0, 'over': 0, 'sessions': 388, 'guards': 717, 'minutes': 261510, 'moves': 877}
+  flyttade 877

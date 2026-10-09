@@ -115,6 +115,7 @@ city = "Visby"
 capacity_seats = 60
 capacity_scope = "room"
 published_availability_context = "campus_gotland_from_spring_2027"
+available_from = "2027-01-01"
 digital_capability_status = "all_places_support_e_exam"
 accessibility_status = "not_stated_on_source_page"
 special_support_status = "not_stated_on_source_page"

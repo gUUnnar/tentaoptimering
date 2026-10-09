@@ -1,0 +1,24 @@
+{
+ "original": {
+  "overpk": 1333.0,
+  "guards": 171.0,
+  "gstatus": "FEASIBLE",
+  "gbound": 140.0,
+  "sessions": 65.0
+ },
+ "poolens optimum": {
+  "overpk": 4.0,
+  "guards": 218.0,
+  "gstatus": "FEASIBLE",
+  "gbound": 206.0,
+  "sessions": 86.0
+ },
+ "rumsmedvetet": {
+  "overpk": 0.0,
+  "guards": 211.0,
+  "gstatus": "FEASIBLE",
+  "gbound": 158.0,
+  "moved": 216,
+  "sessions": 91
+ }
+}

@@ -78,6 +78,8 @@ def load_room_register(path: Path) -> pd.DataFrame:
                 "capacity_seats": room.get("capacity_seats"),
                 "capacity_scope": room["capacity_scope"],
                 "published_availability_context": room["published_availability_context"],
+                "available_from": room.get("available_from"),
+                "available_to": room.get("available_to"),
                 "digital_capability_status": room["digital_capability_status"],
                 "accessibility_status": room["accessibility_status"],
                 "special_support_status": room["special_support_status"],
@@ -247,6 +249,10 @@ def _build_room_inventory(
 
 def _build_optimization_rooms(rooms: pd.DataFrame, policy: PocPolicy) -> pd.DataFrame:
     """Select only room-scoped published capacities for an exploratory scenario."""
+    rooms = rooms.copy()
+    for column in ("available_from", "available_to"):
+        if column not in rooms:
+            rooms[column] = pd.NA
     published_room_capacity = rooms["capacity_seats"].notna() & rooms["capacity_scope"].eq("room")
     result = rooms.loc[
         published_room_capacity,
@@ -259,6 +265,8 @@ def _build_optimization_rooms(rooms: pd.DataFrame, policy: PocPolicy) -> pd.Data
             "capacity_status",
             "capacity_temporal_status",
             "published_availability_context",
+            "available_from",
+            "available_to",
             "digital_capability_status",
             "accessibility_status",
             "special_support_status",
@@ -308,6 +316,8 @@ def build_optimization_inputs(
                 "capacity_seats",
                 "capacity_scope",
                 "published_availability_context",
+                "available_from",
+                "available_to",
                 "digital_capability_status",
                 "accessibility_status",
                 "special_support_status",

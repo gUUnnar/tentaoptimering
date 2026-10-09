@@ -28,6 +28,17 @@ def clean_text(series: pd.Series) -> pd.Series:
     return text.mask(text.eq(""), pd.NA)
 
 
+def repair_utf8_mojibake(value: object) -> object:
+    """Repair the known cp1252-as-UTF-8 corruption in the Ladok XLSX export only."""
+    if not isinstance(value, str) or not any(marker in value for marker in ("Ã", "Â", "â")):
+        return value
+    try:
+        repaired = value.encode("cp1252").decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return value
+    return repaired if repaired != value else value
+
+
 def key_text(value: object) -> str | None:
     if value is None or pd.isna(value):
         return None
@@ -85,6 +96,7 @@ def normalize_bookings(frame: pd.DataFrame) -> pd.DataFrame:
 def normalize_ladok(frame: pd.DataFrame) -> pd.DataFrame:
     result = frame.copy()
     for column in ("course_code", "name_sv", "activity_type", "location"):
+        result[column] = result[column].map(repair_utf8_mojibake)
         result[column] = clean_text(result[column])
     result["course_code"] = result["course_code"].str.upper()
     result["start_date"] = _date_strings(result["start_date"])

@@ -1,0 +1,55 @@
+{
+ "C_star": 598,
+ "moved_stage1_only": 1043,
+ "moved_stage2": 114,
+ "moved_stage2_bound": 106.0,
+ "moved_from_nonbinding_days": 10,
+ "days_over_C": 17,
+ "pareto": {
+  "598": [
+   117,
+   "FEASIBLE",
+   105.0
+  ],
+  "627": [
+   90,
+   "OPTIMAL",
+   90.0
+  ],
+  "657": [
+   78,
+   "OPTIMAL",
+   78.0
+  ],
+  "747": [
+   52,
+   "OPTIMAL",
+   52.0
+  ],
+  "897": [
+   27,
+   "OPTIMAL",
+   27.0
+  ],
+  "1119": [
+   11,
+   "OPTIMAL",
+   11.0
+  ],
+  "1000": [
+   15,
+   "OPTIMAL",
+   15.0
+  ],
+  "800": [
+   44,
+   "OPTIMAL",
+   44.0
+  ],
+  "700": [
+   63,
+   "OPTIMAL",
+   63.0
+  ]
+ }
+}
