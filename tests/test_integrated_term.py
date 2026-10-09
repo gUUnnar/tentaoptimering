@@ -31,6 +31,27 @@ class IntegratedTermTests(unittest.TestCase):
         self.assertEqual(result.staff_pool_size, 2)
         self.assertEqual(result.objective_ore, 320000)
 
+    def test_enforces_explicit_course_conflicts_and_room_rules(self) -> None:
+        calendar = TermCalendar(
+            date(2026, 1, 12), date(2026, 1, 12), (1,),
+            (CalendarPass("am", "08:00", "10:00"), CalendarPass("pm", "10:00", "12:00")), 0,
+        )
+        result = solve_integrated_term(
+            demands=(
+                IntegratedDemand("first", 10, 60, "Uppsala", course_code="COURSE", digital_requirement="e_exam"),
+                IntegratedDemand("second", 10, 60, "Uppsala", course_code="COURSE", digital_requirement="e_exam"),
+            ),
+            rooms=(
+                IntegratedRoom("offline", 10, "Uppsala", 1, digital_capabilities=frozenset({"paper"})),
+                IntegratedRoom("online", 10, "Uppsala", 1, digital_capabilities=frozenset({"e_exam"}), available_slot_ids=frozenset({"2026-01-12-am", "2026-01-12-pm"})),
+            ),
+            calendar=calendar, staffing=AggregateStaffing(1, 1),
+        )
+
+        self.assertIn(result.status, {"optimal", "feasible"})
+        self.assertEqual({item["room_id"] for item in result.assignments}, {"online"})
+        self.assertEqual(len({item["slot_id"] for item in result.assignments}), 2)
+
 
 if __name__ == "__main__":
     unittest.main()
