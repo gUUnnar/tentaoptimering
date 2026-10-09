@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -34,18 +35,21 @@ def validate_integrated_term_run(run_dir: Path) -> dict[str, Any]:
     inputs = json.loads((run_dir / "model_inputs.json").read_text(encoding="utf-8"))
     result = json.loads((run_dir / "result.json").read_text(encoding="utf-8"))
     assignments = pd.read_csv(run_dir / "assignments.csv", encoding="utf-8-sig")
-    demands = {str(item["exam_demand_id"]): item for item in inputs["demands"]}
-    rooms = {str(item["room_id"]): item for item in inputs["rooms"]}
+    model_inputs, demands, rooms = _model_inputs(inputs)
     slots = {item.slot_id: item for item in generate_calendar_slots(scenario.calendar)}
+    assignment_rows, valid_assignments = _assignment_rows(assignments, demands, rooms, slots)
     rules = (
-        _coverage(assignments, demands),
-        _capacity(assignments, rooms),
-        _room_intervals(assignments, demands, scenario, slots),
-        _location(assignments, demands, rooms),
+        model_inputs,
+        assignment_rows,
+        _coverage(valid_assignments, demands),
+        _calendar_pass_constraints(valid_assignments, demands, slots),
+        _capacity(valid_assignments, rooms),
+        _room_intervals(valid_assignments, demands, scenario, slots),
+        _location(valid_assignments, demands, rooms),
         _digital_compatibility(scenario),
         _availability(scenario),
         _course_program_conflicts(inputs),
-        _aggregate_staffing(assignments, demands, scenario, slots, result),
+        _aggregate_staffing(valid_assignments, demands, scenario, slots, result),
         _individual_staffing(),
     )
     technical = _technical_status(rules)
@@ -60,6 +64,35 @@ def validate_integrated_term_run(run_dir: Path) -> dict[str, Any]:
     }
 
 
+def _model_inputs(inputs: dict[str, Any]) -> tuple[RuleResult, dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    demands: dict[str, dict[str, Any]] = {}
+    rooms: dict[str, dict[str, Any]] = {}
+    failures: list[str] = []
+    raw_demands = inputs.get("demands")
+    raw_rooms = inputs.get("rooms")
+    if not isinstance(raw_demands, list):
+        failures.append("demands")
+        raw_demands = []
+    if not isinstance(raw_rooms, list):
+        failures.append("rooms")
+        raw_rooms = []
+    for item in raw_demands:
+        demand_id = str(item.get("exam_demand_id", "")) if isinstance(item, dict) else ""
+        valid = isinstance(item, dict) and demand_id.strip() and demand_id not in demands and _positive_int(item.get("participants")) and _positive_int(item.get("duration_minutes")) and isinstance(item.get("plan_area"), str) and bool(item["plan_area"].strip())
+        if not valid:
+            failures.append(f"exam_demand:{demand_id or 'missing'}")
+            continue
+        demands[demand_id] = item
+    for item in raw_rooms:
+        room_id = str(item.get("room_id", "")) if isinstance(item, dict) else ""
+        valid = isinstance(item, dict) and room_id.strip() and room_id not in rooms and _positive_int(item.get("capacity")) and isinstance(item.get("plan_area"), str) and bool(item["plan_area"].strip())
+        if not valid:
+            failures.append(f"room:{room_id or 'missing'}")
+            continue
+        rooms[room_id] = item
+    return _result("model_inputs", failures, "Sparade behov och rum har giltiga identifierare, positiva heltalsantal och planeringsområden."), demands, rooms
+
+
 def write_validation_report(run_dir: Path) -> dict[str, Any]:
     report = validate_integrated_term_run(run_dir)
     (run_dir / "validation.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -67,14 +100,52 @@ def write_validation_report(run_dir: Path) -> dict[str, Any]:
     return {"report": report, "artifacts": {name: str((run_dir / name).resolve()) for name in ("validation.json", "validation.md")}}
 
 
+def _assignment_rows(
+    assignments: pd.DataFrame, demands: dict[str, dict[str, Any]], rooms: dict[str, dict[str, Any]],
+    slots: dict[str, CalendarSlot],
+) -> tuple[RuleResult, pd.DataFrame]:
+    required = ("exam_demand_id", "room_id", "slot_id", "participants")
+    missing = [column for column in required if column not in assignments]
+    if missing:
+        return RuleResult("assignment_rows", FAIL, "Fördelningsartefakten saknar obligatoriska kolumner.", tuple(missing)), pd.DataFrame(columns=required)
+    valid_rows = []
+    failures = []
+    for index, row in assignments.iterrows():
+        demand_id, room_id, slot_id = (str(row[column]) for column in required[:3])
+        seats = pd.to_numeric(pd.Series([row["participants"]]), errors="coerce").iloc[0]
+        valid = (
+            demand_id in demands and room_id in rooms and slot_id in slots
+            and not pd.isna(seats) and math.isfinite(float(seats))
+            and float(seats).is_integer() and int(seats) > 0
+        )
+        if not valid:
+            failures.append(f"row:{index}")
+            continue
+        valid_rows.append({"exam_demand_id": demand_id, "room_id": room_id, "slot_id": slot_id, "participants": int(seats)})
+    return _result("assignment_rows", failures, "Alla fördelningsrader har kända identifierare och positiva heltalsantal."), pd.DataFrame(valid_rows, columns=required)
+
+
 def _coverage(assignments: pd.DataFrame, demands: dict[str, dict[str, Any]]) -> RuleResult:
     totals = assignments.groupby("exam_demand_id")["participants"].sum().to_dict() if not assignments.empty else {}
-    failures = []
+    failures: list[str] = []
     for demand_id, demand in demands.items():
-        if int(totals.get(demand_id, 0)) != int(demand["participants"]):
+        starts = assignments.loc[assignments["exam_demand_id"] == demand_id, "slot_id"].unique()
+        if int(totals.get(demand_id, 0)) != int(demand["participants"]) or len(starts) != 1:
             failures.append(demand_id)
     failures.extend(str(item) for item in totals if str(item) not in demands)
-    return _result("included_demand_coverage", failures, "Varje inkluderat behov har exakt rätt antal placerade deltagare.")
+    return _result("included_demand_coverage", failures, "Varje inkluderat behov har exakt rätt antal deltagare och ett gemensamt startpass.")
+
+
+def _calendar_pass_constraints(assignments: pd.DataFrame, demands: dict[str, dict[str, Any]], slots: dict[str, CalendarSlot]) -> RuleResult:
+    failures = []
+    for row in assignments.itertuples(index=False):
+        demand = demands[str(row.exam_demand_id)]
+        slot = slots[str(row.slot_id)]
+        allowed = demand.get("allowed_pass_ids")
+        duration = int(demand["duration_minutes"])
+        if duration <= 0 or slot.start_minute + duration > slot.latest_end_minute or (allowed is not None and slot.pass_id not in allowed):
+            failures.append(f"{row.exam_demand_id}:{row.slot_id}")
+    return _result("calendar_pass_constraints", failures, "Varje tentamenslängd ryms i ett tillåtet kalenderpass.")
 
 
 def _capacity(assignments: pd.DataFrame, rooms: dict[str, dict[str, Any]]) -> RuleResult:
@@ -144,7 +215,9 @@ def _aggregate_staffing(assignments: pd.DataFrame, demands: dict[str, dict[str, 
     actual = result.get("solution", {}).get("anonymous_staff_pool_size")
     if actual is None:
         return RuleResult("aggregate_staffing", NOT_EVALUATED, "Körningsresultatet saknar anonym bemanningspool.", ())
-    return _result("aggregate_staffing", [] if int(actual) == expected else [f"expected:{expected}|actual:{actual}"], "Anonym samtidig bemanning motsvarar aktiverad bemanningsregel.")
+    if not isinstance(actual, int) or actual < 0:
+        return RuleResult("aggregate_staffing", FAIL, "Bemanningspoolen är inte ett icke-negativt heltal.", ("anonymous_staff_pool_size",))
+    return _result("aggregate_staffing", [] if actual >= expected else [f"minimum:{expected}|actual:{actual}"], "Anonym samtidig bemanning uppfyller aktiverat minimikrav.")
 
 
 def _individual_staffing() -> RuleResult:
@@ -168,8 +241,12 @@ def _result(rule_id: str, failures: list[str], pass_reason: str) -> RuleResult:
     return RuleResult(rule_id, PASS, pass_reason, ())
 
 
+def _positive_int(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
 def _technical_status(rules: tuple[RuleResult, ...]) -> dict[str, Any]:
-    relevant = {"included_demand_coverage", "room_capacity", "room_time_intervals", "plan_area"}
+    relevant = {"model_inputs", "assignment_rows", "included_demand_coverage", "calendar_pass_constraints", "room_capacity", "room_time_intervals", "plan_area"}
     failed = [item.rule_id for item in rules if item.rule_id in relevant and item.status == FAIL]
     return {"status": PASS if not failed else FAIL, "reason": "Alla tekniska placeringsregler passerar." if not failed else "Teknisk placeringsregel bruten.", "failed_rules": failed}
 

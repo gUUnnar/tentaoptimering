@@ -57,6 +57,7 @@ class IntegratedValidationTests(unittest.TestCase):
             "rooms": [
                 {"room_id": "room-u", "capacity": 10, "plan_area": "Uppsala", "annual_cost_ore": 1},
                 {"room_id": "room-u2", "capacity": 10, "plan_area": "Uppsala", "annual_cost_ore": 1},
+                {"room_id": "room-u3", "capacity": 10, "plan_area": "Uppsala", "annual_cost_ore": 1},
                 {"room_id": "room-v", "capacity": 10, "plan_area": "Visby", "annual_cost_ore": 1},
             ],
             "demand_traceability": [{"exam_demand_id": "demand-1", "course_code": "COURSE"}],
@@ -95,6 +96,16 @@ class IntegratedValidationTests(unittest.TestCase):
         self.assertEqual(rules["included_demand_coverage"]["status"], "fail")
         self.assertEqual(rules["room_capacity"]["status"], "fail")
 
+    def test_detects_split_start_for_one_exam_demand(self) -> None:
+        directory = self._run_dir([
+            {"exam_demand_id": "demand-1", "room_id": "room-u", "slot_id": "2026-01-12-am", "participants": 5},
+            {"exam_demand_id": "demand-1", "room_id": "room-u2", "slot_id": "2026-01-12-pm", "participants": 5},
+            {"exam_demand_id": "demand-2", "room_id": "room-u3", "slot_id": "2026-01-12-am", "participants": 10},
+        ], staff_pool=3)
+        rules = self._rules(validate_integrated_term_run(directory))
+
+        self.assertEqual(rules["included_demand_coverage"]["status"], "fail")
+
     def test_detects_overlapping_passes_in_same_room(self) -> None:
         directory = self._run_dir([
             {"exam_demand_id": "demand-1", "room_id": "room-u", "slot_id": "2026-01-12-am", "participants": 10},
@@ -113,6 +124,46 @@ class IntegratedValidationTests(unittest.TestCase):
 
         self.assertEqual(rules["plan_area"]["status"], "fail")
         self.assertEqual(rules["aggregate_staffing"]["status"], "fail")
+
+    def test_accepts_overstaffing_but_rejects_invalid_rows(self) -> None:
+        directory = self._run_dir([
+            {"exam_demand_id": "demand-1", "room_id": "room-u", "slot_id": "2026-01-12-am", "participants": 10},
+            {"exam_demand_id": "demand-2", "room_id": "room-u2", "slot_id": "2026-01-12-pm", "participants": 10},
+        ], staff_pool=3)
+        self.assertEqual(self._rules(validate_integrated_term_run(directory))["aggregate_staffing"]["status"], "pass")
+
+        invalid = self._run_dir([
+            {"exam_demand_id": "demand-1", "room_id": "unknown-room", "slot_id": "2026-01-12-am", "participants": 10},
+            {"exam_demand_id": "demand-2", "room_id": "room-u2", "slot_id": "unknown-slot", "participants": -10},
+        ])
+        self.assertEqual(self._rules(validate_integrated_term_run(invalid))["assignment_rows"]["status"], "fail")
+
+    def test_rejects_invalid_demand_and_room_model_inputs(self) -> None:
+        directory = self._run_dir([
+            {"exam_demand_id": "demand-1", "room_id": "room-u", "slot_id": "2026-01-12-am", "participants": 10},
+            {"exam_demand_id": "demand-2", "room_id": "room-u2", "slot_id": "2026-01-12-pm", "participants": 10},
+        ], staff_pool=2)
+        inputs = json.loads((directory / "model_inputs.json").read_text(encoding="utf-8"))
+        inputs["demands"][0]["participants"] = 0
+        inputs["rooms"][0]["capacity"] = -1
+        (directory / "model_inputs.json").write_text(json.dumps(inputs), encoding="utf-8")
+        rules = self._rules(validate_integrated_term_run(directory))
+
+        self.assertEqual(rules["model_inputs"]["status"], "fail")
+
+    def test_detects_duration_outside_pass_and_disallowed_pass(self) -> None:
+        directory = self._run_dir([
+            {"exam_demand_id": "demand-1", "room_id": "room-u", "slot_id": "2026-01-12-am", "participants": 10},
+            {"exam_demand_id": "demand-2", "room_id": "room-u2", "slot_id": "2026-01-12-pm", "participants": 10},
+        ], staff_pool=2)
+        scenario = (directory / "scenario.toml").read_text(encoding="utf-8")
+        (directory / "scenario.toml").write_text(scenario.replace('latest_end_time = "12:00"', 'latest_end_time = "09:00"'), encoding="utf-8")
+        inputs = json.loads((directory / "model_inputs.json").read_text(encoding="utf-8"))
+        inputs["demands"][1]["allowed_pass_ids"] = ["am"]
+        (directory / "model_inputs.json").write_text(json.dumps(inputs), encoding="utf-8")
+        rules = self._rules(validate_integrated_term_run(directory))
+
+        self.assertEqual(rules["calendar_pass_constraints"]["status"], "fail")
 
     def test_marks_unconfigured_digital_and_availability_rules_not_evaluated(self) -> None:
         directory = self._run_dir([
