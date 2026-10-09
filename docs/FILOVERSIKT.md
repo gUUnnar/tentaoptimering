@@ -22,11 +22,13 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | Fil | Ansvar |
 |---|---|
 | `config/parameters.toml` | Maskinläsbart register över verksamhetsparametrar utan förhandslåsta värden eller intervall. |
+| `config/joint_parameter_catalog.toml` | Gemensam v2-katalog för GUI, lagring, validering och ny motor, inklusive explicit motorstöd per parameter. |
 | `config/room_register.toml` | Versionsmärkt officiellt rumsreferenslager med publicerade kapaciteter, källadress och tidsmässig osäkerhet. |
 | `config/source_files.toml` | Namn, blad och rubrikrad för de tre lästa källexporterna. |
 | `config/scenarios/reference.toml` | Komplett referensscenario med fasta historiska datum och tider. |
 | `config/scenarios/flexible_start_60m.toml` | Tekniskt jämförelsescenario med ±60 minuters startflexibilitet. |
 | `config/scenarios/integrated_term_exploratory.toml` | Versionshanterad explorativ terminskalender, kostnadsproxyer, bemanningsregel och fullständigt spårbara antaganden. |
+| `config/scenarios/joint_real_subset.toml` | Reproducerbart avgränsat verkligt datafall för den nya gemensamma CP-SAT-kärnan. |
 
 ## Dokumentation
 
@@ -36,6 +38,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `docs/DATAMODELL.md` | Korn, nycklar och gränser mellan beställning, placering, Ladokaktivitet och lokalrad. |
 | `docs/FILOVERSIKT.md` | Denna innehållsförteckning och filernas ansvar. |
 | `docs/GEMENSAM_OPTIMERINGSDESIGN.md` | Teknisk specifikation för kanoniskt tentamensbehov, salstillfällen, integrerad bemanning och konsekvent årskostnad. |
+| `docs/GEMENSAM_CP_SAT_FORSTA_LEVERANS.md` | Levererad modell, solverstatus, handräknade facit, verklig delmängdskörning och kvarstående begränsningar. |
 | `docs/FORSTA_TERMSKORNING.md` | Reproducerbar redovisning av första explorativa fullskalekörningen, täckning, kostnadsproxyer och begränsningar. |
 | `docs/KOSTNADSMODELL.md` | Avgränsning mellan resursbehov, intern kostnadsfördelning och realiserbar besparing. |
 | `docs/OPTIMERINGSUNDERLAG.md` | Korn, relationsregler och tillåten användning av det maskinläsbara underlaget före motorbygge. |
@@ -59,6 +62,10 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `cli.py` | JSON-först-kommandon för förberedelse, resurser, parametrar, optimering, eftervalidering, resultat och jämförelse. |
 | `canonical_demand.py` | Validerar fullständiga scope-beslut och explicita relationer från Ladokaktiviteter via delgrupper till unika tentamensbehov. |
 | `integrated_term.py` | Första CP-SAT-modellen för full täckning över terminskalendern med salstillfällen, lokalportfölj och anonym samtidig bemanning. |
+| `joint_contract.py` | Versionsmärkt JSON-kontrakt för gemensamma modellindata och resultat, inklusive delgrupper, stödstatus, kostnader och solvergränser. |
+| `joint_optimizer.py` | Ny CP-SAT-kärna som gemensamt optimerar kalenderpass, faktiska salar, bemanningspool och jämförbar kostnad utan partiell placering. |
+| `joint_inputs.py` | Adapter och körningslagring för det namngivna verkliga delurvalet. |
+| `parameter_catalog.py` | Läser och fryser den gemensamma parameterkatalogen och bevarar explicit motorstöd. |
 | `integrated_config.py` | Läser och validerar det integrerade terminscenariots kalender, ekonomi, bemanning och spårbara antaganden. |
 | `integrated_inputs.py` | Adapter från reproducerbara scope- och optimeringsunderlag till terminsmodellens behov, rum och källspårbarhet. |
 | `integrated_runs.py` | Skapar granskningsbara körningsartefakter för integrerade terminsresultat. |
@@ -104,6 +111,8 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `tests/test_canonical_demand.py` | Säkrar scope-täckning och att flera källaktiviteter kan bilda ett tentamensbehov utan dubbelräkning. |
 | `tests/test_file_policy.py` | Säkrar filstorlekströsklarna och att ingen Python-fil passerat den obligatoriska delningsgränsen. |
 | `tests/test_integrated_term.py` | Säkrar hård deltagartäckning och gemensam optimering av lokalportfölj samt anonym samtidig bemanning. |
+| `tests/test_joint_optimizer.py` | Handräknade referensfall för kostnadsavvägning, full täckning, samtentor, digitalt krav, kurskrock, ställtid och kontraktsrundresa. |
+| `tests/test_parameter_catalog.py` | Säkrar att alla parametrar exponeras och att motorstöd samt frusna experimentvärden är explicita. |
 | `tests/test_integrated_config.py` | Säkrar att det versionshanterade terminscenariot har validerbar kalender och spårbara antaganden. |
 | `tests/test_integrated_inputs.py` | Säkrar adapterens källspårbarhet och synliga scope-fullständighet. |
 | `tests/test_integrated_validation.py` | Säkrar oberoende eftervalidering, inklusive passöverlappning, kapacitet, ort och ej verifierbar verksamhetsstatus. |

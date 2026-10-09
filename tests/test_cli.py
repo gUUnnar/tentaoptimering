@@ -103,6 +103,26 @@ class CliTests(unittest.TestCase):
         self.assertEqual(exit_code, 2)
         self.assertIn("--config", payload["error"]["message"])
 
+    def test_optimize_joint_requires_explicit_config(self) -> None:
+        stderr = StringIO()
+        with redirect_stderr(stderr):
+            exit_code = main(["optimize-joint"])
+
+        payload = json.loads(stderr.getvalue())
+        self.assertEqual(exit_code, 2)
+        self.assertIn("--config", payload["error"]["message"])
+
+    def test_joint_parameter_catalog_exposes_support_state(self) -> None:
+        stdout = StringIO()
+        with redirect_stdout(stdout):
+            exit_code = main(["joint-parameters"])
+
+        payload = json.loads(stdout.getvalue())
+        support = {item["parameter_id"]: item["engine_support"] for item in payload["parameters"]}
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(support["rooms.max_rooms_per_exam"], "implemented")
+        self.assertEqual(support["rules.student_conflicts"], "contract_only")
+
     def test_validate_term_run_requires_run_id(self) -> None:
         stderr = StringIO()
         with redirect_stderr(stderr):
