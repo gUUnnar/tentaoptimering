@@ -341,21 +341,23 @@ class EvidenceVersusBreachTests(_Base):
         self.assertEqual(_rules(payload)["movable_exams_follow_calendar"]["status"], "not_evaluated")
         self.assertEqual(_rules(payload)["fixed_exams_keep_history"]["status"], "not_evaluated")
 
-    def test_business_rule_passes_only_with_verified_basis_and_engine_support(self) -> None:
+    def test_manipulated_metadata_cannot_give_business_pass(self) -> None:
+        """P-3: labels and values stored in the input are claims, never evidence."""
         problem, result = cases.copy_case()
         defined = {item["parameter_id"] for item in problem["parameters"]}
-        problem["parameters"] += [cases._param(name, None, "verified") for name in ("calendar.exam_periods", "rules.keep_course_order") if name not in defined]
+        problem["parameters"] += [cases._param(name, None) for name in ("calendar.exam_periods", "rules.keep_course_order") if name not in defined]
         for item in problem["parameters"]:
-            if item["parameter_id"].startswith(("window.", "calendar.", "rules.keep")):
-                item["basis"] = "verified"
-        verified = _rules(self.validate(problem, result, "verified"))["calendar_rules_verified"]
-        self.assertEqual(verified["status"], "pass")
-        for item in problem["parameters"]:
-            if item["parameter_id"] == "calendar.exam_periods":
-                item["engine_support"] = "contract_only"
-        self.assertEqual(_rules(self.validate(problem, result, "unsupported"))["calendar_rules_verified"]["status"], "not_evaluated")
-        problem, result = cases.copy_case()
-        self.assertEqual(_rules(self.validate(problem, result, "assumed"))["calendar_rules_verified"]["status"], "not_evaluated")
+            item["basis"], item["engine_support"] = "verified", "implemented"
+            item["rationale"] = "verifierad av verksamheten"
+        problem["scope"]["unresolved_source_activities"] = 0
+        problem["demands"][0]["participant_group_basis"] = "single_activity"
+        payload = self.validate(problem, result)
+        business = {item["rule_id"]: item["status"] for item in payload["rules"] if item["axis"] == "business"}
+        self.assertNotIn("pass", business.values(), business)
+        self.assertNotEqual(payload["summary"]["business_verification"], "pass")
+        self.assertEqual(business["calendar_rules_verified"], "not_evaluated")
+        self.assertEqual(business["population_completeness"], "not_evaluated")
+        self.assertIn("märkningen", _rules(payload)["calendar_rules_verified"]["reason"])
 
     def test_no_user_setting_can_turn_an_unchecked_rule_into_pass(self) -> None:
         problem, result = cases.copy_case()

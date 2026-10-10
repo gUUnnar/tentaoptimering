@@ -123,7 +123,7 @@ Lösningarna för samma storlek ligger inom några procent av varandra (120 tent
 .\.venv\Scripts\python.exe -m tentaoptimering.cli optimize-joint --config config\scenarios\joint_real_subset.toml
 ```
 
-Konfigurationen namnger tolv verkliga bokningshändelser och tillåter tillfällen den 12–14 januari 2026 (datumgränser som parametrar). Endast Uppsalasalar med publicerad kapacitet används; Campus Gotland B40 filtreras bort av planeringsområde och tillgänglighetsdatum. Efter rättningarna är resultatet oförändrat: `optimal`, mål och gräns 37 900 000 öre, tre samtidiga anonyma resurser, fyra ändrade behov, 2,3 s.
+Konfigurationen namnger tolv verkliga bokningshändelser och tillåter tillfällen den 12–14 januari 2026 (datumgränser som parametrar). Endast Uppsalasalar med publicerad kapacitet används; Campus Gotland B40 filtreras bort av planeringsområde och tillgänglighetsdatum. Efter rättningarna är resultatet oförändrat: `optimal`, mål och gräns 37 900 000 öre (379 000 kr), tre samtidiga anonyma resurser, fyra ändrade behov, 2,3 s.
 
 Beloppen följer proxyer (1 000 kr per plats och år, 50 000 kr per poolresurs och år). De är varken faktisk kostnad, teoretisk besparing mot nuläge eller verifierad realiserbar besparing.
 

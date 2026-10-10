@@ -12,7 +12,7 @@ Tre axlar redovisas åtskilda, jämte solverns eget utfall som bara återges:
 |---|---|---|
 | Solverstatus | Vad påstod solvern (`optimal`, `feasible_not_proven`, `infeasible`, ...)? | Återges, bevisas inte |
 | Teknisk eftervalidering | Uppfyller placeringen alla kontrollerbara regler i indata? | `pass`/`fail`/`not_evaluated`/`not_applicable` |
-| Verksamhetsverifiering | Vilar reglerna på verifierad grund med motorstöd? | samma statusvärden |
+| Verksamhetsverifiering | Finns oberoende verifierbart underlag och motorstöd? (P-3: etiketter i indata räknas inte som underlag) | samma statusvärden |
 | Proveniens | Är filer, versioner och underlag oförändrade? | samma statusvärden |
 
 Regelstatus: `fail` om något regelbrott finns, `not_evaluated` när bevis eller motorstöd saknas, `pass` bara när regeln faktiskt prövats och hållit, `not_applicable` när regeln saknar objekt. En regel utan underlag blir aldrig `pass`. Teknisk korrekthet ger aldrig verksamhetsverifiering automatiskt: verifieringen härleds ur parametrarnas `basis` och `engine_support`, inte ur värden som en användare kan skriva.
@@ -37,7 +37,7 @@ Utan `--processed-dir`, `--config`, `--source-dir` bedöms motsvarande hashregle
 
 ## Verklig körning: 12 tentor (reproducerbar med `config/scenarios/joint_real_subset.toml`)
 
-Solver `optimal`, kostnad 37 900 000 öre, pool 3, 4 flyttade tentor. Teknisk validering `pass` (26 regler, `non_room_demands` och `fixed_exams_keep_history` är `not_applicable`), proveniens `pass` (8 regler, inklusive rådatahashar), verksamhetsverifiering `not_evaluated`: alla tio regler.
+Solver `optimal`, kostnad 37 900 000 öre (= 379 000 kr), pool 3, 4 flyttade tentor. Teknisk validering `pass` (26 regler, `non_room_demands` och `fixed_exams_keep_history` är `not_applicable`), proveniens `pass` (8 regler, inklusive rådatahashar), verksamhetsverifiering `not_evaluated`: alla tio regler.
 
 | Verksamhetsregel | Status | Skäl |
 |---|---|---|
@@ -66,3 +66,7 @@ Solver `optimal`, kostnad 37 900 000 öre, pool 3, 4 flyttade tentor. Teknisk va
 - Nya regeln `slot_end_limit` kontrollerar för alla tentor (även oflyttbara) att sluttiden ryms i det valda passets egen `latest_end_minute`, utöver den globala senaste sluttiden.
 - Verksamhetsgrund-regler blir `not_evaluated` om någon av gruppens parametrar saknar definition i indata (tidigare räckte att någon fanns). `calendar.turnaround_minutes` ingår nu i lokalgruppen.
 - Trasiga schema-, placerings- eller salstillfällesrader ger regeln `input_wellformed` = `fail`; övriga regelgrupper skyddas så att ett oväntat fel blir en `fail`-regel i rapporten i stället för ett programfel.
+
+## Rättning: ingen verksamhets-`pass` på etiketter (P-3)
+
+Parametrarnas `basis` (`verified`, `source_data`) och `engine_support` lagras i indatan och kan redigeras, så de är påståenden och inte underlag. Alla grundregler (kalender, lokal, bemanning, kostnad, efterfrågan) och `population_completeness` är därför alltid `not_evaluated` tills en oberoende underlagskälla finns; skälet anger hur många parametrar som är märkta verifierade utan att det räknas som bevis. Regressionstest: `test_manipulated_metadata_cannot_give_business_pass`. Belopp i artefakter och rapporter anges i öre (37 900 000 öre = 379 000 kr).

@@ -1,8 +1,8 @@
 """Business verification: which rules rest on verified evidence, and which do not.
 
-A technically correct placement is not business-verified. A rule gets `pass` only when every
-parameter it depends on is verified or documented source data and has engine support. Missing
-evidence or missing engine support gives `not_evaluated`, never `pass`.
+A technically correct placement is not business-verified. Parameter labels (`verified`,
+`source_data`) are claims stored in the input, which a user can edit, so they never give `pass`
+(requirement P-3). Until an independent evidence source exists, every basis rule is `not_evaluated`.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ from __future__ import annotations
 from .context import Context
 from .report import BUSINESS, NOT_APPLICABLE, NOT_EVALUATED, PASS, RuleResult, rule
 
-_EVIDENCE = {"verified", "source_data"}
+_CLAIMED_EVIDENCE = {"verified", "source_data"}  # labels in the input; claims, not evidence
 
 _GROUPS = {
     "calendar_rules_verified": (
@@ -43,16 +43,21 @@ def _basis_rule(ctx: Context, rule_id: str, label: str, ids: tuple[str, ...]) ->
     present = [ctx.parameter_meta[item] for item in ids]
     unsupported = [item["parameter_id"] for item in present if item.get("engine_support") != "implemented"]
     assumed = [item["parameter_id"] for item in present
-               if item.get("engine_support") == "implemented" and item.get("basis") not in _EVIDENCE]
-    if unsupported or assumed:
-        parts = []
-        if assumed:
-            parts.append(f"{len(assumed)} vilar på antaganden eller experiment")
-        if unsupported:
-            parts.append(f"{len(unsupported)} saknar motorstöd")
-        return rule(rule_id, BUSINESS, NOT_EVALUATED, f"{label}: {', '.join(parts)}. Tekniskt korrekt placering är inte verksamhetsmässigt verifierad.",
-                    assumed + unsupported, "krav: verifierad mot underlag")
-    return rule(rule_id, BUSINESS, PASS, f"{label}: alla parametrar är verifierade eller dokumenterad källdata och har motorstöd.", reference="krav: verifierad mot underlag")
+               if item.get("engine_support") == "implemented" and item.get("basis") not in _CLAIMED_EVIDENCE]
+    claimed = [item["parameter_id"] for item in present
+               if item.get("engine_support") == "implemented" and item.get("basis") in _CLAIMED_EVIDENCE]
+    parts = []
+    if assumed:
+        parts.append(f"{len(assumed)} vilar på antaganden eller experiment")
+    if unsupported:
+        parts.append(f"{len(unsupported)} saknar motorstöd")
+    if claimed:
+        parts.append(f"{len(claimed)} är märkta verifierade/källdata, men märkningen i indata är inte ett oberoende underlag")
+    # P-3: no label or value in the saved input can make a rule verified, and the validator has no
+    # independent evidence source for it yet, so the verdict is never pass.
+    return rule(rule_id, BUSINESS, NOT_EVALUATED,
+                f"{label}: {', '.join(parts)}. Oberoende verifierbart underlag saknas; tekniskt korrekt placering är inte verksamhetsmässigt verifierad.",
+                assumed + unsupported + claimed, "krav P-3: härledd verifiering")
 
 
 def business_rules(ctx: Context) -> list[RuleResult]:
@@ -60,11 +65,11 @@ def business_rules(ctx: Context) -> list[RuleResult]:
     scope = ctx.problem.get("scope", {})
     unresolved = int(scope.get("unresolved_source_activities", 0))
     results.append(rule(
-        "population_completeness", BUSINESS, NOT_EVALUATED if unresolved else PASS,
+        "population_completeness", BUSINESS, NOT_EVALUATED,
         f"Fullständig täckning gäller bara den modellerade omfattningen. {unresolved} oavgjorda källaktiviteter av "
         f"{scope.get('source_activities_total')} ligger utanför; resultatet säger inget om hela verksamheten." if unresolved
-        else "Inga oavgjorda källaktiviteter; hela källpopulationen är modellerad.",
-        reference="krav: omfattning redovisas, inte döljs",
+        else "Indatan uppger inga oavgjorda källaktiviteter, men det är indatans egen uppgift och inte oberoende kontrollerat mot källdata.",
+        reference="krav P-3: härledd verifiering; omfattning redovisas, inte döljs",
     ))
     results.append(rule(
         "student_overlap", BUSINESS, NOT_EVALUATED,
