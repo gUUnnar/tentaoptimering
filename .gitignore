@@ -26,3 +26,6 @@ frontend/*.tsbuildinfo
 *.db
 *.sqlite
 *.parquet
+
+# Lokal granskningsarkiv, ska inte versionshanteras
+docs/granskning.zip
