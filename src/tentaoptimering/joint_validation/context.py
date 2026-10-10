@@ -179,8 +179,39 @@ def build_context(problem: dict[str, Any], result: dict[str, Any]) -> Context:
     )
     solver = _need(result, "solver", "resultat")
     outcome = _need(solver, "outcome", "solver")
-    context.schedule = {str(row["exam_demand_id"]): row for row in result.get("schedule", ())}
-    context.assignments = list(result.get("assignments", ()))
-    context.sessions = list(result.get("room_sessions", ()))
-    context.has_solution = outcome in SOLUTION_OUTCOMES and bool(context.schedule)
+    context.schedule = {
+        str(_need(row, "exam_demand_id", "schemarad")): _schedule_row(row)
+        for row in _rows(result, "schedule")
+    }
+    context.assignments = [_assignment_row(row) for row in _rows(result, "assignments")]
+    context.sessions = [_session_row(row) for row in _rows(result, "room_sessions")]
+    # A reported solution with an empty schedule is not "no solution": the missing demands must fail.
+    context.has_solution = outcome in SOLUTION_OUTCOMES
     return context
+
+
+def _rows(result: dict[str, Any], key: str) -> list[Any]:
+    value = result.get(key, [])
+    if not isinstance(value, list):
+        raise MalformedArtifact(f"resultat: '{key}' ska vara en lista")
+    return value
+
+
+def _schedule_row(row: dict[str, Any]) -> dict[str, Any]:
+    _need(row, "slot_id", "schemarad")
+    if "participants" in row:
+        _int(row["participants"], "schemarad.participants")
+    return row
+
+
+def _assignment_row(row: dict[str, Any]) -> dict[str, Any]:
+    for key in ("exam_demand_id", "slot_id", "room_id"):
+        _need(row, key, "salsplacering")
+    _int(_need(row, "participants", "salsplacering"), "salsplacering.participants")
+    return row
+
+
+def _session_row(row: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(row, dict):
+        raise MalformedArtifact("salstillfälle: objekt förväntades")
+    return row

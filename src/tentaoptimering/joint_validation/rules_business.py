@@ -20,7 +20,8 @@ _GROUPS = {
     "room_rules_verified": (
         "Lokalregler (kapacitet, tillgänglighet, urval)", ("rooms.selection", "rooms.max_rooms_per_exam", "rooms.allow_split",
                                                           "rooms.allow_split_across_buildings", "rooms.availability_mode",
-                                                          "rooms.capacity_override", "rooms.custom_rooms", "rooms.co_location_rules")),
+                                                          "rooms.capacity_override", "rooms.custom_rooms", "rooms.co_location_rules",
+                                                          "calendar.turnaround_minutes")),
     "staffing_rules_verified": (
         "Bemanningsregler", ("staffing.ladder", "staffing.preparation_minutes", "staffing.closing_minutes", "staffing.shifts",
                              "staffing.min_break_minutes", "staffing.max_continuous_minutes", "staffing.max_daily_minutes",
@@ -34,9 +35,12 @@ _GROUPS = {
 
 
 def _basis_rule(ctx: Context, rule_id: str, label: str, ids: tuple[str, ...]) -> RuleResult:
-    present = [ctx.parameter_meta[item] for item in ids if item in ctx.parameter_meta]
-    if not present:
-        return rule(rule_id, BUSINESS, NOT_EVALUATED, f"{label}: parametrarna finns inte i indata, så grunden kan inte avgöras.", list(ids))
+    absent = [item for item in ids if item not in ctx.parameter_meta]
+    if absent:
+        return rule(rule_id, BUSINESS, NOT_EVALUATED,
+                    f"{label}: {len(absent)} av {len(ids)} parametrar saknar definition i indata, så grunden kan inte avgöras.",
+                    absent, "krav: verifierad mot underlag")
+    present = [ctx.parameter_meta[item] for item in ids]
     unsupported = [item["parameter_id"] for item in present if item.get("engine_support") != "implemented"]
     assumed = [item["parameter_id"] for item in present
                if item.get("engine_support") == "implemented" and item.get("basis") not in _EVIDENCE]

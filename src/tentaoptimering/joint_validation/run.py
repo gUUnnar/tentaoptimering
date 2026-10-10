@@ -35,16 +35,27 @@ def validate_run(
         rules += integrity_rules(run_dir, problem, result, manifest, processed_dir, config_path, catalog_path, source_dir, source_manifest)
     else:
         rules.append(rule("manifest_hashes", "provenance", NOT_EVALUATED, f"{MANIFEST_FILE} saknas; filernas integritet kan inte kontrolleras."))
-    outcome = (result.get("solver") or {}).get("outcome")
+    solver = result.get("solver")
+    outcome = solver.get("outcome") if isinstance(solver, dict) else None
     try:
         context = build_context(problem, result)
     except MalformedArtifact as error:
         rules.append(rule("input_wellformed", TECHNICAL, FAIL, f"Indata eller resultat är felaktigt format: {error}.", reference="krav: giltigt kontrakt"))
         return to_payload(rules, outcome, {"run_dir": str(run_dir), "problem_id": problem.get("problem_id")})
     rules.append(rule("input_wellformed", TECHNICAL, "pass", "Indata och resultat kan läsas enligt kontraktet.", reference="krav: giltigt kontrakt"))
-    rules += demand_rules(context) + calendar_rules(context) + room_rules(context) + staffing_cost_rules(context)
-    rules += business_rules(context)
+    for group in (demand_rules, calendar_rules, room_rules, staffing_cost_rules, business_rules):
+        rules += _guarded(group, context)
     return to_payload(rules, outcome, {"run_dir": str(run_dir), "problem_id": problem.get("problem_id")})
+
+
+def _guarded(group: Any, context: Any) -> list[RuleResult]:
+    """A rule group that cannot run on a malformed artifact is reported, never raised."""
+    try:
+        return group(context)
+    except (KeyError, TypeError, ValueError, AttributeError, IndexError) as error:
+        return [rule(f"{group.__name__}_error", TECHNICAL, FAIL,
+                     f"Regelgruppen kunde inte prövas; artefakten är sannolikt felformad ({type(error).__name__}: {error}).",
+                     reference="krav: giltigt kontrakt")]
 
 
 def write_validation(run_dir: Path, **kwargs: Any) -> dict[str, Any]:

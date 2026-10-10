@@ -166,6 +166,8 @@ def _allowed(
         broken.append("otillåten starttid")
     if slot.start + demand.duration > clock(p["calendar.latest_end_time"]):
         broken.append("slutar efter senaste sluttid")
+    if slot.start + demand.duration > slot.latest_end:
+        broken.append("slutar efter passets egen sluttidsgräns")
     if demand.candidates and slot.slot_id not in demand.candidates:
         broken.append("inte bland behovets kandidater")
     return broken
@@ -184,9 +186,9 @@ def calendar_rules(ctx: Context) -> list[RuleResult]:
     if not ctx.has_solution:
         return [_no_solution(item, "krav: kalender") for item in (
             "movable_exams_follow_calendar", "fixed_exams_keep_history", "slot_catalogue", "candidate_generation",
-            "course_conflicts")]
+            "slot_end_limit", "course_conflicts")]
     missing = [name for name in _CALENDAR_PARAMETERS if name not in ctx.parameters]
-    results = [_fixed_exams(ctx)]
+    results = [_fixed_exams(ctx), _slot_end_limit(ctx)]
     if missing:
         reason = "Kalenderparametrar saknas i indata: " + ", ".join(missing)
         return results + [rule(name, TECHNICAL, NOT_EVALUATED, reason, missing, "krav: kalender") for name in (
@@ -218,6 +220,23 @@ def _movable(ctx: Context, p: dict, bounds, blocked) -> RuleResult:
     if unknown_original:
         return rule("movable_exams_follow_calendar", TECHNICAL, NOT_EVALUATED, "Flyttfönstret kan inte prövas utan historiskt tillfälle.", unknown_original, "krav: flyttfönster")
     return rule("movable_exams_follow_calendar", TECHNICAL, PASS, f"{len(movable)} flyttbara tentamina ligger inom fönster, veckodagar, spärrar, starttider och sluttid. Historiskt tillfälle godtas inte automatiskt.", reference="krav: flyttfönster, veckodagar, spärrar, sluttid")
+
+
+def _slot_end_limit(ctx: Context) -> RuleResult:
+    """Every scheduled exam, fixed or movable, must end within its own slot's latest end."""
+    broken = []
+    for item in ctx.demands.values():
+        slot = ctx.slot_of(item.demand_id)
+        if slot is None:
+            broken.append(f"{item.demand_id}: okänt pass")
+        elif slot.start + item.duration > slot.latest_end:
+            broken.append(f"{item.demand_id}@{slot.slot_id}: slut {slot.start + item.duration} > {slot.latest_end}")
+    return rule(
+        "slot_end_limit", TECHNICAL, FAIL if broken else PASS,
+        "Tentamen slutar efter det valda passets egen sluttidsgräns." if broken
+        else "Varje tentamen slutar inom det valda passets egen sluttidsgräns.",
+        broken, "krav: senaste sluttid per pass",
+    )
 
 
 def _fixed_exams(ctx: Context) -> RuleResult:

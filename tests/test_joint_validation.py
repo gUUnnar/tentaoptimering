@@ -343,12 +343,16 @@ class EvidenceVersusBreachTests(_Base):
 
     def test_business_rule_passes_only_with_verified_basis_and_engine_support(self) -> None:
         problem, result = cases.copy_case()
+        defined = {item["parameter_id"] for item in problem["parameters"]}
+        problem["parameters"] += [cases._param(name, None, "verified") for name in ("calendar.exam_periods", "rules.keep_course_order") if name not in defined]
         for item in problem["parameters"]:
-            if item["parameter_id"].startswith(("window.", "calendar.")):
+            if item["parameter_id"].startswith(("window.", "calendar.", "rules.keep")):
                 item["basis"] = "verified"
         verified = _rules(self.validate(problem, result, "verified"))["calendar_rules_verified"]
         self.assertEqual(verified["status"], "pass")
-        problem["parameters"].append(cases._param("calendar.exam_periods", [], "assumption", "contract_only"))
+        for item in problem["parameters"]:
+            if item["parameter_id"] == "calendar.exam_periods":
+                item["engine_support"] = "contract_only"
         self.assertEqual(_rules(self.validate(problem, result, "unsupported"))["calendar_rules_verified"]["status"], "not_evaluated")
         problem, result = cases.copy_case()
         self.assertEqual(_rules(self.validate(problem, result, "assumed"))["calendar_rules_verified"]["status"], "not_evaluated")
@@ -380,6 +384,62 @@ class EvidenceVersusBreachTests(_Base):
         problem, result = cases.copy_case()
         result["solver"]["best_objective_bound_ore"] = 100
         self.assertIn("solver_report_consistent", _failing(self.validate(problem, result)))
+
+
+class RegressionFromReviewTests(_Base):
+    """Review findings: empty schedule, slot-own end limit, undefined parameters, broken rows."""
+
+    def test_optimal_with_empty_schedule_is_not_technically_validated(self) -> None:
+        problem, result = cases.copy_case()
+        result["schedule"], result["assignments"], result["room_sessions"] = [], [], []
+        payload = self.validate(problem, result)
+        failing = _failing(payload)
+        self.assertIn("each_demand_scheduled_once", failing)
+        self.assertIn("participants_placed", failing)
+        self.assertFalse(payload["summary"]["technically_validated"])
+        self.assertEqual(payload["summary"]["technical_validation"], "fail")
+
+    def test_exam_must_end_within_the_chosen_slots_own_limit(self) -> None:
+        for limit, expected_fail in ((960, False), (959, True)):  # E starts 14:00 (840) and lasts 2 h
+            with self.subTest(slot_limit=limit):
+                problem, result = cases.copy_case()
+                for slot in problem["slots"]:
+                    if slot["slot_id"] == "s2":
+                        slot["latest_end_minute"] = limit
+                payload = self.validate(problem, result, f"s{limit}")
+                self.assertEqual("slot_end_limit" in _failing(payload), expected_fail)
+
+    def test_a_group_with_an_undefined_parameter_is_never_verified(self) -> None:
+        problem, result = cases.copy_case()
+        defined = {item["parameter_id"] for item in problem["parameters"]}
+        problem["parameters"] += [cases._param(name, None, "verified") for name in ("calendar.exam_periods", "rules.keep_course_order") if name not in defined]
+        for item in problem["parameters"]:
+            if item["parameter_id"].startswith(("window.", "calendar.", "rules.keep")):
+                item["basis"] = "verified"
+        problem["parameters"] = [item for item in problem["parameters"] if item["parameter_id"] != "calendar.weekdays"]
+        rule = _rules(self.validate(problem, result))["calendar_rules_verified"]
+        self.assertEqual(rule["status"], "not_evaluated")
+        self.assertIn("calendar.weekdays", rule["objects"])
+
+    def test_broken_rows_give_a_structured_report_not_an_exception(self) -> None:
+        broken = {
+            "schedule row without demand id": lambda r: r["schedule"].append({"slot_id": "s1"}),
+            "schedule row without slot": lambda r: r["schedule"][0].pop("slot_id"),
+            "schedule row not an object": lambda r: r["schedule"].append("x"),
+            "assignment without participants": lambda r: r["assignments"][0].pop("participants"),
+            "assignment with text participants": lambda r: r["assignments"][0].update(participants="många"),
+            "assignment without room": lambda r: r["assignments"][0].pop("room_id"),
+            "schedule is not a list": lambda r: r.update(schedule={"a": 1}),
+            "session row not an object": lambda r: r["room_sessions"].append(7),
+            "solver is not an object": lambda r: r.update(solver="optimal"),
+        }
+        for name, mutate in broken.items():
+            with self.subTest(name):
+                problem, result = cases.copy_case()
+                mutate(result)
+                payload = self.validate(problem, result, name.replace(" ", "_"))
+                self.assertFalse(payload["summary"]["technically_validated"])
+                self.assertEqual(payload["summary"]["technical_validation"], "fail")
 
 
 class IntegrityTests(_Base):
