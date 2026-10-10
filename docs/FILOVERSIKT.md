@@ -76,6 +76,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `app_storage.py` | TOML-baserade användarscenarier, inställningar och resultatinspektion utan databasserver. |
 | `scenario_consistency.py` | Synkroniserar redigerbara terminsparametrar, kalenderperioder och de spårbarhetsantaganden som redovisar samma värden. |
 | `desktop.py` | Windowsstartpunkt som startar localhost-server och öppnar standardwebbläsaren. |
+| `directory_picker.py` | Öppnar Windows systemdialog för val av källdatakatalog åt den localhost-bundna applikationen. |
 | `job_manager.py` | Enkeltrådig lokal jobbkö som hindrar samtidiga resultatskrivningar. |
 | `cost_model.py` | Datatyper och spärrat resultat för kostnader tills verifierade avtalskopplingar finns. |
 | `cost_comparison.py` | Visar källans internhyreprofil och scenariokostnad utan att omvandla deras differens till besparing. |

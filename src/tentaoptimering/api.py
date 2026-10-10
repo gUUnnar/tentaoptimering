@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from .app_paths import frontend_dist_dir
 from .app_storage import AppStorage
+from .directory_picker import choose_directory
 from .integrated_runs import run_integrated_term
 from .integrated_validation import write_validation_report
 from .job_manager import LocalJobManager
@@ -107,6 +108,16 @@ def create_app(storage_root: Path | None = None) -> FastAPI:
             if jobs.has_active_job():
                 raise RuntimeError("Källdatakatalog kan inte ändras medan ett jobb körs.")
             return {"settings": storage.save_settings(update.source_dir)}
+        except Exception as error:
+            raise _error(error) from error
+
+    @app.post("/api/settings/choose-source-directory")
+    def choose_source_directory() -> dict[str, str | None]:
+        """Open a native picker; saving the selected value remains explicit in the UI."""
+        try:
+            if jobs.has_active_job():
+                raise RuntimeError("Källdatakatalog kan inte ändras medan ett jobb körs.")
+            return {"source_dir": choose_directory(storage.settings()["source_dir"])}
         except Exception as error:
             raise _error(error) from error
 

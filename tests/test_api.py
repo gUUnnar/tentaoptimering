@@ -10,6 +10,7 @@ import time
 import unittest
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
+from unittest.mock import patch
 
 import pandas as pd
 import uvicorn
@@ -99,6 +100,15 @@ class ApiWorkflowTest(unittest.TestCase):
         for unsafe in ("..%2Foutside", "..%5Coutside"):
             status, _ = self._request("GET", f"/api/runs/{unsafe}")
             self.assertIn(status, (404, 422))
+
+    def test_source_directory_chooser_returns_selection_without_saving(self) -> None:
+        selected = str(self.storage.root)
+        with patch("tentaoptimering.api.choose_directory", return_value=selected) as picker:
+            status, response = self._request("POST", "/api/settings/choose-source-directory")
+        self.assertEqual(status, 200)
+        self.assertEqual(response["source_dir"], selected)
+        self.assertIsNone(self.storage.settings()["source_dir"])
+        picker.assert_called_once_with(None)
 
 
 def _wait_for(predicate: object) -> None:
