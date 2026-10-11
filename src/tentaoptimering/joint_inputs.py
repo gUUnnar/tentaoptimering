@@ -28,6 +28,7 @@ from .joint_contract import (
     write_result,
 )
 from .joint_optimizer import solve_joint_optimization
+from .joint_validation import write_validation
 from .optimizer_time import duration_minutes
 from .parameter_catalog import freeze_parameter_values, load_parameter_catalog
 from .provenance import sha256_file
@@ -279,11 +280,29 @@ def run_real_subset(
     (run_dir / "joint_manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
     )
+    validation = write_validation(
+        run_dir, processed_dir=processed_dir, config_path=config_path, catalog_path=catalog_path
+    )
+    with (run_dir / "joint_report.md").open("a", encoding="utf-8") as report:
+        report.write(chr(10).join(_validation_lines(validation["summary"])))
     return {
         "run_id": run_id,
         "result": json.loads((run_dir / "joint_result.json").read_text(encoding="utf-8")),
+        "validation": validation["summary"],
         "artifacts": {path.name: str(path.resolve()) for path in run_dir.iterdir()},
     }
+
+
+def _validation_lines(summary: dict[str, Any]) -> list[str]:
+    """Report the three verdicts separately; the solver result itself is never altered."""
+    return [
+        "", "## Oberoende eftervalidering (joint_validation.md)", "",
+        f"- Solverns status (återgiven, ej bevisad av valideraren): `{summary['solver_status']['reported_outcome']}`.",
+        f"- Teknisk eftervalidering: `{summary['technical_validation']}`.",
+        f"- Verksamhetsmässig verifiering: `{summary['business_verification']}`.",
+        f"- Filernas ursprung och integritet: `{summary['provenance']}`.",
+        f"- Tekniskt validerad: `{summary['technically_validated']}`.", "",
+    ]
 
 
 def _latest_end_limit(values: dict[str, Any]) -> int:
