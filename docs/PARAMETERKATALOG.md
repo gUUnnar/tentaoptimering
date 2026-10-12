@@ -1,7 +1,7 @@
 # Parameterkatalog v2
 
 **Status:** Implementerad kontraktskälla för den nya gemensamma optimeringsmotorn.
-**Maskinläsbar källa:** `config/joint_parameter_catalog.toml` (`catalog_version = "2.1.0"`).
+**Maskinläsbar källa:** `config/joint_parameter_catalog.toml` (`catalog_version = "2.2.0"`).
 
 Det tidigare S0-beslutet att dölja parametrar utan motorstöd är upphävt. Alla definierade verksamhetsparametrar finns i samma katalog för framtida GUI, lagring, validering och motoranslutning. Varje post har ett av två tydliga stödtillstånd:
 
@@ -12,7 +12,7 @@ Varje definition innehåller id, verksamhetsgrupp, etikett, typ, enhet, standard
 
 ## Omfattning
 
-Katalogen har 53 poster, varav 30 har motorstöd. Varje implementerad post har ett effektfall i `tests/test_joint_parameter_effects.py` som ändrar värdet och kräver att modellen optimeraren får ändras; en parameter som ignoreras fångas.
+Katalogen har 55 poster, varav 32 har motorstöd. Varje implementerad post har ett effektfall i `tests/test_joint_parameter_effects.py` som ändrar värdet och kräver att modellen optimeraren får ändras; en parameter som ignoreras fångas.
 
 | Område | Parametrar med motorstöd | Definierade men utan motorstöd (`contract_only`) |
 |---|---|---|
@@ -23,7 +23,7 @@ Katalogen har 53 poster, varav 30 har motorstöd. Varje implementerad post har e
 | Digitalt | policy för salar med delvis digitalstöd, policy för okänd digital status | verifierad kompatibilitetsmatris, framtida digital andel |
 | Bemanning | trappa, förberedelse och avslutning (anonym samtidig pool) | arbetspass, rast, arbetstid, vila, resa, minsta betalda pass |
 | Kostnad | årskostnad per plats, årskostnad per pool, rörlig kostnad per vaktsalstillfälle | **externhyra per salstillfälle** (ingen datakälla för externa lokaler), annualisering, undvikbara kostnader |
-| Mål och solver | tidsgräns, frö, antal trådar, reproducerbar parallell sökning | viktning av mål (motorn är lexikografisk) |
+| Mål och solver | tidsgräns, frö, antal trådar, reproducerbar parallell sökning, lösningsstrategi (`decomposed`/`monolithic`), tillräckligt gap för tidigt stopp | viktning av mål (motorn är lexikografisk) |
 | Särskilt stöd | – | regler för särskilt pedagogiskt stöd |
 | Examinationsvillkor | faktisk skrivtid per behov | experimentell maximal skrivtid |
 

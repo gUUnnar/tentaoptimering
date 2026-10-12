@@ -187,7 +187,8 @@ class OptimizationEffectTests(unittest.TestCase):
             item.parameter_id for item in load_parameter_catalog(CATALOG).parameters if item.engine_support == "implemented"
         }
         covered = {parameter for _id, params, *_rest in CASES for parameter in params}
-        covered |= {"demand.rounding", "demand.measure", "solver.time_limit_seconds", "solver.seed", "solver.workers", "solver.deterministic"}
+        covered |= {"demand.rounding", "demand.measure", "solver.time_limit_seconds", "solver.seed", "solver.workers", "solver.deterministic",
+                    "solver.strategy", "solver.relative_gap_limit"}  # strategies: tests/test_joint_strategy.py
         self.assertEqual(implemented - covered, set(), "implemented parameters without a result-level test")
 
     def test_rounding_changes_the_placed_participants(self) -> None:

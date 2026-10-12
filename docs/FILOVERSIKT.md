@@ -40,6 +40,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `docs/GEMENSAM_OPTIMERINGSDESIGN.md` | Teknisk specifikation för kanoniskt tentamensbehov, salstillfällen, integrerad bemanning och konsekvent årskostnad. |
 | `docs/GEMENSAM_CP_SAT_FORSTA_LEVERANS.md` | Levererad modell, solverstatus, handräknade facit, verklig delmängdskörning och kvarstående begränsningar. |
 | `docs/OBEROENDE_EFTERVALIDERING.md` | Valideringens design, regelkatalog, verkliga statusar för 12-tentakörningen, kvarstående datagap och hur den körs. |
+| `docs/OPTIMERINGSSTRATEGI.md` | Analys av den monolitiska modellens beräkningskostnad, den rekommenderade strategin (aggregerad relaxation och daglig kontroll), mätningar på frysta verkliga instanser och kvarstående risker. |
 | `docs/FORSTA_TERMSKORNING.md` | Reproducerbar redovisning av första explorativa fullskalekörningen, täckning, kostnadsproxyer och begränsningar. |
 | `docs/KOSTNADSMODELL.md` | Avgränsning mellan resursbehov, intern kostnadsfördelning och realiserbar besparing. |
 | `docs/OPTIMERINGSUNDERLAG.md` | Korn, relationsregler och tillåten användning av det maskinläsbara underlaget före motorbygge. |
@@ -66,6 +67,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `joint_contract.py` | Versionsmärkt JSON-kontrakt för gemensamma modellindata och resultat, inklusive delgrupper, stödstatus, kostnader och solvergränser. |
 | `joint_optimizer.py` | Ny CP-SAT-kärna som gemensamt optimerar kalenderpass, faktiska salar, bemanningspool och jämförbar kostnad utan partiell placering. |
 | `joint_inputs.py` | Adapter och körningslagring för det namngivna verkliga delurvalet. |
+| `joint_strategy/` | Lösningsstrategin `decomposed`: `aggregate.py` (relaxation utan salstilldelning som väljer datum, lokalportfölj och pool och ger en giltig undre kostnadsgräns), `subproblems.py` (exakt kontroll av dagar och dagblock med den oförändrade gemensamma modellen inom körningens deadline, minsta orsakande tentamensmängd), `verification.py` (kontroll av planer, reparation, snitt, övre gräns, historikbyte per länkad dagsgrupp, varmstart, kostnad och pool) och `decomposed.py` (styrning av varven och resultat). |
 | `joint_validation/` | Fristående eftervalidering av gemensamma körningar. Läser bara sparade `joint_input.json`, `joint_result.json` och `joint_manifest.json`; delar ingen regel-, bemannings- eller kostnadskod med optimeraren. `context.py` (rå JSON-vy), `derive.py` (egen bemanningstrappa, salstillfällen, tidslinje, kostnad), `rules_placement.py` (behov, kalender), `rules_rooms.py`, `rules_staffing_cost.py`, `rules_business.py` (verksamhetsgrund), `integrity.py` (hashar, versioner), `report.py` (regelstatus, sammanfattning, rapport), `run.py` (körning och skrivning av `joint_validation.json/.md`). |
 | `parameter_catalog.py` | Läser och fryser den gemensamma parameterkatalogen och bevarar explicit motorstöd. |
 | `integrated_config.py` | Läser och validerar det integrerade terminscenariots kalender, ekonomi, bemanning och spårbara antaganden. |
@@ -119,6 +121,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `tests/test_joint_validation.py` | Referensfall, 34 injicerade fel, gränsfall, bevis kontra brott, integritet och AST-test av oberoende. |
 | `tests/test_joint_validation_run.py` | Körflöde, CLI, oförändrade lösningsartefakter och regression mot den verkliga 12-tentakörningen. |
 | `tests/test_joint_validation_differential.py` | 40 slumpade småfall där optimerarens resultat måste godkännas av valideraren. |
+| `tests/test_joint_strategy.py` | Relaxationen är en undre gräns och den nedbrutna strategin når samma optimum som den monolitiska modellen på slumpade och handräknade fall, även när snitt behövs; resultaten passerar eftervalideringen; gapbegränsade resultat redovisas aldrig som bevisade. |
 | `tests/test_joint_optimizer.py` | Handräknade referensfall för kostnadsavvägning, full täckning, samtentor, digitalt krav, kurskrock, ställtid och kontraktsrundresa. |
 | `tests/test_parameter_catalog.py` | Säkrar att alla parametrar exponeras och att motorstöd samt frusna experimentvärden är explicita. |
 | `tests/test_integrated_config.py` | Säkrar att det versionshanterade terminscenariot har validerbar kalender och spårbara antaganden. |

@@ -1,4 +1,4 @@
-catalog_version = "2.1.0"
+catalog_version = "2.2.0"
 
 [[parameter]]
 id = "demand.variation_pct"
@@ -390,9 +390,9 @@ group = "Solver"
 label = "Längsta beräkningstid"
 value_type = "number"
 unit = "seconds"
-default = 60.0
+default = 300.0
 default_basis = "experiment"
-help_text = "Tidsgräns för ekonomisk optimering och ändringspreferens tillsammans."
+help_text = "Tidsgräns i väggtid för hela körningen, inklusive modellbyggen, reparationer och ändringspreferens. Ett pågående CP-SAT-anrop avslutas först vid sin egen gräns (mätt: hela terminen 302 s mot 300 s). Mätt med decomposed: första fullständiga terminslösning efter cirka 134 s, 39 s med varmstart från en tidigare lösning. Se docs/OPTIMERINGSSTRATEGI.md."
 engine_support = "implemented"
 honored_by = "joint_optimizer._solver"
 
@@ -608,6 +608,29 @@ label = "Reproducerbar parallell sökning"
 value_type = "boolean"
 default = false
 default_basis = "assumption"
-help_text = "Sant ger samma sökning för samma indata, frö och trådantal, men mätt 2-4 gånger sämre kostnadsgräns och lösning på 120-160 tentor. Falskt är standard; körningen är ändå spårbar via frusna indata och sparat resultat. Tidsgränsen mäts i väggtid, så ett avbrutet resultat kan skilja mellan datorer."
+help_text = "Gäller båda strategierna; i decomposed avgör även tidsgränserna per steg resultatet, så reproducerbarheten gäller där bara steg som hinner bli klara. Sant ger samma sökning för samma indata, frö och trådantal, men mätt 2-4 gånger sämre kostnadsgräns och lösning på 120-160 tentor med den monolitiska modellen. Falskt är standard; körningen är ändå spårbar via frusna indata och sparat resultat. Tidsgränsen mäts i väggtid, så ett avbrutet resultat kan skilja mellan datorer."
 engine_support = "implemented"
 honored_by = "joint_optimizer._solver"
+
+[[parameter]]
+id = "solver.strategy"
+group = "Mål"
+label = "Lösningsstrategi"
+value_type = "choice"
+default = "decomposed"
+default_basis = "experiment"
+help_text = "decomposed: aggregerad relaxation väljer datum, lokalportfölj och pool och ger en undre kostnadsgräns; varje dag kontrolleras sedan exakt med samma hårda villkor. monolithic: hela modellen i en CP-SAT-körning. Båda ger fullständig placering eller ingen lösning; jämförelse i docs/OPTIMERINGSSTRATEGI.md."
+engine_support = "implemented"
+honored_by = "joint_optimizer.solve_joint_optimization"
+
+[[parameter]]
+id = "solver.relative_gap_limit"
+group = "Mål"
+label = "Tillräckligt litet optimalitetsgap"
+value_type = "number"
+unit = "fraction"
+default = 0.01
+default_basis = "experiment"
+help_text = "Sökningen avbryts när en verifierad lösning ligger högst denna andel över den bevisade undre gränsen. 0 kräver bevisat optimum (eller tidsgränsen). Ett avbrutet resultat redovisas alltid med gräns och gap, aldrig som bevisat optimum."
+engine_support = "implemented"
+honored_by = "joint_optimizer.solve_joint_optimization"

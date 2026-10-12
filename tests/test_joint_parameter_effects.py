@@ -162,6 +162,8 @@ EFFECT_CASES: dict[str, object] = {
     "solver.seed": 8,
     "solver.workers": 2,
     "solver.deterministic": True,
+    "solver.strategy": "monolithic",
+    "solver.relative_gap_limit": 0.0,
 }
 
 

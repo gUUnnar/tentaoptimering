@@ -34,15 +34,31 @@ class _Variables:
     staff_pool: cp_model.IntVar
 
 
-def solve_joint_optimization(problem: JointOptimizationInput) -> JointOptimizationResult:
-    """Solve the complete modeled demand; partial placement is never an objective option."""
+def solve_joint_optimization(
+    problem: JointOptimizationInput, start: dict[str, Any] | None = None,
+) -> JointOptimizationResult:
+    """Solve the complete modeled demand; partial placement is never an objective option.
+
+    `start` is an earlier saved result (joint_result.json). Its placement seeds the search; it is
+    never trusted: the decomposed strategy re-checks it exactly, the monolithic one uses it as a hint.
+    """
     validate_problem(problem)
     blocked = tuple(item.exam_demand_id for item in problem.demands if not item.candidate_slot_ids)
     if blocked:
         return _blocked_result(problem, blocked)
+    seed = start_placement(start)
+    if problem.solver.strategy == "decomposed":
+        from .joint_strategy import solve_decomposed  # the strategy builds on this module
+
+        return solve_decomposed(problem, seed)
+    if problem.solver.strategy != "monolithic":
+        raise ValueError(f"Okänd lösningsstrategi: {problem.solver.strategy}")
     model = cp_model.CpModel()
     slots = {slot.slot_id: slot for slot in problem.slots}
     variables = _build_variables_and_constraints(model, problem, slots)
+    if seed is not None:
+        for (exam, slot_id), var in variables.selected.items():
+            model.AddHint(var, int(seed[0].get(exam) == slot_id))
     room_cost = sum(
         room.annual_fixed_cost_ore * variables.owned[room.room_id]
         for room in problem.rooms
@@ -60,6 +76,7 @@ def solve_joint_optimization(problem: JointOptimizationInput) -> JointOptimizati
 
     started = time.perf_counter()
     solver = _solver(problem)
+    solver.parameters.relative_gap_limit = problem.solver.relative_gap_limit
     status = solver.Solve(model)
     phase_one_seconds = time.perf_counter() - started
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
@@ -67,8 +84,10 @@ def solve_joint_optimization(problem: JointOptimizationInput) -> JointOptimizati
 
     economic_solver = solver
     economic_status = status
+    # A gap limit can stop CP-SAT with status OPTIMAL before the bound meets the objective; that is not a proof.
+    proven = status == cp_model.OPTIMAL and math.ceil(solver.BestObjectiveBound() - 1e-7) >= int(solver.ObjectiveValue())
     change_status = "not_run_economic_optimum_not_proven"
-    if status == cp_model.OPTIMAL and changed_terms:
+    if proven and changed_terms:
         remaining = problem.solver.time_limit_seconds - phase_one_seconds
         if remaining > 0.01:
             optimum = int(round(solver.ObjectiveValue()))
@@ -87,7 +106,7 @@ def solve_joint_optimization(problem: JointOptimizationInput) -> JointOptimizati
                 change_status = "not_run_time_limit_after_economic_optimum"
         else:
             change_status = "not_run_time_limit_after_economic_optimum"
-    elif status == cp_model.OPTIMAL:
+    elif proven:
         change_status = "not_applicable_no_historical_slots"
 
     elapsed = time.perf_counter() - started
@@ -114,7 +133,7 @@ def solve_joint_optimization(problem: JointOptimizationInput) -> JointOptimizati
         schema_version=RESULT_SCHEMA_VERSION,
         problem_id=problem.problem_id,
         solver=SolverSummary(
-            outcome="optimal" if economic_status == cp_model.OPTIMAL else "feasible_not_proven",
+            outcome="optimal" if proven else "feasible_not_proven",
             raw_status=economic_solver.StatusName(economic_status).lower(),
             objective_value_ore=cost_value,
             best_objective_bound_ore=bound,
@@ -138,7 +157,17 @@ def solve_joint_optimization(problem: JointOptimizationInput) -> JointOptimizati
         room_sessions=sessions,
         schedule=schedule,
         limitations=_limitations(problem),
-        verification=_verification(problem, economic_status == cp_model.OPTIMAL, assignments),
+        verification=_verification(problem, proven, assignments),
+    )
+
+
+def start_placement(start: dict[str, Any] | None) -> tuple[dict[str, str], set[str]] | None:
+    """Exam -> slot and the rooms used, from a saved result that has a placement."""
+    if not start or not start.get("schedule"):
+        return None
+    return (
+        {str(row["exam_demand_id"]): str(row["slot_id"]) for row in start["schedule"]},
+        {str(row["room_id"]) for row in start.get("room_sessions", ())},
     )
 
 
