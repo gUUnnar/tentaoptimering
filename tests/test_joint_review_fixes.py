@@ -158,7 +158,8 @@ class AssumptionComparisonTests(unittest.TestCase):
         self.assertTrue(result["comparable"])
         self.assertEqual(result["assumption_changes"]["cost"], ["Årlig lokalkostnad per plats"])
         self.assertIs(result["interpretable"], False)
-        self.assertIn("kostnadsantagandena har ändrats (Årlig lokalkostnad per plats)", result["interpretation"])
+        self.assertIn("Kostnadsantagandena har ändrats (Årlig lokalkostnad per plats)", result["interpretation"])
+        self.assertTrue(all(result["metrics"][name]["delta"] is None for name in ("cost_ore", "lower_bound_ore", "gap_ore")))  # N-5
         self.assertIn("effektivare schemaläggning", result["interpretation"])
         self.assertIn("modellkostnad", result["interpretation"])
         self.assertTrue(result["metrics"]["rooms_used"]["new"] is not None)  # the physical measures are still there
@@ -167,11 +168,12 @@ class AssumptionComparisonTests(unittest.TestCase):
         result = self._compare(**{"demand.variation_pct": 10})
         self.assertEqual(result["assumption_changes"]["demand"], ["Förändrat antal tentander"])
         self.assertIs(result["interpretable"], False)
-        self.assertIn("efterfrågan har ändrats (Förändrat antal tentander)", result["interpretation"])
+        self.assertIn("Efterfrågan har ändrats (Förändrat antal tentander)", result["interpretation"])
+        self.assertIsNone(result["metrics"]["cost_ore"]["delta"])  # a changed volume is not a planning effect (N-3)
 
     def test_both_kinds_at_once_are_named_together(self) -> None:
         result = self._compare(**{"demand.variation_pct": 10, "cost.staff_annual_ore": 3000})
-        self.assertIn("kostnadsantagandena har ändrats", result["interpretation"])
+        self.assertIn("Kostnadsantagandena har ändrats", result["interpretation"])
         self.assertIn("och efterfrågan har ändrats", result["interpretation"])
 
     def test_a_change_of_a_rule_is_not_called_an_assumption(self) -> None:

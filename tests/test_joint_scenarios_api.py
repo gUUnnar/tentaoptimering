@@ -257,8 +257,9 @@ class CompareTests(unittest.TestCase):
             "id": "cost.staff_annual_ore", "label": "Årskostnad per vaktresurs", "group": "kostnad", "unit": "ore_per_year",
             "old": 1000, "new": 3000}])
         cost = result["metrics"]["cost_ore"]
-        self.assertEqual(cost["delta"], cost["new"] - cost["old"])
-        self.assertGreater(cost["delta"], 0)
+        self.assertGreater(cost["new"], cost["old"])  # the amounts are shown, but no difference is reported (N-5)
+        self.assertIsNone(cost["delta"])
+        self.assertTrue(all(result["metrics"][name]["delta"] is None for name in ("cost_ore", "lower_bound_ore", "gap_ore")))
         self.assertEqual(set(result["metrics"]), {"cost_ore", "lower_bound_ore", "gap_ore", "changed_exams", "staff_pool_size", "rooms_used",
                                                   "wall_time_seconds", "first_solution_seconds"})
         self.assertTrue(all(set(item) == {"old", "new", "delta"} for item in result["metrics"].values()))
@@ -267,13 +268,15 @@ class CompareTests(unittest.TestCase):
         # A changed price is a changed assumption: the difference is shown, but never called an efficiency gain.
         self.assertIs(result["interpretable"], False)
         self.assertEqual(result["assumption_changes"], {"cost": ["Årskostnad per vaktresurs"], "demand": []})
-        self.assertIn("kostnadsantagandena har ändrats (Årskostnad per vaktresurs)", result["interpretation"])
-        self.assertIn("Kostnaden ökade med", result["interpretation"])
+        self.assertIn("Kostnadsantagandena har ändrats (Årskostnad per vaktresurs)", result["interpretation"])
+        self.assertIn("Ingen kostnadsskillnad redovisas", result["interpretation"])
+        self.assertNotIn("Kostnaden ökade", result["interpretation"])
         self.assertIn("modellkostnad", result["interpretation"])
         self.assertEqual(joint_api.compare_runs(workspace.storage, second, first, self.catalog), result)  # an explicit base gives the same
         reverse = joint_api.compare_runs(workspace.storage, first, second, self.catalog)
         self.assertEqual(reverse["parameter_changes"][0]["old"], 3000)
-        self.assertIn("sjönk", reverse["interpretation"])
+        self.assertNotIn("sjönk", reverse["interpretation"])  # reversed or not, no cost difference is reported
+        self.assertIsNone(reverse["metrics"]["cost_ore"]["delta"])
 
     def test_previous_is_the_closest_older_verified_run_of_the_same_problem(self) -> None:
         workspace = Workspace(self)
