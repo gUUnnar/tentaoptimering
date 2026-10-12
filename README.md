@@ -12,7 +12,9 @@ Målet är den lägsta **totala årskostnaden** för en fullt genomförbar verks
 - [AGENTS.md](AGENTS.md) – arbetsinstruktioner för Codex och aktuellt utvecklingssteg.
 - [Kodgranskning och arbetsuppdrag](docs/KODGRANSKNING_OCH_CODEX_UPPDRAG_2026-10-08.md) – ursprunglig kodinventering och nästa leverans.
 - [Gemensam optimeringsdesign](docs/GEMENSAM_OPTIMERINGSDESIGN.md) – kanoniskt tentamensbehov, salstillfällen, bemanning och årskostnad.
-- [Datamodell](docs/DATAMODELL.md), [kostnadsmodell](docs/KOSTNADSMODELL.md) och [datagap](docs/BLOCKERANDE_DATAGAP.md) – tekniska underlag som stäms av mot kravspecifikationen.\n- [Verksamhetsunderlag 2026-10-02](docs/VERKSAMHETSUNDERLAG_2026-10-02.md) – presentationens lokaler, pass, bemanning, utnyttjande och historiska kostnadskalkyler; källuppgifter är ännu inte verifierade modellregler.\n- [Överlämning till Claude 2026-10-12](docs/OVERLAMNING_CLAUDE_2026-10-12.md) – konkreta nästa steg och verifieringsfrågor för PR #11.
+- [Datamodell](docs/DATAMODELL.md), [kostnadsmodell](docs/KOSTNADSMODELL.md) och [datagap](docs/BLOCKERANDE_DATAGAP.md) – tekniska underlag som stäms av mot kravspecifikationen.
+- [Verksamhetsunderlag 2026-10-02](docs/VERKSAMHETSUNDERLAG_2026-10-02.md) – presentationens lokaler, pass, bemanning, utnyttjande och historiska kostnadskalkyler; källuppgifter är ännu inte verifierade modellregler.
+- [Överlämning till Claude 2026-10-12](docs/OVERLAMNING_CLAUDE_2026-10-12.md) – konkreta nästa steg och verifieringsfrågor för PR #11.
 
 ## Valbar period och granskning i gränssnittet
 
