@@ -60,6 +60,7 @@ function Summary({ summary }: { summary: JointSummary }) {
   const business = describeVerdict(summary.business_verification)
   const provenance = describeVerdict(summary.provenance)
   return <section className="space-y-4" aria-label="Sammanfattning av körningen">
+    {summary.has_verified_solution === false && <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-900">Körningen har ingen fullständig, verifierad lösning{summary.cancelled ? " (den avbröts)" : ""}. Inga kostnader nedan ska läsas som en lösning.</p>}
     <Card>
       <CardHeader><CardTitle>Sammanfattning</CardTitle></CardHeader>
       <CardContent className="space-y-3">

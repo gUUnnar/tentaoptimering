@@ -29,9 +29,10 @@ export function StartPanel({ api, scenarios, busy, onStart }: { api: JointApi; s
     if (!scenario) return
     let cancelled = false
     setCandidates(null); setCandidateError(""); setSpecific("")
-    api.listCandidates(scenario).then(list => { if (!cancelled) setCandidates(list) }).catch(error => { if (!cancelled) { setCandidates([]); setCandidateError((error as Error).message) } })
+    const problemId = scenarios.find(item => item.id === scenario)?.problem_id ?? scenario
+    api.listCandidates(problemId).then(list => { if (!cancelled) setCandidates(list) }).catch(error => { if (!cancelled) { setCandidates([]); setCandidateError((error as Error).message) } })
     return () => { cancelled = true }
-  }, [api, scenario])
+  }, [api, scenario, scenarios])
 
   const threadsValue = Number(threads)
   const threadsOk = threads.trim() !== "" && Number.isInteger(threadsValue) && threadsValue >= 0

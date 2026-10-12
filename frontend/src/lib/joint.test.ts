@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
-import { isMockRequested } from "./jointApi.ts"
+import { isMockRequested, toJointSummary } from "./jointApi.ts"
 import { DEMO_RUN_ID, REJECTED_RUN_ID, buildFixtureEvents } from "./jointFixture.ts"
 import { costStatement, describeVerdict, formatDuration, formatGap, formatKr } from "./jointFormat.ts"
 import { mockJointApi } from "./jointMock.ts"
@@ -165,5 +165,27 @@ describe("mockad datakälla", () => {
     assert.equal(last?.type, "finished")
     assert.equal(last?.type === "finished" && last.cancelled, true)
     assert.equal(done.run_id, null)
+  })
+})
+
+describe("översättning av backendens sammanfattning", () => {
+  const backend = {
+    cost_ore: 182300000, lower_bound_ore: 177300000, gap_relative: 0.027, changed_exams: 242, wall_time_seconds: 299.2,
+    first_solution_seconds: 109.6, solver_outcome: "feasible_not_proven", has_verified_solution: true, cancelled: false,
+    verdicts: { technical_validation: "pass", business_verification: "not_evaluated", provenance: "not_evaluated" },
+  }
+  it("byter fältnamn och håller de tre domarna isär", () => {
+    const summary = toJointSummary(backend)
+    assert.equal(summary.bound_ore, 177300000)
+    assert.equal(summary.gap, 0.027)
+    assert.equal(summary.wall_seconds, 299.2)
+    assert.equal(summary.outcome, "feasible_not_proven")
+    assert.deepEqual([summary.technical_validation, summary.business_verification, summary.provenance], ["pass", "not_evaluated", "not_evaluated"])
+  })
+  it("en körning utan verifierad lösning markeras, och saknade domar blir aldrig godkända", () => {
+    const summary = toJointSummary({ ...backend, has_verified_solution: false, cancelled: true, verdicts: undefined as never })
+    assert.equal(summary.has_verified_solution, false)
+    assert.equal(summary.cancelled, true)
+    assert.deepEqual([summary.technical_validation, summary.business_verification, summary.provenance], ["not_evaluated", "not_evaluated", "not_evaluated"])
   })
 })

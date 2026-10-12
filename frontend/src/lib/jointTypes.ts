@@ -1,7 +1,8 @@
 // Typer för API-kontraktet "gemensam körning" (/api/joint-runs, /api/runs/{id}/events, .../warm-start).
 // Kontraktet byggs parallellt av ett annat team; fält som kontraktet lämnar öppna är typade defensivt.
 
-export type JointScenario = { id: string; name: string; description: string }
+// problem_id är scenariots id i TOML-filen (det som körningarna sparas under), inte filnamnet.
+export type JointScenario = { id: string; name: string; description: string; problem_id?: string }
 
 export type WarmStartRequest = "auto" | "none" | (string & {})
 
@@ -42,7 +43,9 @@ export type FinishedEvent = EventBase & {
 export type JointEvent =
   | PhaseEvent | BatchEvent | DayEvent | IncumbentEvent | BoundEvent | WarmStartEvent | ResourcesEvent | FinishedEvent
 
-export type EventsResponse = { status: JointJobStatus; events: JointEvent[]; last_seq: number; run_id: string | null }
+export type EventsResponse = {
+  status: JointJobStatus; events: JointEvent[]; last_seq: number; run_id: string | null; error?: string | null
+}
 
 export type WarmStartCandidate = {
   run_id: string; problem_id: string; solver_outcome: string; cost_ore: number | null
@@ -75,6 +78,9 @@ export type JointSummary = {
   cost_ore: number | null; bound_ore: number | null; gap: number | null // gap som bråkdel, t.ex. 0.075
   changed_exams: number | null; first_solution_seconds: number | null; wall_seconds: number | null
   outcome: string
+  /** Fullständig placering som den oberoende valideringen godkänner. Saknas den visas ingen lösning. */
+  has_verified_solution?: boolean
+  cancelled?: boolean
   technical_validation: VerdictValue
   business_verification: VerdictValue
   provenance: VerdictValue | Record<string, unknown>

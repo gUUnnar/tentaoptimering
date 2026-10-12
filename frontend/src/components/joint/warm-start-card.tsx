@@ -63,7 +63,7 @@ export function WarmStartCard({ record }: { record: WarmStartRecord | null }) {
 
       <div>
         <h4 className="text-xs font-semibold">Körinställningar</h4>
-        <p className="mt-1 text-xs text-slate-700">Trådar {formatCount(record.execution.threads)} · minne {record.execution.memory_mb === null ? "ingen gräns" : `${formatCount(record.execution.memory_mb)} MB`} · parallella dagkontroller {record.execution.parallel_day_checks ? "på" : "av"} · trådar per kontroll {formatCount(record.execution.workers_per_check)}</p>
+        <p className="mt-1 text-xs text-slate-700">Trådar {formatCount(record.execution.threads)} · minne {record.execution.memory_mb === null ? "ingen gräns" : `${formatCount(record.execution.memory_mb)} MB`} · parallella dagkontroller {record.execution.parallel_day_checks ? "på" : "av"} · trådar per kontroll {record.execution.workers_per_check > 0 ? formatCount(record.execution.workers_per_check) : "automatiskt"}</p>
       </div>
     </CardContent>
   </Card>
