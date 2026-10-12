@@ -30,3 +30,14 @@ Lokal- och kostnadskällan modelleras på `lease_row_id`. En rad kan vara sal, d
 Normaliseringen bevarar källfälten men standardiserar rubriker, blanktecken, datum, heltal och tekniska nycklar. Den försöker inte lösa tvetydiga verksamhetsdefinitioner automatiskt.
 
 Se `docs/OPTIMERINGSUNDERLAG.md` för gränserna för vad tabellerna får användas till före motorbygge.
+
+
+## Tidsavgränsning, verklig beläggning och läsvyer
+
+Den nya dataleveransen avses omfatta **1 januari–30 september inklusive verklig beläggning**. Årtal, filformat, definition av faktisk beläggning och kopplingsnyckel till bokning/sal är ännu inte fastställda i detta dokument; materialet har **inte** importerats. Den data som finns tillgänglig när användaren kör ska avgöra möjliga planeringsperioder, inte fasta terminsdatum i koden.
+
+Behåll en deklarerad **periodtäckning per datatyp** (bokningar, Ladokefterfrågan, salregister/tillgänglighet, faktisk beläggning) med första/sista datum och kända luckor. En saknad beläggningspost betyder **okänd**, inte noll. Där källan tillåter det måste faktiskt nyttjande kunna knytas till **sal-ID + tidsintervall** och, när säkert möjligt, `exam_event_id` och en eller flera `placement_id`. Annars är uppgifterna separata observationsvärden med redovisad osäkerhet.
+
+Den normaliserade bokningsplaceringen och motsvarande tentahändelse ska kunna hämtas för **läsning utan att starta optimering**. Ett uppslag på tentamen kan ge flera fysiska salplaceringar, och ett saluppslag kan visa flera tentamina på samma dag med olika tidintervall. Källa, ursprunglig bokning och simulerad placering är olika informationsmängder och får inte uppdatera varandra.
+
+För analys av utnyttjande redovisas mått explicit: **bokade salstimmar**, **dokumenterade tillgängliga salstimmar**, **bokade platser**, **anmälda tentander**, **faktiskt närvarande** eller **verklig lokalbeläggning** beroende på källans definition. Gör aldrig en kvot mellan olika korn utan att förklara relationen, nämnaren och täckningsgraden. Specifika nya tabeller/kolumner fastställs först när leveransens schema granskats.
