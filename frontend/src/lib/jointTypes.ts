@@ -149,7 +149,7 @@ export type JointSummary = {
   provenance: VerdictValue | Record<string, unknown>
 }
 
-export type SavedRun = { run_id: string; scenario_id: string; status: string; engine?: string; created_at?: string }
+export type SavedRun = { run_id: string; scenario_id: string; status: string; created_at?: string }
 
 // ---- Jämförelse mellan två körningar -------------------------------------------------------------------------------
 

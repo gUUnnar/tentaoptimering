@@ -3,17 +3,20 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { formatDuration, outcomeLabel } from "@/lib/jointFormat"
 import type { JointState } from "@/lib/jointState"
+import { isMissingUnderlayMessage } from "@/lib/underlay"
 import type { JointJob } from "@/lib/useJointJob"
 import { RunPanels } from "./run-panels"
 import { JobStatusChip } from "./status-chip"
+import { UnderlayNotice } from "./underlay-notice"
 
-export function LiveView({ job, state, nowT, onCancel, onShowResult }: {
-  job: JointJob; state: JointState; nowT: number; onCancel: () => void; onShowResult: (runId: string) => void
+export function LiveView({ job, state, nowT, onCancel, onShowResult, onOpenUnderlay }: {
+  job: JointJob; state: JointState; nowT: number; onCancel: () => void; onShowResult: (runId: string) => void; onOpenUnderlay: () => void
 }) {
   if (job.status === "idle") return <Card><CardContent className="pt-4 text-sm text-slate-900">Ingen körning pågår. Starta en körning under "1. Ställ in och kör".</CardContent></Card>
   const running = job.status === "running"
   const starting = job.status === "starting"
   const failure = job.error ?? state.finished?.error ?? null
+  const missingUnderlay = isMissingUnderlayMessage(failure)
   return <div className="space-y-4">
     <Card><CardContent className="space-y-3 pt-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -32,7 +35,9 @@ export function LiveView({ job, state, nowT, onCancel, onShowResult }: {
         {running && job.cancelRequested && <p className="text-amber-900">Stoppbegäran är skickad. Modellen avslutar det den håller på med och sparar den bästa kontrollerade lösningen.</p>}
         {running && !job.cancelRequested && <p className="text-slate-900">Körningen pågår. Du kan lämna sidan och komma tillbaka; körningen fortsätter.</p>}
         {state.finished && <p><strong>{state.finished.cancelled ? "Körningen stoppades" : state.finished.outcome === "failed" ? "Körningen misslyckades" : "Körningen är klar"}:</strong> {outcomeLabel(state.finished.outcome)}.{state.finished.cancelled && state.finished.cost_ore === null && " Ingen kontrollerad lösning fanns att spara."}</p>}
-        {(job.status === "failed" || state.finished?.outcome === "failed") && <p className="text-red-900"><strong>Körningen misslyckades.</strong> {failure ?? ""}</p>}
+        {(job.status === "failed" || state.finished?.outcome === "failed") && (missingUnderlay
+          ? <UnderlayNotice onOpen={onOpenUnderlay} detail="Körningen kunde inte läsa det förberedda underlaget. Förbered underlaget under Underlag och starta sedan om körningen."/>
+          : <p className="text-red-900"><strong>Körningen misslyckades.</strong> {failure ?? ""}</p>)}
       </div>
       {job.connectionLost && <p className="flex items-start gap-1.5 rounded-md bg-amber-50 p-2 text-xs text-amber-900" role="alert"><TriangleAlert size={14} className="mt-0.5 shrink-0" aria-hidden="true"/>Kontakten med servern är bruten ({job.error}). Gränssnittet försöker igen varje sekund; körningen kan fortsätta på servern.</p>}
       {!running && !starting && job.runId && <Button variant="outline" onClick={() => onShowResult(job.runId!)}>Visa resultat och jämförelse</Button>}

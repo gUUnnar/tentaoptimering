@@ -67,7 +67,7 @@ describe("felsvar från API:et", () => {
 })
 
 describe("scenarier och körtid", () => {
-  it("scenario utan problem_id får namnet som problem-id (äldre backend)", () => {
+  it("scenario utan problem_id får namnet som problem-id (saknat problem_id)", () => {
     assert.equal(toJointScenario({ id: "joint_real_subset", name: "joint_real_subset_2026" }).problem_id, "joint_real_subset_2026")
     assert.equal(toJointScenario({ id: "a", name: "b", problem_id: "c" }).problem_id, "c")
   })

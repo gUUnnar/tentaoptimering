@@ -50,7 +50,7 @@ export function errorFromBody(status: number, body: unknown): ApiError {
   return new ApiError(`Anropet misslyckades (HTTP ${status}).`, status)
 }
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+export async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(path, { headers: { "Content-Type": "application/json" }, ...options })
   if (!response.ok) throw errorFromBody(response.status, await response.json().catch(() => ({})))
   return response.json() as Promise<T>
@@ -128,7 +128,7 @@ export const jointApi: JointApi = {
   },
   summary: async runId => toJointSummary(await request<BackendSummary>(`/api/joint-runs/${enc(runId)}/summary`)),
   compare: async (runId, base) => toCompareResult(await request<unknown>(`/api/joint-runs/${enc(runId)}/compare?base=${enc(base)}`)),
-  // Körningar listas ur sparade artefakter; /api/runs gäller den äldre motorn.
+  // Körningar listas ur de sparade körningsartefakterna.
   listRuns: async () => (await request<{ candidates: WarmStartCandidate[] }>("/api/joint-runs/warm-start-candidates")).candidates
-    .map(item => ({ run_id: item.run_id, scenario_id: item.problem_id, status: item.solver_outcome, engine: "joint" })),
+    .map(item => ({ run_id: item.run_id, scenario_id: item.problem_id, status: item.solver_outcome })),
 }

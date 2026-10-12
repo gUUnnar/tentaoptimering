@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ApiError } from "@/lib/jointApi"
 import { runtimeEstimate } from "@/lib/jointScenarioInfo"
+import { isMissingUnderlayMessage, scenarioNeedsUnderlay } from "@/lib/underlay"
 import type { RunChangeText } from "@/lib/jointJobMemory"
 import type { JointScenario, StartJointRunBody } from "@/lib/jointTypes"
 import { DEFAULT_RUN_OPTIONS, runOptionsValid, toStartBody, type RunOptions } from "@/lib/runOptions"
@@ -12,6 +13,7 @@ import { ParamList } from "./params/param-list"
 import { RunOptionsPanel } from "./run-options"
 import { SaveScenario } from "./save-scenario"
 import { ScenarioPicker } from "./scenario-picker"
+import { UnderlayNotice } from "./underlay-notice"
 
 type Props = {
   scenarios: JointScenario[]
@@ -19,9 +21,10 @@ type Props = {
   busy: boolean
   onStart: (body: StartJointRunBody, changes: RunChangeText[]) => Promise<void>
   onSaved: (scenario: JointScenario) => Promise<void>
+  onOpenUnderlay: () => void
 }
 
-export function StartPanel({ scenarios, loadError, busy, onStart, onSaved }: Props) {
+export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpenUnderlay }: Props) {
   const [scenarioId, setScenarioId] = useState("")
   const [options, setOptions] = useState<RunOptions>(DEFAULT_RUN_OPTIONS)
   const [submitting, setSubmitting] = useState(false)
@@ -39,8 +42,9 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved }: Pro
   const ready = editor.load.status === "ready"
   const optionsOk = runOptionsValid(options)
   const problems = useMemo(() => editor.params.filter(param => editor.errors[param.id]).map(param => ({ id: param.id, label: param.label, message: editor.errors[param.id] })), [editor.params, editor.errors])
-  const canStart = !busy && !submitting && !!scenarioId && ready && !editor.hasErrors && optionsOk
-  const why = busy ? "En körning pågår redan." : !ready ? "Parametrarna har inte hämtats än." : editor.hasErrors ? "Rätta felen i parametrarna först." : !optionsOk ? "Rätta valen för start och resurser först." : null
+  const missingUnderlay = scenarioNeedsUnderlay(scenario) || isMissingUnderlayMessage(startError) || isMissingUnderlayMessage(loadError)
+  const canStart = !busy && !submitting && !!scenarioId && ready && !editor.hasErrors && optionsOk && !scenarioNeedsUnderlay(scenario)
+  const why = busy ? "En körning pågår redan." : scenarioNeedsUnderlay(scenario) ? "Förbered underlaget under Underlag först." : !ready ? "Parametrarna har inte hämtats än." : editor.hasErrors ? "Rätta felen i parametrarna först." : !optionsOk ? "Rätta valen för start och resurser först." : null
 
   const changeScenario = (id: string) => {
     if (id === scenarioId) return
@@ -62,9 +66,10 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved }: Pro
   const saveDisabled = !ready ? "Parametrarna har inte hämtats än." : editor.changes.length === 0 ? "Gör minst en ändring först." : editor.hasErrors ? "Rätta felen i parametrarna först." : null
 
   return <div className="space-y-4">
+    {missingUnderlay && <UnderlayNotice onOpen={onOpenUnderlay}/>}
     <Card>
       <CardHeader><CardTitle>1. Välj scenario</CardTitle></CardHeader>
-      <CardContent><ScenarioPicker scenarios={scenarios} value={scenarioId} onChange={changeScenario} loadError={loadError}/></CardContent>
+      <CardContent><ScenarioPicker scenarios={scenarios} value={scenarioId} onChange={changeScenario} loadError={isMissingUnderlayMessage(loadError) ? "" : loadError}/></CardContent>
     </Card>
 
     <section aria-label="Parametrar" className="space-y-3">
@@ -89,7 +94,7 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved }: Pro
           <p className="font-semibold">{problems.length} {problems.length === 1 ? "parameter behöver rättas" : "parametrar behöver rättas"}:</p>
           <ul className="mt-1 list-disc pl-5">{problems.map(item => <li key={item.id}><strong>{item.label}:</strong> {item.message}</li>)}</ul>
         </div>}
-        {startError && <p role="alert" className="flex items-start gap-1.5 text-sm text-red-900"><CircleAlert size={16} className="mt-0.5 shrink-0" aria-hidden="true"/>{startError}</p>}
+        {startError && !isMissingUnderlayMessage(startError) && <p role="alert" className="flex items-start gap-1.5 text-sm text-red-900"><CircleAlert size={16} className="mt-0.5 shrink-0" aria-hidden="true"/>{startError}</p>}
         <div className="flex flex-wrap items-start gap-4">
           <div>
             <Button type="button" size="lg" disabled={!canStart} onClick={() => void submit()} aria-describedby="start-why"><Play size={15} className="mr-1" aria-hidden="true"/>{submitting ? "Startar …" : "Kör"}</Button>

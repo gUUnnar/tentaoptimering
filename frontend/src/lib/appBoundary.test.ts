@@ -26,3 +26,15 @@ describe("testdata hör inte hemma i appen", () => {
     assert.deepEqual(offenders.map(path => relative(SRC, path)), [])
   })
 })
+
+describe("inga rester av den borttagna motorn", () => {
+  const removedRoutes = /\/api\/(parameters|scenarios|simulations|runs\/compare)|["'`]\/api\/runs["'`]|\/api\/runs\/\$\{[^}]*\}(?!\/(events|warm-start)\b)/
+  it("appkoden anropar inga borttagna API-rutter", () => {
+    const offenders = appFiles.filter(path => removedRoutes.test(readFileSync(path, "utf8")))
+    assert.deepEqual(offenders.map(path => relative(SRC, path)), [])
+  })
+  it("gränssnittet nämner ingen äldre motor", () => {
+    const offenders = appFiles.filter(path => /äldre motor|legacy-nav/i.test(readFileSync(path, "utf8")))
+    assert.deepEqual(offenders.map(path => relative(SRC, path)), [])
+  })
+})

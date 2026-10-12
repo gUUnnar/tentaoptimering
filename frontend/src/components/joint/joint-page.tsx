@@ -12,7 +12,7 @@ type Tab = "start" | "live" | "result"
 const TRIGGER = "rounded-t-md border-b-2 border-transparent px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700 data-[state=active]:border-sky-800 data-[state=active]:text-sky-900"
 
 /** Sidan "Optimering": ställ in och kör, följ körningen, läs och jämför resultatet. */
-export default function JointPage() {
+export default function JointPage({ onOpenUnderlay, reloadKey }: { onOpenUnderlay: () => void; reloadKey: number }) {
   const [scenarios, setScenarios] = useState<JointScenario[]>([])
   const [runs, setRuns] = useState<SavedRun[]>([])
   const [loadError, setLoadError] = useState("")
@@ -24,7 +24,7 @@ export default function JointPage() {
     try { setScenarios(await jointApi.listScenarios()); setLoadError("") } catch (error) { setLoadError((error as Error).message) }
   }, [])
   const refreshRuns = useCallback(() => { jointApi.listRuns().then(setRuns).catch(() => setRuns([])) }, [])
-  useEffect(() => { void loadScenarios(); refreshRuns() }, [loadScenarios, refreshRuns])
+  useEffect(() => { void loadScenarios(); refreshRuns() }, [loadScenarios, refreshRuns, reloadKey])
 
   // En körning som återupptas efter navigering visas direkt.
   useEffect(() => { if (job.status === "running" && job.events.length === 0 && job.jobId) setTab("live") }, [job.status, job.jobId])
@@ -43,9 +43,9 @@ export default function JointPage() {
         <Tabs.Trigger className={TRIGGER} value="result">3. Resultat och jämförelse</Tabs.Trigger>
       </Tabs.List>
       <Tabs.Content value="start" forceMount className="data-[state=inactive]:hidden">
-        <StartPanel scenarios={scenarios} loadError={loadError} busy={busy} onStart={begin} onSaved={async () => { await loadScenarios() }}/>
+        <StartPanel scenarios={scenarios} loadError={loadError} busy={busy} onStart={begin} onOpenUnderlay={onOpenUnderlay} onSaved={async () => { await loadScenarios() }}/>
       </Tabs.Content>
-      <Tabs.Content value="live"><LiveView job={job} state={state} nowT={nowT} onCancel={() => void cancel()} onShowResult={showResult}/></Tabs.Content>
+      <Tabs.Content value="live"><LiveView job={job} state={state} nowT={nowT} onCancel={() => void cancel()} onShowResult={showResult} onOpenUnderlay={onOpenUnderlay}/></Tabs.Content>
       <Tabs.Content value="result"><ResultView runId={resultRunId} runs={runs} onSelectRun={setResultRunId}/></Tabs.Content>
     </Tabs.Root>
   </div>
