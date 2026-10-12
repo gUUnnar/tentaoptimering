@@ -54,6 +54,8 @@ $env:PYTHONPATH = (Resolve-Path src).Path
 
 Körningen sparar versionsmärkt modellindata, resultat, manifest och rapport under `runs/`. Se [första gemensamma CP-SAT-leveransen](docs/GEMENSAM_CP_SAT_FORSTA_LEVERANS.md) för statussemantik, handräknade facit, uppmätt verklig körning och kända begränsningar.
 
+Standardstrategin är `solver.strategy = "decomposed"`. En aggregerad relaxation väljer datum, lokalportfölj och bemanningspool och ger en bevisad undre kostnadsgräns. Därefter kontrolleras varje dag exakt med samma hårda villkor. Den monolitiska modellen kan väljas med `"monolithic"`. Se [optimeringsstrategin](docs/OPTIMERINGSSTRATEGI.md) för analys och mätningar.
+
 ## Lokalt gränssnitt
 
 PoC:n har ett lokalt React- och FastAPI-gränssnitt för scenarier, parametrar, terminskörningar och eftervalidering. Se [lokalt gränssnitt](docs/LOKALT_GRANSSNITT.md) för utveckling, Windows-paketering och offlineverifiering.

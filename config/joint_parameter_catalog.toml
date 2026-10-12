@@ -392,7 +392,7 @@ value_type = "number"
 unit = "seconds"
 default = 300.0
 default_basis = "experiment"
-help_text = "Hård tidsgräns för hela körningen, inklusive ändringspreferens. Mätt med strategin decomposed: en hel termin (1 172 tentor) ger första verifierade lösning efter cirka 2,5 minuter; enskilda veckor efter 10-60 sekunder."
+help_text = "Tidsgräns i väggtid för hela körningen, inklusive ändringspreferens. Strategin decomposed kan överskrida den (mätt: 450 s mot 300 s för hela terminen). Mätt med decomposed: första fullständiga terminslösning efter 2-7,5 minuter, veckor efter 14-107 sekunder. Se docs/OPTIMERINGSSTRATEGI.md."
 engine_support = "implemented"
 honored_by = "joint_optimizer._solver"
 

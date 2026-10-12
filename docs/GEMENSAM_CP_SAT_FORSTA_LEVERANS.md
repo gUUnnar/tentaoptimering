@@ -105,6 +105,8 @@ Lösningarna för samma storlek ligger inom några procent av varandra (120 tent
 
 **Slutsats om väg framåt.** Lösningsfas och modellstorlek är inte begränsande upp till minst 160 tentor; bevisfasen är det. Hela terminen (cirka 1 170 tentor) är inte löst i denna PR och ingen sådan körning har gjorts; det som är mätt är att indata och validering byggs på 4 sekunder och att den uppskattade modellstorleken är runt 90 000 variabler. Närmast prövbara steg: veckovis nedbrytning med gemensam lokalportfölj, startlösning från föregående vecka, fler skär för poolen. Inget av detta är mätt ännu.
 
+**Uppföljning (2026-10-11).** Mätningarna på hela veckor och hela terminen finns nu i `docs/OPTIMERINGSSTRATEGI.md`. Den monolitiska modellen hittar ingen lösning för hela terminen på 5 minuter (112 071 variabler, 8 GB). Den nya standardstrategin `decomposed` (aggregerad relaxation och exakt kontroll dag för dag) ger en verifierad lösning med bevisad undre gräns. Siffrorna ovan gäller den monolitiska modellen.
+
 ## Handräknade referensfall
 
 `tests/test_joint_optimizer.py` innehåller oberoende småfall med exakta svar:
