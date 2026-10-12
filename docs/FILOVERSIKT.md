@@ -26,7 +26,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `config/room_register.toml` | Versionsmärkt officiellt rumsreferenslager med publicerade kapaciteter, källadress och tidsmässig osäkerhet. |
 | `config/source_files.toml` | Namn, blad och rubrikrad för de tre lästa källexporterna. |
 | `config/scenarios/joint_real_subset.toml` | Reproducerbart avgränsat verkligt datafall för den nya gemensamma CP-SAT-kärnan. |
-| `config/scenarios/joint_underlay_period.toml` | Hela vårterminen 2026 som bundet scenario (`joint_underlay_period_2026`): urvalet anges med regel (`selection = "all_ready"` med datumintervall) i stället för en id-lista, och ger samma 1 172 tentor som den frusna terminsinstansen. |
+| `config/scenarios/joint_underlay_period.toml` | Befintligt avgränsat scenariourval i Uppsala (`joint_underlay_period_2026`), 12 januari–31 mars 2026: regel `selection = "all_ready"` med datumintervall, 1 172 tentor. Ingen generell minsta terminslängd; framtida användarstyrt periodval är krav. |
 
 ## Dokumentation
 
