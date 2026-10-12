@@ -18,6 +18,8 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
+import logging
+import time
 from typing import Any
 
 from ortools.sat.python import cp_model
@@ -29,6 +31,8 @@ from ..joint_optimizer import _conflicts, _overlap, staffing_cut_edges
 # room outside `rooms` is owned. kind "rooms": that combination is infeasible; kind "pool": it needs
 # at least `value` concurrent staff.
 Cut = tuple[str, frozenset[date], frozenset[str], frozenset[str], int]
+
+LOG = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -45,7 +49,7 @@ class MasterSolution:
     status: str
     objective: int | None
     bound: int | None
-    plans: tuple[Plan, ...]  # history-preferring plan first, then the plain economic plan if it differs
+    plans: tuple[Plan, ...]  # the economic plan, then a history-preferring plan with the same portfolio if it differs
     wall_seconds: float
 
 
@@ -57,11 +61,17 @@ def solve_master(
     hint: dict[str, str] | None = None,
     prefer_history_seconds: float = 0.0,
 ) -> MasterSolution:
-    """Minimise the relaxed cost; optionally then keep historical slots at that cost."""
+    """Minimise the relaxed cost; optionally then keep historical slots with the same portfolio and pool.
+
+    The model build counts against `time_limit`.
+    """
+    started = time.perf_counter()
     model, x, owned, pool, cost = _build(problem, cuts, hint)
-    solver = cp_solver(time_limit, settings)
+    built = time.perf_counter()
+    solver = cp_solver(max(0.1, time_limit - (built - started)), settings)
     status = solver.Solve(model)
-    wall = solver.WallTime()
+    LOG.debug("master build %.2f s, solve %.2f s of %.2f s", built - started, solver.WallTime(), time_limit - (built - started))
+    wall = time.perf_counter() - started
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
         name = "infeasible" if status == cp_model.INFEASIBLE else "unknown"
         return MasterSolution(name, None, None, (), wall)
@@ -71,7 +81,11 @@ def solve_master(
     if status == cp_model.OPTIMAL and prefer_history_seconds > 0:
         kept = _history_terms(problem, x)
         if kept:
+            # Same cost, same portfolio, no larger pool: only the dates may change, towards history.
             model.Add(cost <= objective)
+            for room, var in owned.items():
+                model.Add(var == int(room in economic.owned))
+            model.Add(pool <= economic.pool)
             model.Maximize(sum(kept))
             # Start from the complete first-phase solution so the search begins feasible.
             model.ClearHints()
@@ -80,9 +94,10 @@ def solve_master(
                 model.AddHint(var, solver.Value(var))
             second = cp_solver(prefer_history_seconds, settings)
             if second.Solve(model) in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-                wall += second.WallTime()
                 history = _plan(second, x, owned, pool)
-                plans = (history,) if history == economic else (history, economic)
+                if history != economic:
+                    plans = (economic, history)
+            wall = time.perf_counter() - started
     return MasterSolution(
         "optimal" if status == cp_model.OPTIMAL else "feasible",
         objective,
@@ -142,12 +157,13 @@ def _build(problem: JointOptimizationInput, cuts: tuple[Cut, ...], hint: dict[st
     _room_time_capacity(model, problem, slots, x, owned, cap)
     _building_integrity(model, problem, owned, cap)
     pool = model.NewIntVar(0, len(problem.rooms) * problem.staffing.ladder[-1].required_staff * len(problem.slots), "pool")
-    session_staff = _staffing_bound(model, problem, slots, x, owned, cap, pool)
+    session_staff, external = _staffing_bound(model, problem, slots, x, owned, cap, pool)
     _conflict_pairs(model, problem, slots, x)
     cost = (
         sum(room.annual_fixed_cost_ore * owned[room.room_id] for room in problem.rooms)
         + problem.staffing.annual_cost_ore_per_staff * pool
         + problem.staffing.cost_ore_per_staff_session * session_staff
+        + external
     )
     model.Minimize(cost)
     _add_cuts(model, problem, slots, x, owned, pool, cuts)
@@ -222,11 +238,13 @@ def _hull_from_one(table: list[int]) -> list[tuple[tuple[int, int], tuple[int, i
     return [(left, right) for left, right in zip(hull, hull[1:]) if left[0] != right[0]]
 
 
-def _staffing_bound(model, problem, slots, x, owned, cap, pool) -> Any:
-    """Bound the pool; return a lower bound on the staff summed over all room sessions."""
+def _staffing_bound(model, problem, slots, x, owned, cap, pool) -> tuple[Any, Any]:
+    """Bound the pool; return lower bounds on the staff summed over all room sessions and on the
+    external session charges (every room used at a slot is at least one session there)."""
     prep, closing = problem.staffing.preparation_minutes, problem.staffing.closing_minutes
     max_staff = problem.staffing.ladder[-1].required_staff
     starting: dict[str, int | Any] = {}
+    external: list[Any] = []
     for slot in problem.slots:
         rooms = [room for room in problem.rooms if room.available_slot_ids is None or slot.slot_id in room.available_slot_ids]
         load_by_area: dict[str, list[Any]] = defaultdict(list)
@@ -250,6 +268,8 @@ def _staffing_bound(model, problem, slots, x, owned, cap, pool) -> Any:
                 rise, run = y1 - y0, x1 - x0
                 model.Add(run * staff >= rise * occupancy + (run * y0 - rise * x0) * used)
             staff_terms.append((room.plan_area, occupancy, staff))
+            if room.external_session_cost_ore:
+                external.append(room.external_session_cost_ore * used)
         for area, load in load_by_area.items():
             model.Add(sum(occ for room_area, occ, _ in staff_terms if room_area == area) == sum(load))
         starting[slot.slot_id] = sum(staff for _, _, staff in staff_terms)
@@ -278,7 +298,7 @@ def _staffing_bound(model, problem, slots, x, owned, cap, pool) -> Any:
                 if run * y0 - rise * x0 >= 0:
                     model.Add(run * hull >= rise * sum(earlier) + (run * y0 - rise * x0) * sessions)
             model.Add(pool >= starting.get(slot.slot_id, 0) + hull)
-    return sum(starting.values())
+    return sum(starting.values()), sum(external)
 
 
 def _capped_ladder(ladder: tuple[StaffingStep, ...], capacity: int) -> tuple[StaffingStep, ...]:

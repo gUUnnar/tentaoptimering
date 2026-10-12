@@ -392,7 +392,7 @@ value_type = "number"
 unit = "seconds"
 default = 300.0
 default_basis = "experiment"
-help_text = "Tidsgräns i väggtid för hela körningen, inklusive ändringspreferens. Strategin decomposed kan överskrida den (mätt: 450 s mot 300 s för hela terminen). Mätt med decomposed: första fullständiga terminslösning efter 2-7,5 minuter, veckor efter 14-107 sekunder. Se docs/OPTIMERINGSSTRATEGI.md."
+help_text = "Tidsgräns i väggtid för hela körningen, inklusive modellbyggen, reparationer och ändringspreferens. Ett pågående CP-SAT-anrop avslutas först vid sin egen gräns (mätt: hela terminen 302 s mot 300 s). Mätt med decomposed: första fullständiga terminslösning efter cirka 134 s, 39 s med varmstart från en tidigare lösning. Se docs/OPTIMERINGSSTRATEGI.md."
 engine_support = "implemented"
 honored_by = "joint_optimizer._solver"
 

@@ -17,6 +17,7 @@ import random
 import re
 import sys
 import tempfile
+import time
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -29,7 +30,7 @@ from tentaoptimering.joint_contract import (  # noqa: E402
 )
 from tentaoptimering.joint_optimizer import solve_joint_optimization  # noqa: E402
 from tentaoptimering.joint_strategy.aggregate import solve_master  # noqa: E402
-from tentaoptimering.joint_strategy.decomposed import peak_staff  # noqa: E402
+from tentaoptimering.joint_strategy.verification import peak_staff  # noqa: E402
 from tentaoptimering.joint_validation import validate_run  # noqa: E402
 
 
@@ -181,6 +182,108 @@ class CutPathTests(unittest.TestCase):
             self.assertEqual(decomposed.solver.objective_value_ore, exact.solver.objective_value_ore)
             payload = _validate(Path(temp), problem, decomposed)
             self.assertEqual([item["rule_id"] for item in payload["rules"] if item["status"] == "fail"], [])
+
+
+def _external_hire_problem(strategy: str, days: int) -> JointOptimizationInput:
+    """Hand case: one 50-person exam per day, fixed to its day.
+
+    An owned room costs 1 000 öre per year; an external room costs nothing per year but 400 öre per
+    session. Staff 100 öre per pool resource (pool 1 either way). Over two days hire is cheaper
+    (2 x 400 = 800 < 1 000); over three days the owned room is (1 200 > 1 000).
+    """
+    slots = tuple(CandidateSlot(f"d{day}", date(2026, 1, 12 + day), "08:00", 480, 1200) for day in range(days))
+    demands = tuple(
+        ExamDemand(f"e{day}", (_group(f"e{day}", 50),), 240, "Uppsala", (f"d{day}",), f"d{day}",
+                   original_date=date(2026, 1, 12 + day), original_start_minute=480)
+        for day in range(days)
+    )
+    rooms = (Room("owned", "b1", "Uppsala", 60, 1000), Room("hired", "b2", "Uppsala", 60, 0, 400))
+    return JointOptimizationInput(
+        INPUT_SCHEMA_VERSION, "external", "hash", slots, demands, rooms,
+        StaffingCostPolicy((StaffingStep(100, 1),), 100), SolverSettings(20, 1, 4, False, strategy, 0.0), (),
+        ScopeSummary(days, days, 0, 0, days, 50 * days), 30,
+    )
+
+
+class ExternalHireTests(unittest.TestCase):
+    def test_both_strategies_minimise_the_same_cost_with_external_hire(self) -> None:
+        expected = {2: ("hired", 0, 800, 900), 3: ("owned", 1000, 0, 1100)}
+        for days, (room, fixed, external, total) in expected.items():
+            for strategy in ("monolithic", "decomposed"):
+                with self.subTest(days=days, strategy=strategy):
+                    result = solve_joint_optimization(_external_hire_problem(strategy, days))
+                    self.assertEqual(result.solver.outcome, "optimal")
+                    self.assertEqual({row["room_id"] for row in result.room_sessions}, {room})
+                    self.assertEqual((result.costs.annual_room_cost_ore, result.costs.external_room_session_cost_ore,
+                                      result.costs.comparable_total_cost_ore), (fixed, external, total))
+
+    def test_bound_and_optimum_agree_on_random_cases_with_external_hire(self) -> None:
+        checked = 0
+        for seed in range(12):
+            with self.subTest(seed=seed), tempfile.TemporaryDirectory() as temp:
+                events, rooms, overrides = _random_case(seed)
+                problem, _ = fx._solve(Path(temp), events, rooms, {**overrides, "solver.time_limit_seconds": 1.0})
+                rng = random.Random(seed)
+                problem = replace(problem, rooms=tuple(
+                    replace(room, external_session_cost_ore=rng.choice((0, 300, 2000)),
+                            annual_fixed_cost_ore=rng.choice((0, room.annual_fixed_cost_ore)))
+                    for room in problem.rooms))
+                exact = solve_joint_optimization(_with(problem, "monolithic"))
+                if exact.solver.outcome != "optimal":
+                    continue
+                checked += 1
+                master = solve_master(problem, 20.0, SolverSettings(20, 5, 4))
+                decomposed = solve_joint_optimization(_with(problem, "decomposed"))
+                self.assertLessEqual(master.bound, exact.solver.objective_value_ore, "relaxation above the optimum")
+                self.assertLessEqual(decomposed.solver.best_objective_bound_ore, exact.solver.objective_value_ore)
+                self.assertGreaterEqual(decomposed.solver.objective_value_ore, exact.solver.objective_value_ore)
+                if decomposed.solver.outcome == "optimal":
+                    self.assertEqual(decomposed.solver.objective_value_ore, exact.solver.objective_value_ore)
+        self.assertGreaterEqual(checked, 5)
+
+    def test_relaxation_bound_with_external_hire_is_valid_and_exact_here(self) -> None:
+        for days, total in ((2, 900), (3, 1100)):
+            with self.subTest(days=days):
+                master = solve_master(_external_hire_problem("decomposed", days), 10.0, SolverSettings(10, 1, 4))
+                self.assertEqual((master.status, master.bound), ("optimal", total))
+
+
+class WarmStartAndTimeTests(unittest.TestCase):
+    def _saved(self, result) -> dict:
+        return json.loads(json.dumps({"schedule": list(result.schedule), "room_sessions": list(result.room_sessions)}))
+
+    def test_an_earlier_verified_placement_seeds_a_more_flexible_instance(self) -> None:
+        narrow = _two_day_problem("decomposed")
+        narrow = replace(narrow, demands=tuple(replace(item, candidate_slot_ids=(item.original_slot_id,)) for item in narrow.demands))
+        earlier = solve_joint_optimization(narrow)
+        self.assertEqual(earlier.solver.outcome, "optimal")  # all fixed: two exams share d1-am
+        wide = _two_day_problem("decomposed")
+        result = solve_joint_optimization(wide, self._saved(earlier))
+        self.assertLessEqual(result.costs.comparable_total_cost_ore, earlier.costs.comparable_total_cost_ore)
+        self.assertEqual(result.costs.comparable_total_cost_ore, 1300)
+        with tempfile.TemporaryDirectory() as temp:
+            payload = _validate(Path(temp), wide, result)
+            self.assertEqual([item["rule_id"] for item in payload["rules"] if item["status"] == "fail"], [])
+
+    def test_a_placement_the_instance_no_longer_allows_is_ignored_not_trusted(self) -> None:
+        from tentaoptimering.joint_strategy.verification import Checker, warm_start
+        problem = _two_day_problem("decomposed")
+        checker = Checker(problem, time.perf_counter() + 20)
+        allowed = {"a": "d1-am", "b": "d1-pm", "c": "d2-am"}
+        self.assertIsNotNone(warm_start(checker, allowed, {"small-1"}))
+        self.assertIsNone(warm_start(checker, {**allowed, "c": "d1-am"}, {"small-1"}))  # c may not be on day 1
+        self.assertIsNone(warm_start(checker, {"a": "d1-am", "b": "d1-pm"}, {"small-1"}))  # c missing
+        self.assertIsNone(warm_start(checker, allowed, {"gone"}))  # room no longer exists
+
+    def test_the_time_limit_covers_builds_and_repairs(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            events, rooms, overrides = _dense_case(12)
+            problem, _ = fx._solve(Path(temp), events, rooms, overrides)
+            for limit in (1.0, 3.0):
+                with self.subTest(limit=limit):
+                    started = time.perf_counter()
+                    solve_joint_optimization(_with(problem, "decomposed", limit=limit))
+                    self.assertLess(time.perf_counter() - started, limit + 1.5)
 
 
 class GapLimitTests(unittest.TestCase):

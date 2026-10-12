@@ -1,6 +1,6 @@
 # Optimeringsstrategi: aggregerad relaxation och exakt kontroll dag för dag
 
-**Status:** analys och avgränsad prototyp. Prototypen är lösningsstrategin `solver.strategy = "decomposed"`; den monolitiska modellen finns kvar som `"monolithic"`. Mätningarna gjordes 2026-10-11–12 på frysta verkliga instanser, och den slutliga koden är frusen i commit `5080899`.
+**Status:** analys och avgränsad prototyp. Prototypen är lösningsstrategin `solver.strategy = "decomposed"`; den monolitiska modellen finns kvar som `"monolithic"`. Mätningarna i avsnitt 5 gjordes 2026-10-11–12 med koden frusen i commit `5080899`. Rättningarna efter granskningen av PR #9 och deras riktade kontroller redovisas i avsnitt 8.
 
 PoC:n ska svara på två frågor: hur mycket lokalbehovet kan minska med bättre schemaläggning, och vad det motsvarar ekonomiskt. I modellen avgörs svaret av två storheter:
 
@@ -20,10 +20,10 @@ Alla belopp nedan är modellkostnader med proxypriserna 1 000 kr per plats och �
    - Tre av fem parameterändringar avgörs som ogenomförbara på cirka 1 sekund. För de två av dem som den monolitiska modellen också kördes på tog det 26–50 sekunder och 3,5–5 GB.
    - Veckor: bevisat optimum eller 0–9 procents gap, mot 11–36 procent för den monolitiska modellen.
    - Undantag: på det minsta, täta fallet (60 tentor) bevisar den monolitiska modellen optimum på 14 s, medan den nya strategin stannar på 9 procents gap.
-4. **Begränsningar och fel som mätningen visade.** Detta är inte rättat i den här PR:en, eftersom koden var frusen.
-   - Tidsgränsen hålls inte: hela terminen tog 450 s mot gränsen 300 s.
-   - Den frusna versionen kontrollerar två planer per varv. Det gav första fullständiga lösning för hela terminen efter cirka 7,5 minuter, mot 2 minuter i versionen före.
-   - Med tre starttider kom ingen lösning inom 3 minuter.
+4. **Begränsningar och fel som mätningen visade.** Status efter rättningarna står i avsnitt 8.
+   - Tidsgränsen hölls inte: hela terminen tog 450 s mot gränsen 300 s. *Efter rättning:* 302 s.
+   - Den frusna versionen kontrollerade två hela planer per varv, så första fullständiga terminslösning kom efter cirka 7,5 minuter. *Efter rättning:* 134 s.
+   - Med tre starttider kom ingen lösning inom 3 minuter. *Efter rättning, med varmstart från en tidigare lösning:* 39 s.
    - Kostnaden varierar mellan körningar med samma kod (upp till 9 procent på en veckoinstans).
    - Antalet flyttade tentor vid samma kostnad varierar kraftigt (106–655 för vecka 4–14).
    - Lokalunderlaget begränsar slutsatsen mer än algoritmen (avsnitt 1).
@@ -39,10 +39,10 @@ Det som redan fungerar interaktivt:
 - **Verifierade lösningar:** varje redovisad lösning är fullständig och passerar eftervalideringen.
 
 Det som inte räcker ännu:
-- **Fullständig terminslösning tar 2–7,5 minuter** och kan överskrida tidsgränsen. I ett av två genomförbara parameteralternativ (tre starttider) kom ingen lösning alls inom 3 minuter.
+- **En fullständig terminslösning tar cirka 2 minuter** utan varmstart (134 s efter rättningarna). Med varmstart från en tidigare eftervaliderad lösning tar den 39 s, när den nya instansen tillåter alla tidigare placeringar. Varmstarten är ännu inte kopplad till kommandoraden eller gränssnittet.
 - **Små skillnader går inte att skilja från sökningens slump.** Både gapet (2,7–8 procent) och variationen mellan körningar motsvarar en eller flera poolresurser (50 000 kr styck). Skillnader mellan parameteralternativ som är mindre än det kan inte tolkas som verkliga.
 
-En jämförelse mellan parameteralternativ bör därför redovisas som intervall från undre gräns till verifierad kostnad. Innan strategin används interaktivt behöver tidsgränsen hållas och varvtiden kortas, se avsnitt 7.
+En jämförelse mellan parameteralternativ bör därför redovisas som intervall från undre gräns till verifierad kostnad. Efter rättningarna i avsnitt 8 hålls tidsgränsen i den kontrollerade körningen, och första lösningen kommer snabbare. Det som återstår för interaktiv användning står i avsnitt 7.
 
 ## 1. Den befintliga modellen
 
@@ -180,7 +180,7 @@ Budgeten är densamma som jämförelsemodellens, utom för de två genomförbara
 
 Kommentarer:
 
-- *Första fullständiga lösning* är tiden när det första varvet avslutats, eftersom en lösning bara redovisas efter ett helt varv. Hela terminen överskred sin budget med 150 s. Spåret visar att ett enskilt delsteg (kontroll av en tät dag i vecka 3, med tidsgräns 10 s) tog cirka fyra minuter. Orsaken är inte utredd, se avsnitt 7.
+- *Första fullständiga lösning* är tiden när det första varvet avslutats, eftersom en lösning bara redovisas efter ett helt varv. Den mättes från processstart, med cirka 10 s import och inläsning av den stora indatafilen. Faktisk tid mättes från lösarens start. Det förklarar att hela terminen har 459 s till första lösning men 450 s total tid: det första varvet slutade först vid tidsgränsen. Efter rättningen mäts båda från lösarens start, och tiden till första lösning står i `raw_status`. Hela terminen överskred sin budget med 150 s. Spåret visar att ett enskilt delsteg (kontroll av en tät dag i vecka 3, med tidsgräns 10 s) tog cirka fyra minuter. Orsaken är inte utredd, se avsnitt 7.
 - Undre gränsen för tre starttider (1 691 000 kr) är relaxationens bästa gräns när tiden tog slut, inte ett bevisat optimum för relaxationen.
 - Ingen körning gav tekniskt fel i eftervalideringen. Ogenomförbara körningar och körningar utan slutsats har ingen placering att validera.
 
@@ -257,12 +257,143 @@ Vad mätningarna stöder:
 
 ## 7. Kvarstående fel, risker och nästa steg
 
-Ordnat efter betydelse för interaktiv användning. Inget av detta är rättat, eftersom koden var frusen för mätomgången.
+Ordnat efter betydelse för interaktiv användning, efter rättningarna i avsnitt 8.
 
-1. **Tidsgränsen hålls inte.** Hela terminen tog 450 s mot gränsen 300 s, och ett enskilt delsteg med tidsgräns 10 s tog cirka fyra minuter. Orsaken är inte utredd. Möjliga förklaringar är att CP-SAT inte avbryter ett pågående steg, eller att modellbygget och snittberäkningen ligger utanför tidsgränserna. Katalogens hjälptext beskriver därför inte längre tidsgränsen som hård.
-2. **Varvtiden fördubblades i den frusna versionen,** eftersom två planer kontrolleras per varv. Första fullständiga terminslösning kom efter 120 s i v2 och efter 459 s i den frusna versionen. Den ekonomiska planen bör kontrolleras först, eller bara för de dagar där planerna skiljer sig.
-3. **Tre starttider gav ingen lösning inom 3 minuter.** Tyngre dagkontroller och en relaxation som inte bevisades.
-4. **Gapet på dimensionerande dagar** (oftast en poolresurs) kvarstår, eftersom snitten är lokala. Starkare bemanningsgräns i relaxationen för pågående tillfällen kan minska det.
-5. **Ändringspreferensen är otillförlitlig:** 106–651 flyttade tentor för samma kostnad. Ett efterföljande steg kan minimera ändringar över hela terminen med fast portfölj och pool.
-6. **Små täta fall:** den monolitiska modellen är bättre på 60 tentor. Den finns kvar som val.
-7. **Reproducerbarhet:** tidsgränserna per steg är väggtid. Därför ger `solver.deterministic` inte full reproducerbarhet i den nedbrutna strategin.
+1. **Varmstarten är inte inkopplad i kommandoraden eller gränssnittet.** Den finns i `solve_joint_optimization(problem, start)`. Nästa steg är att låta en ny körning peka på föregående körnings `joint_result.json`.
+2. **Dagkontrollerna körs i tur och ordning.** Mätt på 73 dagar (varmstartskontrollen för tre starttider): 77 s med 8 CP-SAT-trådar per dag, 51 s med en tråd, 18 s med 4 dagar parallellt och 2 trådar var, och 11 s med 8 dagar parallellt och en tråd var. Alla dagar fick samma utfall. Parallella dagkontroller är den största återstående tidsvinsten.
+3. **Gapet på dimensionerande dagar** (oftast en poolresurs) kvarstår, eftersom snitten är lokala. Starkare bemanningsgräns i relaxationen för pågående tillfällen kan minska det.
+4. **Antalet flyttade tentor är fortfarande högre än nödvändigt** (300 för hela terminen i kontrollkörningen, varav 56 tvingade). Förslag i avsnitt 8.5.
+5. **Tre starttider utan varmstart:** relaxationen blir inte bevisad på 72 s och de täta dagarna i vecka 3 tar slut på tid. Utan en tidigare lösning är resultatet fortfarande osäkert på 3 minuter.
+6. **Ett CP-SAT-anrop kan inte avbrytas utifrån.** Fyraminutersstoppet i den frusna körningen kunde inte återskapas (avsnitt 8.2). Om det beror på ett enskilt anrop som hänger, är det enda sättet att garantera tidsgränsen att köra anropet i en separat process som kan avslutas.
+7. **Små täta fall:** den monolitiska modellen är bättre på 60 tentor. Den finns kvar som val.
+8. **Reproducerbarhet:** tidsgränserna per steg är väggtid. Därför ger `solver.deterministic` inte full reproducerbarhet i den nedbrutna strategin.
+
+## 8. Rättningar efter granskning av PR #9 (2026-10-12)
+
+Verifierat med riktade tester och två större kontrollkörningar, inte med en ny mätserie.
+
+### 8.1 Kostnadskorrekthet: extern salhyra (rättat)
+
+`external_session_cost_ore` saknades i både relaxationens och dagkontrollernas mål. Det gjorde att den nedbrutna strategin kunde välja en dyrare lösning än den monolitiska.
+
+- **Relaxationen** räknar nu en extern kostnad för varje sal som används i ett pass. Gränsen förblir giltig: varje salstillfälle i en verklig lösning motsvarar en använd sal i relaxationen.
+- **Dagkontrollerna** minimerar alla kostnader per tillfälle (rörlig bemanning och extern hyra) i båda lägena.
+- **Gränsbeviset för poolen** används bara när poolen är den enda kostnaden.
+
+Tester:
+
+- **Handräknat fall:** en tenta per dag, egen sal för 1 000 öre per år eller inhyrd sal för 400 öre per tillfälle. Över två dagar vinner inhyrning (900 öre totalt), över tre dagar den egna salen (1 100 öre). Båda strategierna och relaxationens gräns ger exakt dessa värden.
+- **12 slumpade fall med slumpad extern kostnad:** gränsen ligger aldrig över det monolitiska optimumet, och ett bevisat optimum är lika med det monolitiska.
+- **Kontroll:** testerna fallerar på den tidigare koden (relaxationens gräns blev 100 i stället för 900 och 1 100).
+
+### 8.2 Tidsgränsen (rättat i kontrollkörningen; orsaken till det tidigare stoppet ej fastställd)
+
+Gemensam tidsbudget:
+
+- Varje delsteg får sin egen budget men aldrig mer än vad som återstår till körningens deadline.
+- Modellbygget räknas in, så CP-SAT får bara den tid som återstår efter bygget.
+- Ett delsteg startas inte med mindre än 0,5 s kvar.
+- Relaxationens bygge räknas in i dess budget.
+- En körning som missar deadline cachas inte.
+
+Instrumentering: varje delsteg loggar byggtid och CP-SAT:s faktiska lösningstid separat. En varning skrivs om CP-SAT överskrider sin gräns med mer än 1 s.
+
+Kontrollkörning av hela terminen med 300 s budget:
+
+- total tid 302 s (tidigare 450 s);
+- alla CP-SAT-anrop höll sin gräns med högst 0,3 s marginal;
+- modellbyggena tog högst 0,8 s (relaxationen) och 0,4 s (ett femdagarsblock).
+
+Tid per delsteg i körningen:
+
+| Delsteg | Tid | Anrop |
+|---|---:|---:|
+| Dagkontroll | 102 s | 144 |
+| Snitt | 60 s | 6 |
+| Historikbyte | 53 s | 85 |
+| Reparation | 20 s | 1 |
+| Diagnos | 10 s | 7 |
+| Relaxation | cirka 55 s | 2 varv |
+
+Fyraminutersstoppet i den frusna körningen kunde inte återskapas, och orsaken är inte fastställd. Filtiderna visar att den frusna mätserien gick utan avbrott (07:55–08:13). Datorns viloläge senare samma morgon påverkade alltså inte den.
+
+Moment som inte kan avbrytas omedelbart:
+
+- modellbygget (mätt högst 0,8 s);
+- CP-SAT:s stopp efter tidsgränsen (mätt högst 0,3 s);
+- uttag och kostnadsberäkning av en lösning (under 0,1 s).
+
+Ett CP-SAT-anrop som av någon anledning inte stannar kan inte avbrytas från samma process.
+
+### 8.3 Inga dubbla terminskontroller (rättat)
+
+Relaxationens ekonomiska plan kontrolleras först och ger den första fullständiga lösningen.
+
+Därefter tar relaxationen fram en plan som behåller fler historiska pass, med *samma* lokalportfölj och högst samma pool. Den prövas bara för de dagar där planerna skiljer sig:
+
+- Tentor som planerna lägger olika dagar binder ihop de dagarna till grupper.
+- En grupp byts in bara om alla dess dagar klarar den exakta kontrollen och totalkostnaden inte ökar.
+- Kostnadskorrektheten påverkas inte: kostnaden kan bara bli lika eller lägre.
+
+| Hela terminen | v2 | Frusen | Rättad |
+|---|---:|---:|---:|
+| Första fullständiga lösning | 120 s | 459 s* | 134 s |
+| Kostnad | 1 823 000 kr | 1 823 000 kr | 1 823 000 kr |
+| Undre gräns | 1 773 000 kr | 1 773 000 kr | 1 773 000 kr |
+
+\* Mätt från processstart.
+
+I kontrollkörningen byttes 5 av 6 grupper in i första varvet. Eftervalideringen gav `pass`.
+
+### 8.4 Tre starttider och varmstart (analyserat; varmstart infört i biblioteket)
+
+Varför ingen lösning kom inom 3 minuter (spåret från den frusna körningen):
+
+1. Relaxationen blir större (19 247 variabler mot 13 987) och var inte bevisad efter sina 72 s. Den gav en svagare gräns och ingen historikplan.
+2. Varje dagmodell blir tyngre med tre pass per dag, eftersom salstillfällen och bemanningstidslinje växer med antalet pass.
+3. Två täta dagar i vecka 3 tog slut på tid (10 s vardera), och kontrollen av övriga dagar hann inte klart före deadline. Utan en komplett kontrollerad plan finns inget resultat.
+
+Varmstart: `solve_joint_optimization(problem, start)` tar ett tidigare sparat resultat.
+
+- Om varje tentas tidigare pass fortfarande är tillåtet och salarna finns kvar, kontrolleras placeringen dag för dag med den exakta modellen och blir första övre gräns.
+- Annars används den inte. Den litas aldrig på utan kontroll.
+- Den monolitiska modellen använder placeringen som ledtråd.
+- Tester:
+  - Ett tidigare optimum med fasta datum ger en giltig start i en friare instans, och resultatet blir det handräknade optimumet.
+  - En placering som instansen inte längre tillåter ignoreras: fel dag, saknad tenta eller borttagen sal.
+
+Kontrollkörning: tre starttider, 180 s, varmstart från den frusna terminslösningen (två starttider).
+
+| | Utan varmstart (frusen) | Med varmstart (rättad) |
+|---|---|---|
+| Första fullständiga lösning | ingen inom 180 s | 39 s |
+| Kostnad | – | 1 823 000 kr |
+| Undre gräns | – | 1 687 000 kr (relaxationen ej bevisad) |
+| Gap | – | 7,5 % |
+| Eftervalidering | – | `pass` |
+
+Ingen billigare lösning hittades inom tiden. Det är därför oavgjort om tre starttider sänker kostnaden.
+
+### 8.5 Tidsmätningen och antalet flyttade tentor
+
+- **459 s mot 450 s:** se kommentaren till tabell 5.3. Tiden till första lösning räknades från processstart, totaltiden från lösarens start, och första varvet slutade vid tidsgränsen. Nu mäts båda från lösarens start.
+- **Varför flyttantalet varierar.** När portfölj och pool är givna är alla genomförbara placeringar på icke-dimensionerande dagar lika dyra. Relaxationens första lösning väljer bland dem utan hänsyn till historiken.
+  - Historikfasen är tidsbegränsad och verkade inte alls i v1 (655 flyttade).
+  - I den frusna versionen klarade historikplanen inte dagkontrollen för vecka 4–14 (651 flyttade). Den ekonomiska planen accepterades då oförändrad.
+  - Gruppbytet i 8.3 räddar nu de delar av historikplanen som klarar kontrollen. Hela terminen fick 300 flyttade, varav 56 tvingade, eftersom deras historiska pass inte är tillåtna.
+- **Föreslagen billig förbättring (inte implementerad):** när portfölj och pool är fastställda är kostnaden låst. Lös därför om varje grupp av dagar där tentor flyttats, inklusive ±1 dag, med den exakta modellen. Lås salarna till portföljen och poolen till sitt värde, och minimera bara antalet flyttade tentor. Varje block är litet, blocken kan köras parallellt och ett block byts bara in om det klarar kontrollen. Det ger ett lokalt minimum av flyttar till oförändrad kostnad.
+
+### 8.6 Parallellisering
+
+Ja, det går. Dagarna är oberoende givet datum, portfölj och pool. CP-SAT släpper Pythons GIL under lösningen, så flera dagar kan lösas samtidigt i trådar.
+
+Mätt på 73 dagars varmstartskontroll:
+
+| Uppställning | Tid |
+|---|---:|
+| Sekventiellt, 8 CP-SAT-trådar per dag (dagens uppställning) | 77 s |
+| Sekventiellt, 1 tråd per dag | 51 s |
+| 4 dagar parallellt, 2 trådar var | 18 s |
+| 8 dagar parallellt, 1 tråd var | 11 s |
+
+Alla dagar fick samma utfall i alla fyra. Små dagmodeller tjänar alltså mer på att köras parallellt än på flera trådar per modell. Relaxationen och de få täta dagarna har fortsatt nytta av flera trådar. Detta är inte infört i den här PR:en (avsnitt 7, punkt 2).
