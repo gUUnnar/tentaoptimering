@@ -1,118 +1,105 @@
-import { useEffect, useId, useState, type FormEvent } from "react"
-import { Play, ShieldCheck } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { CircleAlert, Clock, Info, Play } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { JointApi } from "@/lib/jointApi"
-import { formatKr, outcomeLabel } from "@/lib/jointFormat"
-import type { JointScenario, StartJointRunBody, WarmStartCandidate } from "@/lib/jointTypes"
-import { VerdictChip } from "./status-chip"
+import { ApiError } from "@/lib/jointApi"
+import { runtimeEstimate } from "@/lib/jointScenarioInfo"
+import type { RunChangeText } from "@/lib/jointJobMemory"
+import type { JointScenario, StartJointRunBody } from "@/lib/jointTypes"
+import { DEFAULT_RUN_OPTIONS, runOptionsValid, toStartBody, type RunOptions } from "@/lib/runOptions"
+import { useParameterEditor } from "@/lib/useParameterEditor"
+import { ParamList } from "./params/param-list"
+import { RunOptionsPanel } from "./run-options"
+import { SaveScenario } from "./save-scenario"
+import { ScenarioPicker } from "./scenario-picker"
 
-type Mode = "auto" | "none" | "specific"
+type Props = {
+  scenarios: JointScenario[]
+  loadError: string
+  busy: boolean
+  onStart: (body: StartJointRunBody, changes: RunChangeText[]) => Promise<void>
+  onSaved: (scenario: JointScenario) => Promise<void>
+}
 
-export function StartPanel({ api, scenarios, busy, onStart }: { api: JointApi; scenarios: JointScenario[]; busy: boolean; onStart: (body: StartJointRunBody) => void }) {
-  const id = useId()
-  const [scenario, setScenario] = useState("")
-  const [mode, setMode] = useState<Mode>("auto")
-  const [specific, setSpecific] = useState("")
-  const [candidates, setCandidates] = useState<WarmStartCandidate[] | null>(null)
-  const [candidateError, setCandidateError] = useState("")
-  const [threads, setThreads] = useState("0")
-  const [memory, setMemory] = useState("")
-  const [parallel, setParallel] = useState(true)
+export function StartPanel({ scenarios, loadError, busy, onStart, onSaved }: Props) {
+  const [scenarioId, setScenarioId] = useState("")
+  const [options, setOptions] = useState<RunOptions>(DEFAULT_RUN_OPTIONS)
+  const [submitting, setSubmitting] = useState(false)
+  const [startError, setStartError] = useState("")
+  const editor = useParameterEditor(scenarioId)
 
   useEffect(() => {
     if (!scenarios.length) return
-    setScenario(current => current && scenarios.some(item => item.id === current) ? current : scenarios[0].id)
+    setScenarioId(current => current && scenarios.some(item => item.id === current) ? current : scenarios[0].id)
   }, [scenarios])
+  useEffect(() => { setOptions(current => ({ ...current, specific: "" })); setStartError("") }, [scenarioId])
 
-  useEffect(() => {
-    if (!scenario) return
-    let cancelled = false
-    setCandidates(null); setCandidateError(""); setSpecific("")
-    const problemId = scenarios.find(item => item.id === scenario)?.problem_id ?? scenario
-    api.listCandidates(problemId).then(list => { if (!cancelled) setCandidates(list) }).catch(error => { if (!cancelled) { setCandidates([]); setCandidateError((error as Error).message) } })
-    return () => { cancelled = true }
-  }, [api, scenario, scenarios])
+  const scenario = scenarios.find(item => item.id === scenarioId)
+  const estimate = runtimeEstimate(scenario?.subset?.exam_count)
+  const ready = editor.load.status === "ready"
+  const optionsOk = runOptionsValid(options)
+  const problems = useMemo(() => editor.params.filter(param => editor.errors[param.id]).map(param => ({ id: param.id, label: param.label, message: editor.errors[param.id] })), [editor.params, editor.errors])
+  const canStart = !busy && !submitting && !!scenarioId && ready && !editor.hasErrors && optionsOk
+  const why = busy ? "En körning pågår redan." : !ready ? "Parametrarna har inte hämtats än." : editor.hasErrors ? "Rätta felen i parametrarna först." : !optionsOk ? "Rätta valen för start och resurser först." : null
 
-  const threadsValue = Number(threads)
-  const threadsOk = threads.trim() !== "" && Number.isInteger(threadsValue) && threadsValue >= 0
-  const memoryValue = memory.trim() === "" ? null : Number(memory)
-  const memoryOk = memoryValue === null || (Number.isInteger(memoryValue) && memoryValue > 0)
-  const warmOk = mode !== "specific" || specific !== ""
-  const canStart = !busy && scenario !== "" && threadsOk && memoryOk && warmOk
-  const selected = scenarios.find(item => item.id === scenario)
-
-  const submit = (event: FormEvent) => {
-    event.preventDefault()
-    if (!canStart) return
-    onStart({ scenario, warm_start: mode === "specific" ? specific : mode, threads: threadsValue, memory_mb: memoryValue, parallel_day_checks: parallel })
+  const changeScenario = (id: string) => {
+    if (id === scenarioId) return
+    if (editor.changes.length && !window.confirm(`Dina ${editor.changes.length} ändringar går förlorade om du byter scenario. Vill du byta ändå?`)) return
+    setScenarioId(id)
   }
 
-  return <form onSubmit={submit} aria-label="Starta gemensam körning">
+  const submit = async () => {
+    if (!canStart) return
+    setSubmitting(true); setStartError("")
+    const texts = editor.changes.filter(change => !change.error).map(({ id, label, oldText, newText }) => ({ id, label, oldText, newText }))
+    try { await onStart(toStartBody(scenarioId, options, editor.request), texts) }
+    catch (error) {
+      if (error instanceof ApiError && error.errors.length) { editor.applyServerErrors(error.errors); setStartError("Servern avvisade några parametervärden. Se markeringarna vid raderna ovan.") }
+      else setStartError((error as Error).message)
+    } finally { setSubmitting(false) }
+  }
+
+  const saveDisabled = !ready ? "Parametrarna har inte hämtats än." : editor.changes.length === 0 ? "Gör minst en ändring först." : editor.hasErrors ? "Rätta felen i parametrarna först." : null
+
+  return <div className="space-y-4">
     <Card>
-      <CardHeader><CardTitle>Starta gemensam körning</CardTitle></CardHeader>
-      <CardContent className="space-y-5">
-        <div>
-          <label className="label" htmlFor={`${id}-scenario`}>Scenario</label>
-          <select id={`${id}-scenario`} className="field max-w-xl" value={scenario} onChange={e => setScenario(e.target.value)} disabled={!scenarios.length}>
-            {!scenarios.length && <option value="">Inga scenarier tillgängliga</option>}
-            {scenarios.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </select>
-          {selected && <p className="mt-1 text-xs text-slate-700">{selected.description}</p>}
-        </div>
+      <CardHeader><CardTitle>1. Välj scenario</CardTitle></CardHeader>
+      <CardContent><ScenarioPicker scenarios={scenarios} value={scenarioId} onChange={changeScenario} loadError={loadError}/></CardContent>
+    </Card>
 
-        <fieldset className="space-y-2">
-          <legend className="label">Varmstart</legend>
-          <div className="flex items-start gap-2 rounded-md bg-sky-50 p-2.5 text-xs text-sky-950" role="note">
-            <ShieldCheck size={15} className="mt-0.5 shrink-0" aria-hidden="true"/>
-            <span>Varmstarten kontrolleras <strong>alltid på nytt</strong> mot de nya reglerna. Sparad teknisk status används inte som bevis, och en placering som inte längre är tillåten används inte.</span>
+    <section aria-label="Parametrar" className="space-y-3">
+      <div>
+        <h2 className="text-sm font-semibold">2. Ändra parametrar (valfritt)</h2>
+        <p className="mt-0.5 text-xs text-slate-800">Det du ändrar gäller bara den här körningen och ändrar aldrig originalscenariot. Du kan spara dina ändringar som ett nytt scenario längst ner.</p>
+      </div>
+      {editor.load.status === "loading" && <p className="text-sm text-slate-800" role="status">Hämtar parametrar …</p>}
+      {editor.load.status === "error" && <div className="flex items-start gap-2 rounded-md border border-red-700 bg-red-50 p-3 text-sm text-red-900" role="alert">
+        <CircleAlert size={18} className="mt-0.5 shrink-0" aria-hidden="true"/>
+        <div><p>Kunde inte hämta parametrarna: {editor.load.error}</p><Button type="button" size="sm" variant="outline" className="mt-2" onClick={editor.reload}>Försök igen</Button></div>
+      </div>}
+      {ready && <ParamList editor={editor}/>}
+    </section>
+
+    <Card>
+      <CardHeader><CardTitle>3. Starta</CardTitle></CardHeader>
+      <CardContent className="space-y-4">
+        <RunOptionsPanel problemId={scenario?.problem_id ?? ""} options={options} onChange={setOptions} hasChanges={editor.changes.length > 0}/>
+        {estimate && <p className="flex items-start gap-2 rounded-md bg-slate-100 p-2.5 text-sm text-slate-900"><Clock size={16} className="mt-0.5 shrink-0" aria-hidden="true"/>{estimate.text}</p>}
+        {problems.length > 0 && <div role="alert" className="rounded-md border-2 border-red-700 bg-red-50 p-3 text-sm text-red-900">
+          <p className="font-semibold">{problems.length} {problems.length === 1 ? "parameter behöver rättas" : "parametrar behöver rättas"}:</p>
+          <ul className="mt-1 list-disc pl-5">{problems.map(item => <li key={item.id}><strong>{item.label}:</strong> {item.message}</li>)}</ul>
+        </div>}
+        {startError && <p role="alert" className="flex items-start gap-1.5 text-sm text-red-900"><CircleAlert size={16} className="mt-0.5 shrink-0" aria-hidden="true"/>{startError}</p>}
+        <div className="flex flex-wrap items-start gap-4">
+          <div>
+            <Button type="button" size="lg" disabled={!canStart} onClick={() => void submit()} aria-describedby="start-why"><Play size={15} className="mr-1" aria-hidden="true"/>{submitting ? "Startar …" : "Kör"}</Button>
+            <p id="start-why" className="mt-1 text-xs text-slate-800">{why ?? (editor.changes.length ? `Körs med dina ${editor.changes.length} ${editor.changes.length === 1 ? "ändring" : "ändringar"}.` : "Körs med scenariots egna värden.")}</p>
           </div>
-          <Radio name={`${id}-warm`} checked={mode === "auto"} onChange={() => setMode("auto")} label="Automatiskt" help="Välj bästa tillgängliga tidigare körning för samma problem, om någon finns."/>
-          <Radio name={`${id}-warm`} checked={mode === "none"} onChange={() => setMode("none")} label="Ingen varmstart" help="Starta utan tidigare placering."/>
-          <Radio name={`${id}-warm`} checked={mode === "specific"} onChange={() => setMode("specific")} label="Specifik körning" help="Välj en tidigare körning ur listan nedan."/>
-          {mode === "specific" && <div className="ml-6 space-y-1.5" role="radiogroup" aria-label="Kandidater för varmstart">
-            {candidates === null && <p className="text-xs text-slate-700">Hämtar kandidater …</p>}
-            {candidateError && <p className="text-xs text-red-800">Kunde inte hämta kandidater: {candidateError}</p>}
-            {candidates?.length === 0 && !candidateError && <p className="text-xs text-slate-700">Det finns inga sparade körningar för detta problem.</p>}
-            {candidates?.map(item => <label key={item.run_id} className={`flex items-start gap-2 rounded-md border p-2 text-xs ${item.has_placement ? "cursor-pointer hover:border-sky-700" : "opacity-70"} ${specific === item.run_id ? "border-sky-700 bg-sky-50" : ""}`}>
-              <input type="radio" name={`${id}-candidate`} className="mt-0.5" disabled={!item.has_placement} checked={specific === item.run_id} onChange={() => setSpecific(item.run_id)}/>
-              <span className="space-y-0.5">
-                <span className="block font-mono text-[11px]">{item.run_id}</span>
-                <span className="block">Kostnad {formatKr(item.cost_ore)} · utfall {outcomeLabel(item.solver_outcome)}</span>
-                <span className="flex flex-wrap items-center gap-1.5">Sparad teknisk status: <VerdictChip status={item.stored_technical_validation}/> <span className="text-slate-700">(från sparningstillfället, kontrolleras om)</span></span>
-                {!item.has_placement && <span className="block text-amber-900">Saknar sparad placering och kan inte användas som varmstart.</span>}
-              </span>
-            </label>)}
-          </div>}
-        </fieldset>
-
-        <details className="rounded-md border p-3">
-          <summary className="cursor-pointer rounded text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700">Avancerat: resurser</summary>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="label" htmlFor={`${id}-threads`}>Trådar (0 = standard)</label>
-              <input id={`${id}-threads`} className="field" inputMode="numeric" value={threads} onChange={e => setThreads(e.target.value)} aria-invalid={!threadsOk} aria-describedby={`${id}-threads-help`}/>
-              <p id={`${id}-threads-help`} className={`mt-1 text-xs ${threadsOk ? "text-slate-700" : "text-red-800"}`}>{threadsOk ? "Antal CP-SAT-trådar totalt. 0 låter lösaren välja." : "Ange ett heltal som är 0 eller större."}</p>
-            </div>
-            <div>
-              <label className="label" htmlFor={`${id}-memory`}>Minne i MB (tomt = ingen gräns)</label>
-              <input id={`${id}-memory`} className="field" inputMode="numeric" value={memory} placeholder="Ingen gräns" onChange={e => setMemory(e.target.value)} aria-invalid={!memoryOk} aria-describedby={`${id}-memory-help`}/>
-              <p id={`${id}-memory-help`} className={`mt-1 text-xs ${memoryOk ? "text-slate-700" : "text-red-800"}`}>{memoryOk ? "Övre gräns för lösarens minne." : "Ange ett positivt heltal eller lämna fältet tomt."}</p>
-            </div>
-          </div>
-          <label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={parallel} onChange={e => setParallel(e.target.checked)}/><span>Parallella dagkontroller<span className="block text-xs text-slate-700">Flera dagar kontrolleras samtidigt med färre trådar var. Ger oftast kortare tid för små dagmodeller; utfallet per dag ska vara detsamma.</span></span></label>
-        </details>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit" disabled={!canStart}><Play size={15} className="mr-1" aria-hidden="true"/>Starta gemensam körning</Button>
-          {!warmOk && <span className="text-xs text-amber-900">Välj en körning ur listan eller ett annat varmstartsläge.</span>}
-          {busy && <span className="text-xs text-slate-700">En körning pågår redan.</span>}
+          <SaveScenario baseId={scenarioId} baseName={scenario?.name ?? ""} parameters={editor.request} changeCount={editor.changes.length} disabledReason={saveDisabled}
+            onSaved={async saved => { await onSaved(saved); setScenarioId(saved.id) }}/>
         </div>
+        <p className="flex items-start gap-1.5 text-xs text-slate-800"><Info size={14} className="mt-0.5 shrink-0" aria-hidden="true"/>Resultatet är en modellkostnad, inte faktisk kostnad. Parametrar som är märkta "Antagande" saknar verifierat underlag.</p>
       </CardContent>
     </Card>
-  </form>
-}
-
-function Radio({ name, checked, onChange, label, help }: { name: string; checked: boolean; onChange: () => void; label: string; help: string }) {
-  return <label className="flex cursor-pointer items-start gap-2 text-sm"><input type="radio" name={name} className="mt-1" checked={checked} onChange={onChange}/><span>{label}<span className="block text-xs text-slate-700">{help}</span></span></label>
+  </div>
 }

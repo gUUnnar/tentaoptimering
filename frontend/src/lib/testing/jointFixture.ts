@@ -1,31 +1,16 @@
 import type {
-  DayStatus, JointEvent, JointScenario, JointSummary, SavedRun, WarmStartCandidate, WarmStartRecord,
-} from "./jointTypes.ts"
+  DayStatus, JointEvent, JointSummary, WarmStartRecord,
+} from "../jointTypes.ts"
 
-// Syntetiska exempelhändelser för mockläget (?mock=1). Formen följer API-kontraktet; värdena är påhittade
+// Syntetiska exempelhändelser som TESTDATA för logiktesterna. Formen följer API-kontraktet; värdena är påhittade
 // men har samma storleksordning som kontrollkörningen i docs/OPTIMERINGSSTRATEGI.md avsnitt 8. De är inte mätdata.
+// Appkod får aldrig importera den här filen (säkras av ett test).
 
 export type FixtureWarm = "accepted" | "rejected" | "none"
 type Draft = Record<string, unknown> & { t: number; type: JointEvent["type"] }
 
-export const MOCK_SCENARIOS: JointScenario[] = [
-  { id: "term-vt-2027", name: "Vårtermin 2027 (exempel)", description: "Exempeldata: hel termin, tre skrivpass per dag, Uppsala." },
-  { id: "term-ht-2026", name: "Hösttermin 2026 (exempel)", description: "Exempeldata: hel termin med utökad tentamensperiod." },
-]
-
-export const DEMO_RUN_ID = "mock-2027-vt-demo"
-export const REJECTED_RUN_ID = "mock-avvisad-varmstart"
-
-export const MOCK_CANDIDATES: WarmStartCandidate[] = [
-  { run_id: DEMO_RUN_ID, problem_id: "term-vt-2027", solver_outcome: "feasible_not_proven", cost_ore: 180_050_000, has_placement: true, stored_technical_validation: "pass", warm_start_decision: "accepted" },
-  { run_id: REJECTED_RUN_ID, problem_id: "term-vt-2027", solver_outcome: "feasible_not_proven", cost_ore: 182_300_000, has_placement: true, stored_technical_validation: "pass", warm_start_decision: "rejected" },
-  { run_id: "mock-utan-placering", problem_id: "term-vt-2027", solver_outcome: "unknown", cost_ore: null, has_placement: false, stored_technical_validation: null, warm_start_decision: null },
-]
-
-export const MOCK_RUNS: SavedRun[] = [
-  { run_id: DEMO_RUN_ID, scenario_id: "term-vt-2027", status: "completed", engine: "joint", created_at: "2026-10-11T09:12:00" },
-  { run_id: REJECTED_RUN_ID, scenario_id: "term-vt-2027", status: "completed", engine: "joint", created_at: "2026-10-10T14:40:00" },
-]
+export const DEMO_RUN_ID = "test-2027-vt-demo"
+export const REJECTED_RUN_ID = "test-avvisad-start"
 
 function weekdays(count: number): string[] {
   const days: string[] = []
@@ -39,15 +24,26 @@ function weekdays(count: number): string[] {
 
 const DAYS = weekdays(73)
 
-/** Bygger en batch: en dag-händelse per dag samt en batch-händelse efter varje färdig dag. */
-function batch(out: Draft[], start: number, kind: string, dates: string[], parallel: number, workers: number, statusOf: (i: number) => DayStatus, secondsPer: number): number {
+/**
+ * Bygger en batch: en day_started- och en day-händelse per kontroll samt en batch-händelse efter varje färdig kontroll.
+ * `withStarts: false` efterliknar äldre körningar som saknar händelsen day_started.
+ */
+function batch(
+  out: Draft[], start: number, kind: string, dates: string[], parallel: number, workers: number,
+  statusOf: (i: number) => DayStatus, secondsPer: number, options: { withStarts?: boolean; blocks?: Record<number, string[]> } = {},
+): number {
   const counts: Record<string, number> = {}
+  const withStarts = options.withStarts !== false
   let end = start
   dates.forEach((date, i) => {
-    const t = start + ((i + 1) / parallel) * secondsPer
+    // Kontrollerna körs i omgångar om `parallel` åt gången och varje kontroll tar `secondsPer` sekunder.
+    const startedAt = start + Math.floor(i / parallel) * secondsPer
+    const t = startedAt + secondsPer
     const status = statusOf(i)
     counts[status] = (counts[status] ?? 0) + 1
-    out.push({ t, type: "day", date, kind, status, seconds: Math.round(secondsPer * 10) / 10 })
+    if (withStarts) out.push({ t: startedAt, type: "day_started", date, kind })
+    const block = options.blocks?.[i]
+    out.push({ t, type: "day", date, kind, status, seconds: Math.round(secondsPer * 10) / 10, ...(block ? { block } : {}) })
     out.push({ t: t + 0.01, type: "batch", kind, total: dates.length, done: i + 1, parallel, workers_per_check: workers, statuses: { ...counts } })
     end = t + 0.01
   })
@@ -66,7 +62,7 @@ export function buildFixtureEvents(warm: FixtureWarm): JointEvent[] {
     t += 0.4
     if (warm === "accepted") {
       out.push({ t, type: "warm_start", decision: "accepted", explanation: "Alla 73 dagar klarade omkontrollen mot de nya reglerna.", source_run_id: REJECTED_RUN_ID })
-      out.push({ t: t + 0.1, type: "incumbent", cost_ore: 182_300_000, source: "varmstart (omkontrollerad)", changed_exams: 0 })
+      out.push({ t: t + 0.1, type: "incumbent", cost_ore: 182_300_000, source: "warm start", changed_exams: 0 })
     } else {
       out.push({ t, type: "warm_start", decision: "rejected", explanation: "5 av 73 dagar klarade inte omkontrollen; placeringen användes inte som lösning.", source_run_id: REJECTED_RUN_ID })
     }
@@ -88,16 +84,16 @@ export function buildFixtureEvents(warm: FixtureWarm): JointEvent[] {
 
   const repairStart = checkEnd + 0.2
   out.push({ t: repairStart, type: "phase", name: "repair", state: "started" })
-  const repairEnd = batch(out, repairStart, "repair", [DAYS[17], DAYS[18], DAYS[44]], 3, 2, i => i === 2 ? "optimal" : "feasible", 5)
+  const repairEnd = batch(out, repairStart, "repair", [DAYS[17], DAYS[44]], 2, 2, i => i === 1 ? "optimal" : "feasible", 5, { blocks: { 0: [DAYS[17], DAYS[18]] } })
   out.push({ t: repairEnd + 0.1, type: "phase", name: "repair", state: "finished" })
-  out.push({ t: repairEnd + 0.2, type: "incumbent", cost_ore: 180_500_000, source: "relaxation, varv 1 (reparerad)", changed_exams: 412 })
+  out.push({ t: repairEnd + 0.2, type: "incumbent", cost_ore: 180_500_000, source: "round 1", changed_exams: 412 })
 
   const historyStart = repairEnd + 0.3
   out.push({ t: historyStart, type: "phase", name: "history", state: "started" })
   const groups = [DAYS[3], DAYS[9], DAYS[22], DAYS[31], DAYS[50], DAYS[63]]
   const historyEnd = batch(out, historyStart, "history", groups, 3, 2, i => i === 4 ? "infeasible" : "optimal", 4)
-  out.push({ t: historyEnd - 8, type: "incumbent", cost_ore: 180_200_000, source: "historikbyte, grupp 3", changed_exams: 351 })
-  out.push({ t: historyEnd - 1, type: "incumbent", cost_ore: 180_050_000, source: "historikbyte, grupp 6", changed_exams: 300 })
+  out.push({ t: historyEnd - 8, type: "incumbent", cost_ore: 180_200_000, source: "round 1 history", changed_exams: 351 })
+  out.push({ t: historyEnd - 1, type: "incumbent", cost_ore: 180_050_000, source: "round 2 history", changed_exams: 300 })
   out.push({ t: historyEnd + 0.1, type: "phase", name: "history", state: "finished" })
 
   out.push({ t: historyEnd + 0.2, type: "phase", name: "finalize", state: "started" })
@@ -129,8 +125,8 @@ export function fixtureWarmStart(warm: FixtureWarm, requested: string, events: J
       exams_reused: rejected ? 1_212 : 1_268, exams_without_start: 0, exams_not_allowed: rejected ? 56 : 0,
       days_checked: 73, days_failed: rejected ? 5 : 0, check_seconds: 22.4,
       verified_cost_ore: rejected ? null : 182_300_000, hint_exams: rejected ? 1_212 : 0,
-      first_solution_seconds: firstSolution, first_solution_source: rejected ? "relaxation, varv 1 (reparerad)" : "varmstart (omkontrollerad)",
-      final_cost_ore: 180_050_000, final_source: "historikbyte, grupp 6", interrupted: false,
+      first_solution_seconds: firstSolution, first_solution_source: rejected ? "round 1" : "warm start",
+      final_cost_ore: 180_050_000, final_source: "round 2 history", interrupted: false,
     },
     execution,
   }
@@ -143,13 +139,15 @@ export function fixtureSummary(events: JointEvent[], warm: FixtureWarm): JointSu
   const cost = finished?.type === "finished" ? finished.cost_ore : null
   const bound = finished?.type === "finished" ? finished.bound_ore : null
   const lastIncumbent = [...events].reverse().find(event => event.type === "incumbent")
+  const outcome = finished?.type === "finished" && finished.cancelled ? "cancelled" : finished?.type === "finished" ? finished.outcome : "unknown"
   return {
-    cost_ore: cost, bound_ore: bound, gap: cost && bound !== null ? Math.max(0, (cost - bound) / cost) : null,
-    changed_exams: lastIncumbent?.type === "incumbent" ? lastIncumbent.changed_exams : null,
-    first_solution_seconds: firstIncumbent?.t ?? null, wall_seconds: last?.t ?? null,
-    outcome: finished?.type === "finished" && finished.cancelled ? "cancelled" : finished?.type === "finished" ? finished.outcome : "unknown",
-    technical_validation: { status: "pass", reason: "Alla tentor och dimensionerande tentander är placerade; sal-, format- och krockregler uppfylls enligt den fristående eftervalideraren (exempeldata)." },
-    business_verification: { status: "not_evaluated", reason: "Verksamhetsreglerna saknar verifierat underlag. Teknisk korrekthet är inte verksamhetsmässig genomförbarhet." },
-    provenance: { källa: "Syntetiska exempeldata (mockläge)", scenario: "term-vt-2027", varmstart: warm, antaganden: "Kvalificerade antaganden; ej verifierade" },
+    run_id: DEMO_RUN_ID, problem_id: "term-vt-2027", scenario_id: "joint_test", created_at: "2026-10-11T09:12:00",
+    cost_ore: cost, bound_ore: bound, gap_ore: cost !== null && bound !== null ? cost - bound : null,
+    gap: cost && bound !== null ? Math.max(0, (cost - bound) / cost) : null,
+    changed_exams: lastIncumbent?.type === "incumbent" ? lastIncumbent.changed_exams : null, exams_total: 1172, staff_pool_size: 41,
+    first_solution_seconds: firstIncumbent?.t ?? null, first_solution_basis: "solver_start", first_solution_source: "warm start",
+    wall_seconds: last?.t ?? null, outcome, proven_optimum: outcome === "optimal", has_verified_solution: outcome !== "unknown", cancelled: outcome === "cancelled",
+    warm_start_decision: warm === "none" ? "not_used" : warm, parameters_changed_from_default: [],
+    technical_validation: "pass", business_verification: "not_evaluated", provenance: "not_evaluated",
   }
 }

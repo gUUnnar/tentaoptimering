@@ -35,10 +35,23 @@ Före leverans ska distributionen provas på en dator utan utvecklingsverktyg oc
 
 Äldre kapacitetsscenarier är läsbara för spårbarhet men har inte den nya termins-eftervalideringsartefakten. Gränssnittet gör den begränsningen synlig.
 
-## Gemensam körning (vyer under utveckling)
+## Optimering (den nya motorn)
 
-Sidan **Gemensam körning** i menyn visar insyn i en gemensam optimeringskörning: startpanel (scenario, varmstart, avancerade resurser), livevy (fasband, kostnadsgraf med verifierad kostnad och undre gräns, dagrutnät, resurser, stopp) och resultatvy (sammanfattning, de tre domarna isär, varmstartsbeslut och uppspelning). Klienten följer API-kontraktet `/api/joint-runs/*`, `/api/runs/{id}/events` och `/api/runs/{id}/warm-start`; typerna ligger i `frontend/src/lib/jointTypes.ts`.
+Sidan **Optimering** i menyn är den enda sidan för den nya, gemensamma optimeringen. De äldre sidorna ligger under rubriken "Äldre motor" och är oförändrade. Sidan har tre flikar.
 
-Utan backend kan vyerna granskas med syntetiska exempeldata: öppna `http://localhost:5173/?mock=1` (valfritt `&speed=N` för uppspelningshastighet, standard 8). Mockläget är tydligt märkt på sidan. `npm --prefix frontend test` kör logiktesterna med Node utan extra beroenden.
+**1. Ställ in och kör.**
+- Scenariovalet visar urvalet i klartext (till exempel "Hela terminen, Uppsala, 1 172 tentor") och, för stora urval, en ärlig körtidsuppgift.
+- Parametrarna visas grupperade med etikett, enhet och hjälptext. Inmatningen följer värdetypen: tal, ja/nej-knapp, val, datum, klockslag, veckodagar som markerbara knappar, listor med lägg till och ta bort, perioder och bemanningstrappan som tabell. Belopp ligger i öre i API:et men visas och matas in i kronor; omvandlingen finns i `frontend/src/lib/paramUnits.ts` och är testad. Typer utan redigerare (matriser, regeluppsättningar, salslistor) visas skrivskyddat med en förklaring.
+- Parametrar som finns i modellen men inte påverkar något än (`editable: false`) visas avstängda. Avancerade parametrar ligger bakom "Visa avancerade".
+- Ett fast fält överst listar alla ändringar jämfört med scenariot (gammalt värde till nytt värde), med "Återställ" per rad och "Återställ alla". Bara ändringarna skickas med körningen i `parameters`.
+- Lokal validering av uppenbara fel görs före start. Fel från servern (HTTP 422, `detail.errors`) visas vid rätt rad och i en sammanfattning.
+- "Startar från förra körningen" kan vara automatisk, av eller en vald körning. Förra körningens placering kontrolleras alltid på nytt mot de nya reglerna.
+- "Spara ändringarna som nytt scenario" skapar ett eget scenario. Originalscenariot ändras aldrig.
 
-Kostnad utan bevisat optimum visas som intervallet "undre gräns–verifierad kostnad" och aldrig som besparing. Teknisk eftervalidering, verksamhetsmässig verifiering och ursprung redovisas som tre separata domar; saknat värde tolkas som `not_evaluated`.
+**2. Körning.** Steg i klartext, kostnadsgraf (verifierad kostnad, undre gräns och gap), dagrutnät, resurser, de parametrar körningen ändrat och stoppknapp. Rutan "pågår" bygger på händelsen `day_started`; för äldre körningar utan den händelsen uppskattas den och sidan säger det.
+
+**3. Resultat och jämförelse.** Sammanfattning, jämförelse mot föregående körning av samma scenario (eller en vald körning) via `GET /api/joint-runs/{id}/compare`, de tre bedömningarna isär, start från förra körningen och uppspelning. En kort ruta förklarar hur resultatet läses.
+
+Klienten följer API-kontraktet `/api/joint-runs/*`, `/api/runs/{id}/events` och `/api/runs/{id}/warm-start`; typerna ligger i `frontend/src/lib/jointTypes.ts`. Appen skickar aldrig inspelade eller påhittade händelser. Testdata för logiktesterna ligger under `frontend/src/lib/testing/` och ett test säkerställer att appkod inte importerar dem. `npm --prefix frontend test` kör logiktesterna med Node utan extra beroenden.
+
+Kostnad utan bevisat optimum visas som intervallet "undre gräns–verifierad kostnad" och aldrig som besparing. Kostnaden är en modellkostnad, inte faktisk kostnad. Teknisk eftervalidering, verksamhetsmässig verifiering och ursprung redovisas som tre separata domar; saknat värde tolkas som `not_evaluated`.

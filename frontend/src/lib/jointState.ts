@@ -7,12 +7,14 @@ import type {
 export type PhaseRun = { name: PhaseName; startedAt: number; finishedAt: number | null }
 export type BoundPoint = { t: number; lower_ore: number; round: number }
 export type IncumbentPoint = { t: number; cost_ore: number; source: string; changed_exams: number }
-export type DayCell = { date: string; kind: string; status: DayStatus; seconds: number; t: number }
+export type DayCell = { date: string; kind: string; status: DayStatus; seconds: number; t: number; block?: string[] }
 
 export type JointState = {
   phases: PhaseRun[]
   batches: Record<string, BatchEvent>
   days: Record<string, DayCell[]> // per kontrolltyp, i ankomstordning
+  /** Påbörjade men ännu inte färdiga dagkontroller per kontrolltyp (datum -> starttid). Nyckeln finns när händelsen day_started har förekommit. */
+  started: Record<string, Record<string, number>>
   incumbents: IncumbentPoint[]
   bounds: BoundPoint[]
   warmStart: WarmStartEvent | null
@@ -23,7 +25,7 @@ export type JointState = {
 }
 
 export const emptyJointState = (): JointState => ({
-  phases: [], batches: {}, days: {}, incumbents: [], bounds: [], warmStart: null, resources: null, finished: null, lastT: 0, lastSeq: 0,
+  phases: [], batches: {}, days: {}, started: {}, incumbents: [], bounds: [], warmStart: null, resources: null, finished: null, lastT: 0, lastSeq: 0,
 })
 
 export function applyEvent(state: JointState, event: JointEvent): JointState {
@@ -40,11 +42,18 @@ export function applyEvent(state: JointState, event: JointEvent): JointState {
     case "batch": next.batches = { ...state.batches, [event.kind]: event }; break
     case "day": {
       const cells = state.days[event.kind] ?? []
-      const cell: DayCell = { date: event.date, kind: event.kind, status: event.status, seconds: event.seconds, t: event.t }
+      const cell: DayCell = { date: event.date, kind: event.kind, status: event.status, seconds: event.seconds, t: event.t, ...(event.block ? { block: event.block } : {}) }
       const at = cells.findIndex(item => item.date === event.date)
       next.days = { ...state.days, [event.kind]: at < 0 ? [...cells, cell] : cells.map((item, i) => i === at ? cell : item) }
+      if (event.kind in state.started) {
+        const { [event.date]: _done, ...rest } = state.started[event.kind]
+        next.started = { ...state.started, [event.kind]: rest }
+      }
       break
     }
+    case "day_started":
+      next.started = { ...state.started, [event.kind]: { ...(state.started[event.kind] ?? {}), [event.date]: event.t } }
+      break
     case "incumbent": next.incumbents = [...state.incumbents, toIncumbent(event)]; break
     case "bound": next.bounds = [...state.bounds, { t: event.t, lower_ore: event.lower_ore, round: event.round }]; break
     case "warm_start": next.warmStart = event; break
@@ -95,15 +104,15 @@ export function gapFraction(costOre: number | null, boundOre: number | null): nu
 
 export type StepId = "warm_start_check" | "relaxation" | "day_checks" | "repair_history" | "finalize"
 export type StepState = "pending" | "active" | "done" | "skipped"
-export const STEP_DEFS: { id: StepId; label: string; phases: PhaseName[] }[] = [
-  { id: "warm_start_check", label: "Varmstartkontroll", phases: ["warm_start_check"] },
-  { id: "relaxation", label: "Relaxation", phases: ["relaxation"] },
-  { id: "day_checks", label: "Dagkontroller", phases: ["day_checks"] },
-  { id: "repair_history", label: "Reparation / historik", phases: ["repair", "history"] },
-  { id: "finalize", label: "Klart", phases: ["finalize"] },
+export const STEP_DEFS: { id: StepId; label: string; help: string; phases: PhaseName[] }[] = [
+  { id: "warm_start_check", label: "Kontroll av förra körningen", help: "Förra körningens placering prövas mot de nya reglerna.", phases: ["warm_start_check"] },
+  { id: "relaxation", label: "Grov plan och undre gräns", help: "En förenklad modell väljer datum och lokaler och bevisar en lägsta möjlig kostnad.", phases: ["relaxation"] },
+  { id: "day_checks", label: "Kontroll av varje dag", help: "Varje dag prövas noga: ryms tentorna och finns bemanning?", phases: ["day_checks"] },
+  { id: "repair_history", label: "Rättning och förbättring", help: "Dagar som inte höll rättas. Därefter försöker modellen behålla ursprungliga tider.", phases: ["repair", "history"] },
+  { id: "finalize", label: "Slutkontroll och sparande", help: "Resultatet kontrolleras av en fristående kontroll och sparas.", phases: ["finalize"] },
 ]
 
-export type StepView = { id: StepId; label: string; state: StepState; seconds: number; repeats: number }
+export type StepView = { id: StepId; label: string; help: string; state: StepState; seconds: number; repeats: number }
 
 /** Förbrukad tid per steg. `nowT` är körningens aktuella tid i sekunder och används bara för pågående faser. */
 export function stepViews(state: JointState, nowT: number): StepView[] {
@@ -112,7 +121,7 @@ export function stepViews(state: JointState, nowT: number): StepView[] {
     const runs = state.phases.filter(run => def.phases.includes(run.name))
     const seconds = runs.reduce((sum, run) => sum + Math.max(0, (run.finishedAt ?? Math.max(nowT, run.startedAt)) - run.startedAt), 0)
     const open = runs.some(run => run.finishedAt === null)
-    return { id: def.id, label: def.label, seconds, repeats: runs.length, state: open && !finished ? "active" : runs.length ? "done" : "pending" }
+    return { id: def.id, label: def.label, help: def.help, seconds, repeats: runs.length, state: open && !finished ? "active" : runs.length ? "done" : "pending" }
   })
   // Steg utan körning som ligger före ett senare påbörjat steg (eller efter körningens slut) markeras som överhoppade.
   const lastStarted = views.reduce((last, view, index) => view.repeats ? index : last, -1)
@@ -125,19 +134,31 @@ export function stepViews(state: JointState, nowT: number): StepView[] {
 
 export type DayGridCell =
   | { kind: "known"; cell: DayCell }
+  /** Kontrollen har börjat (händelsen day_started). */
+  | { kind: "running"; date: string; startedAt: number }
+  /** Ej påbörjad. `running: true` är en uppskattning och används bara när körningen saknar händelsen day_started. */
   | { kind: "pending"; running: boolean }
 
-/** Dagrutnätet för en kontrolltyp. Dagar som ännu inte rapporterats saknar datum i kontraktet och visas som anonyma rutor. */
+/** Har körningen rapporterat verkligt påbörjade dagar för den här kontrolltypen? */
+export const hasRealStarts = (state: JointState, kind: string): boolean => kind in state.started
+
+/** Dagrutnätet för en kontrolltyp: färdiga och pågående dagar med datum, därefter anonyma rutor för dem som inte rapporterats. */
 export function dayGrid(state: JointState, kind: string): DayGridCell[] {
-  const known = [...(state.days[kind] ?? [])].sort((a, b) => a.date.localeCompare(b.date))
+  const finished = state.finished !== null
+  // En kontroll som upprepas med alla trådar startar om efter att den redan rapporterats klar; då gäller den nya starten.
+  const doneAt = new Map((state.days[kind] ?? []).map(cell => [cell.date, cell.t]))
+  const running = finished ? [] : Object.entries(state.started[kind] ?? {}).filter(([date, startedAt]) => startedAt > (doneAt.get(date) ?? -1))
+    .map(([date, startedAt]): DayGridCell => ({ kind: "running", date, startedAt }))
+  const runningDates = new Set(running.map(cell => cell.kind === "running" ? cell.date : ""))
+  const known = (state.days[kind] ?? []).filter(cell => !runningDates.has(cell.date)).map((cell): DayGridCell => ({ kind: "known", cell }))
+  const dateOf = (cell: DayGridCell) => cell.kind === "known" ? cell.cell.date : cell.kind === "running" ? cell.date : ""
+  const cells = [...known, ...running].sort((a, b) => dateOf(a).localeCompare(dateOf(b)))
   const batch = state.batches[kind]
-  const cells: DayGridCell[] = known.map(cell => ({ kind: "known", cell }))
   if (!batch) return cells
-  const missing = Math.max(0, batch.total - known.length)
-  const active = state.finished === null && missing > 0
-  // Kontraktet har ingen "dag påbörjad"-händelse: så många rutor som kontrollerna kan köra samtidigt visas som pågående.
-  const running = active ? Math.min(Math.max(1, batch.parallel), missing) : 0
-  for (let i = 0; i < missing; i++) cells.push({ kind: "pending", running: i < running })
+  const missing = Math.max(0, batch.total - cells.length)
+  // Utan händelsen day_started (äldre körningar och uppspelning) uppskattas pågående: så många som kontrollerna kan köra samtidigt.
+  const estimated = !hasRealStarts(state, kind) && !finished && missing > 0 ? Math.min(Math.max(1, batch.parallel), missing) : 0
+  for (let i = 0; i < missing; i++) cells.push({ kind: "pending", running: i < estimated })
   return cells
 }
 
@@ -157,6 +178,7 @@ export function dayCounts(cells: DayGridCell[]): Record<string, number> {
   const counts: Record<string, number> = { pending: 0, running: 0, optimal: 0, feasible: 0, infeasible: 0, unknown: 0 }
   for (const cell of cells) {
     if (cell.kind === "pending") counts[cell.running ? "running" : "pending"] += 1
+    else if (cell.kind === "running") counts.running += 1
     else counts[cell.cell.status] += 1
   }
   return counts

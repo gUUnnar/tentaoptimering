@@ -31,55 +31,71 @@ export const formatCount = (value: number | null | undefined): string => value =
 
 /**
  * Ärlig kostnadsredovisning: utan bevisat optimum visas ett intervall "undre gräns–verifierad kostnad"
- * och aldrig en enskild siffra som kan läsas som besparing.
+ * och aldrig en enskild siffra som kan läsas som besparing. Kostnaden är en modellkostnad, inte faktisk kostnad.
  */
 export type CostStatement = { proven: boolean; headline: string; note: string }
-export function costStatement(costOre: number | null, boundOre: number | null, outcome: string | null): CostStatement {
-  if (costOre === null) return { proven: false, headline: DASH, note: "Ingen verifierad lösning finns ännu." }
-  const proven = outcome === "optimal" || (boundOre !== null && boundOre >= costOre)
-  if (proven) return { proven: true, headline: formatKr(costOre), note: "Bevisat optimum för den modellerade kostnaden. Det är ännu ingen verifierad besparing; jämförelse mot faktisk kostnad kräver separat underlag." }
-  if (boundOre === null) return { proven: false, headline: `högst ${formatKr(costOre)}`, note: "Ingen undre gräns är bevisad. Kostnaden är bara en övre gräns och är inte ett bevisat optimum." }
+export function costStatement(costOre: number | null, boundOre: number | null, provenOptimum: boolean): CostStatement {
+  if (costOre === null) return { proven: false, headline: DASH, note: "Ingen kontrollerad lösning finns ännu." }
+  const proven = provenOptimum || (boundOre !== null && boundOre >= costOre)
+  if (proven) return { proven: true, headline: formatKr(costOre), note: "Lägsta möjliga kostnad i modellen är bevisad. Det är ändå en modellkostnad och ingen kontrollerad besparing; jämförelse mot faktisk kostnad kräver separat underlag." }
+  if (boundOre === null) return { proven: false, headline: `högst ${formatKr(costOre)}`, note: "Ingen undre gräns är bevisad än. Kostnaden är bara den lägsta kontrollerade hittills och är inte ett bevisat optimum." }
   return {
     proven: false, headline: `${rangeKr(boundOre, costOre)}`,
-    note: "Optimum är inte bevisat. Den verkliga minimikostnaden ligger någonstans i intervallet. Intervallet är inte en besparing.",
+    note: "Det lägsta möjliga är inte bevisat. Den lägsta möjliga kostnaden i modellen ligger någonstans i intervallet. Intervallet är ingen besparing.",
   }
 }
 
 const rangeKr = (lowOre: number, highOre: number): string => `${number.format(Math.round(lowOre / 100))}–${number.format(Math.round(highOre / 100))} kr`
 
 export const DAY_STATUS_TEXT: Record<DayStatus | "pending" | "running", string> = {
-  pending: "Väntar", running: "Pågår", optimal: "Optimal", feasible: "Genomförbar", infeasible: "Ogenomförbar", unknown: "Tidsgräns",
+  pending: "Väntar", running: "Pågår", optimal: "Klar, bästa möjliga", feasible: "Klar, går att genomföra", infeasible: "Går inte", unknown: "Tidsgräns nådd",
 }
 
 export const DAY_STATUS_HELP: Record<DayStatus | "pending" | "running", string> = {
-  pending: "Kontrollen har inte körts ännu.",
-  running: "Kontrollen körs (uppskattat; kontraktet saknar händelse för påbörjad dag).",
-  optimal: "Dagen är löst och kostnaden bevisad optimal för dagen.",
-  feasible: "Dagen har en genomförbar lösning men optimum är inte bevisat.",
-  infeasible: "Dagen saknar genomförbar lösning med den fasta planen.",
-  unknown: "Kontrollen avbröts av tidsgränsen utan avgörande svar.",
+  pending: "Dagen har inte kontrollerats ännu.",
+  running: "Dagen kontrolleras just nu.",
+  optimal: "Dagen går att genomföra och är bevisat den billigaste möjliga för dagen.",
+  feasible: "Dagen går att genomföra, men det är inte bevisat att den är billigast möjliga.",
+  infeasible: "Dagen går inte att genomföra med den fasta planen. Den rättas i nästa steg.",
+  unknown: "Kontrollen hann inte bli klar inom tidsgränsen och gav inget säkert svar.",
 }
 
 const KIND_TEXT: Record<string, string> = {
-  warm_start: "Varmstartens dagkontroll", warm_start_check: "Varmstartens dagkontroll", day_checks: "Dagkontroller av ekonomisk plan",
-  exact: "Exakta dagkontroller", economic_plan: "Dagkontroller av ekonomisk plan", history: "Historikbyten", history_swap: "Historikbyten", repair: "Reparation",
+  warm_start: "Förra körningens placering, dag för dag", warm_start_check: "Förra körningens placering, dag för dag",
+  day_checks: "Kontroll av varje dag mot den grova planen", economic_plan: "Kontroll av varje dag mot den grova planen", exact: "Noggrann kontroll av varje dag",
+  history: "Försök att behålla ursprungliga tider", history_swap: "Försök att behålla ursprungliga tider",
+  repair: "Rättning av dagar som inte gick",
 }
 export const kindLabel = (kind: string): string => KIND_TEXT[kind] ?? `Kontroller (${kind})`
 
+/** Var en lösning kom ifrån, med lösarens egna beteckningar översatta ("warm start", "round 2", "round 2 history"). */
+export function sourceLabel(source: string | null | undefined): string {
+  if (!source) return DASH
+  const text = source.trim()
+  if (/^warm start/i.test(text)) return "förra körningens placering"
+  const history = /^round\s+(\d+)\s+history$/i.exec(text)
+  if (history) return `varv ${history[1]}, försök att behålla ursprungliga tider`
+  const round = /^round\s+(\d+)$/i.exec(text)
+  if (round) return `varv ${round[1]} av grov plan och dagkontroll`
+  return text
+}
+
 export const DECISION_TEXT: Record<WarmStartDecisionName, { label: string; help: string }> = {
-  accepted: { label: "Accepterad", help: "Den tidigare placeringen klarade omkontrollen och blev första verifierade lösning." },
-  rejected: { label: "Avvisad", help: "Den tidigare placeringen klarade inte omkontrollen mot de nya reglerna och användes inte som lösning." },
-  hint_only: { label: "Endast ledtråd", help: "Placeringen gavs som ledtråd till lösaren men räknades inte som verifierad lösning." },
-  not_used: { label: "Ej använd", help: "Ingen varmstart användes i denna körning." },
-  not_recorded: { label: "Ej registrerad", help: "Körningen saknar uppgift om varmstart. Det betyder inte att den inte användes." },
+  accepted: { label: "Användes", help: "Förra körningens placering klarade den nya kontrollen och blev första kontrollerade lösning." },
+  rejected: { label: "Användes inte", help: "Förra körningens placering klarade inte kontrollen mot de nya reglerna och användes inte som lösning." },
+  hint_only: { label: "Endast som ledtråd", help: "Förra körningens placering gavs som ledtråd men räknades inte som kontrollerad lösning." },
+  not_used: { label: "Ingen start från förra körningen", help: "Körningen startade från noll." },
+  not_recorded: { label: "Ej registrerat", help: "Körningen saknar uppgift om start från en tidigare körning. Det betyder inte att den inte användes." },
 }
 
 export const OUTCOME_TEXT: Record<string, string> = {
-  optimal: "Bevisat optimum",
-  feasible_not_proven: "Genomförbar lösning, optimum ej bevisat",
-  feasible: "Genomförbar lösning, optimum ej bevisat",
-  infeasible: "Ingen genomförbar lösning",
+  optimal: "Bevisat lägsta kostnad i modellen",
+  feasible_not_proven: "Lösning som går att genomföra, lägsta kostnad ej bevisad",
+  feasible: "Lösning som går att genomföra, lägsta kostnad ej bevisad",
+  infeasible: "Ingen lösning går att genomföra",
   unknown: "Ingen lösning inom tidsgränsen",
+  no_feasibility_conclusion: "Ingen lösning inom tidsgränsen",
+  failed: "Körningen misslyckades",
   cancelled: "Stoppad av användaren",
 }
 export const outcomeLabel = (outcome: string | null | undefined): string => outcome ? OUTCOME_TEXT[outcome] ?? outcome : DASH
@@ -87,10 +103,15 @@ export const outcomeLabel = (outcome: string | null | undefined): string => outc
 export const JOB_STATUS_TEXT: Record<string, string> = { running: "Pågår", completed: "Klar", failed: "Misslyckades", cancelled: "Stoppad" }
 
 export const VERDICT_TEXT: Record<string, string> = {
-  pass: "Godkänd (pass)", fail: "Underkänd (fail)", not_evaluated: "Ej utvärderad (not_evaluated)", not_applicable: "Ej tillämplig (not_applicable)",
+  pass: "Godkänd (pass)", fail: "Underkänd (fail)", not_evaluated: "Ej bedömd (not_evaluated)", not_applicable: "Gäller inte (not_applicable)",
 }
 
-export type VerdictView = { status: string | null; reason: string | null; details: [string, string][] }
+export const FIRST_SOLUTION_BASIS: Record<string, string> = {
+  solver_start: "räknat från att beräkningen startade", run_start: "räknat från att körningen startade",
+}
+export const firstSolutionBasisText = (basis: string | null | undefined): string => basis ? FIRST_SOLUTION_BASIS[basis] ?? basis : ""
+
+export type VerdictView ={ status: string | null; reason: string | null; details: [string, string][] }
 
 /** Läser en dom som antingen en statussträng eller ett objekt. Saknat värde blir status null, aldrig ett godkännande. */
 export function describeVerdict(value: unknown): VerdictView {

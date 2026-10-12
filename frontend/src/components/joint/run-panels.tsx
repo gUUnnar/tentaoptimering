@@ -10,9 +10,9 @@ import { ResourceBox } from "./resource-box"
 /** Gemensamma paneler för livevy och uppspelning: samma tillstånd, samma presentation. */
 export function RunPanels({ state, nowT }: { state: JointState; nowT: number }) {
   return <div className="space-y-4">
-    <Card><CardHeader><CardTitle>Faser</CardTitle></CardHeader><CardContent className="space-y-2">
+    <Card><CardHeader><CardTitle>Körningens steg</CardTitle></CardHeader><CardContent className="space-y-2">
       <PhaseBand state={state} nowT={nowT}/>
-      {state.warmStart && <p className="flex items-start gap-1.5 rounded-md bg-slate-50 p-2 text-xs text-slate-800"><Info size={14} className="mt-0.5 shrink-0" aria-hidden="true"/><span>Varmstart: <strong>{DECISION_TEXT[state.warmStart.decision]?.label ?? state.warmStart.decision}</strong>. {state.warmStart.explanation}{state.warmStart.source_run_id ? ` (källkörning ${state.warmStart.source_run_id})` : ""}</span></p>}
+      {state.warmStart && <p className="flex items-start gap-1.5 rounded-md bg-slate-50 p-2 text-xs text-slate-900"><Info size={14} className="mt-0.5 shrink-0" aria-hidden="true"/><span>Start från förra körningen: <strong>{DECISION_TEXT[state.warmStart.decision]?.label ?? state.warmStart.decision}</strong>. {state.warmStart.explanation}{state.warmStart.source_run_id ? ` (förra körningen: ${state.warmStart.source_run_id})` : ""}</span></p>}
     </CardContent></Card>
     <div className="grid gap-4 xl:grid-cols-[1fr_280px]">
       <CostPanel state={state} nowT={nowT}/>
