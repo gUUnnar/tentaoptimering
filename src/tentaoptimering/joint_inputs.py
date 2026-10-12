@@ -29,6 +29,7 @@ from .joint_contract import (
     write_result,
 )
 from .joint_optimizer import solve_joint_optimization
+from .joint_options import building_id, select_rooms
 from .joint_progress import EVENTS_FILE, ProgressSink, emit, phase
 from .joint_selection import select_ready_demands
 from .joint_strategy.resources import CancelToken, ExecutionBudget
@@ -217,20 +218,14 @@ def _demand(
 def _rooms(
     rooms_frame: pd.DataFrame, plan_area: str, slots: tuple[CandidateSlot, ...], values: dict[str, Any]
 ) -> tuple[Room, ...]:
-    selected = set(str(value) for value in values["rooms.selection"])
-    rows = rooms_frame[
-        rooms_frame["eligible_for_exploratory_capacity_poc"].astype(bool)
-        & (rooms_frame["reference_city"] == plan_area)
-    ].copy()
-    if selected:
-        rows = rows[rows["room_id"].isin(selected)]
+    rows = select_rooms(rooms_frame, plan_area, values["rooms.selection"])  # an unknown room id is an error, not ignored
     result = []
     for row in rows.itertuples(index=False):
         capabilities, basis = _room_digital(str(row.digital_capability_status), values)
         result.append(
             Room(
                 room_id=str(row.room_id),
-                building_id=_building_id(str(row.reference_address)),
+                building_id=building_id(str(row.reference_address)),
                 plan_area=str(row.reference_city),
                 capacity=int(row.capacity_seats),
                 annual_fixed_cost_ore=int(row.capacity_seats) * int(values["cost.room_annual_per_seat_ore"]),
@@ -448,10 +443,6 @@ def _dataset_hash(processed_dir: Path) -> str:
     for name in ("optimization_demands.csv", "optimization_rooms.csv", "demand_scope.csv"):
         digest.update(bytes.fromhex(sha256_file(processed_dir / name)))
     return digest.hexdigest()
-
-
-def _building_id(address: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "-", address.lower()).strip("-")
 
 
 def _clock_minutes(value: str) -> int:
