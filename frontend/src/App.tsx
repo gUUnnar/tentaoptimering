@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react"
 import type { ReactNode } from "react"
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
-import { AlertTriangle, BarChart3, CalendarDays, FileCheck2, FolderOpen, Play, SlidersHorizontal } from "lucide-react"
+import { Activity, AlertTriangle, BarChart3, CalendarDays, FileCheck2, FolderOpen, Play, SlidersHorizontal } from "lucide-react"
+import JointPage from "@/components/joint/joint-page"
+import { isMockRequested } from "@/lib/jointApi"
 import { RunComparison } from "@/components/run-comparison"
 import { ScenarioEditor } from "@/components/scenario-editor"
 import { Badge } from "@/components/ui/badge"
@@ -12,7 +14,7 @@ type Parameter = { id: string; area: string; name_sv: string; unit: string; stat
 type TermParameterBinding = { id: string; engine_binding: string; name_sv: string; unit: string; implementation_status: string; verification_status: string; source: string }
 type Scenario = { id: string; name: string; description: string; engine: string; origin: string; editable: boolean; content?: Record<string, unknown> }
 type Run = { run_id: string; scenario_id: string; status: string; engine: string; created_at: string }
-type Page = "overview" | "parameters" | "scenarios" | "runs" | "results"
+type Page = "overview" | "parameters" | "scenarios" | "runs" | "joint" | "results"
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(path, { headers: { "Content-Type": "application/json" }, ...options })
@@ -23,7 +25,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 const statusClass = (status?: string) => status === "pass" || status === "completed" ? "status-pass" : status === "fail" || status === "failed" ? "status-fail" : "status-neutral"
 
 export default function App() {
-  const [page, setPage] = useState<Page>("overview")
+  const [page, setPage] = useState<Page>(() => isMockRequested() ? "joint" : "overview")
   const [parameters, setParameters] = useState<Parameter[]>([])
   const [termParameterBindings, setTermParameterBindings] = useState<TermParameterBinding[]>([])
   const [scenarios, setScenarios] = useState<Scenario[]>([])
@@ -82,6 +84,7 @@ export default function App() {
         <Nav icon={<SlidersHorizontal size={17}/>} active={page === "parameters"} onClick={() => setPage("parameters")}>Parametrar</Nav>
         <Nav icon={<CalendarDays size={17}/>} active={page === "scenarios"} onClick={() => setPage("scenarios")}>Scenarier</Nav>
         <Nav icon={<Play size={17}/>} active={page === "runs"} onClick={() => setPage("runs")}>Simuleringar</Nav>
+        <Nav icon={<Activity size={17}/>} active={page === "joint"} onClick={() => setPage("joint")}>Gemensam körning</Nav>
         <Nav icon={<FileCheck2 size={17}/>} active={page === "results"} onClick={() => setPage("results")}>Resultat</Nav>
       </nav>
       <div className="mt-auto rounded-md bg-slate-50 p-3 text-xs text-slate-500">Servern lyssnar endast på <code>127.0.0.1</code>.</div>
@@ -92,13 +95,14 @@ export default function App() {
       {page === "parameters" && <Parameters parameters={parameters} bindings={termParameterBindings}/>}
       {page === "scenarios" && <Scenarios scenarios={scenarios} selected={selectedScenario} choose={chooseScenario} copy={copyScenario} validate={validate} save={saveScenario}/>}
       {page === "runs" && <Runs scenarios={scenarios} runs={runs} execute={execute} busy={busy} chooseRun={chooseRun}/>}
+      {page === "joint" && <JointPage/>}
       {page === "results" && <Results runs={runs} selected={selectedRun} validation={validation} chooseRun={chooseRun} compare={compareRuns}/>}
     </main>
   </div>
 }
 
 function Nav({ icon, active, onClick, children }: { icon: ReactNode; active: boolean; onClick: () => void; children: ReactNode }) { return <button className={`nav-item ${active ? "nav-item-active" : ""}`} onClick={onClick}>{icon}{children}</button> }
-function title(page: Page) { return ({ overview: "Översikt", parameters: "Parametrar och regelstatus", scenarios: "Scenarier", runs: "Simuleringar", results: "Resultat och eftervalidering" })[page] }
+function title(page: Page) { return ({ overview: "Översikt", parameters: "Parametrar och regelstatus", scenarios: "Scenarier", runs: "Simuleringar", joint: "Gemensam körning", results: "Resultat och eftervalidering" })[page] }
 
 function Overview({ sourceDir, setSourceDir, saveSource, prepare, busy, scenarios, runs, chooseScenario }: { sourceDir: string; setSourceDir: (value: string) => void; saveSource: () => void; prepare: () => void; busy: boolean; scenarios: Scenario[]; runs: Run[]; chooseScenario: (id: string) => void }) {
   return <div className="grid max-w-6xl gap-4 xl:grid-cols-3"><Card className="xl:col-span-2"><CardHeader><CardTitle>Starta en reproducerbar analys</CardTitle></CardHeader><CardContent><div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]"><div><label className="label">Källdatakatalog</label><input className="field" value={sourceDir} placeholder="Välj mapp med Excel-källor" onChange={e => setSourceDir(e.target.value)}/></div><Button variant="outline" className="self-end" onClick={saveSource}><FolderOpen size={15} className="mr-1"/>Spara sökväg</Button><Button className="self-end" disabled={busy || !sourceDir} onClick={prepare}>Förbered underlag</Button></div><p className="mt-3 text-xs text-slate-500">Originaldata läses från vald plats. Scenarier, bearbetade data och resultat sparas i en användarskrivbar lokal katalog.</p></CardContent></Card><Card><CardHeader><CardTitle>Aktivt underlag</CardTitle></CardHeader><CardContent><div className="space-y-2 text-sm"><div><span className="text-slate-500">Scenarier</span><strong className="float-right">{scenarios.length}</strong></div><div><span className="text-slate-500">Sparade körningar</span><strong className="float-right">{runs.length}</strong></div><div className="border-t pt-2 text-xs text-amber-700">Verksamhetsregler utan verifierat underlag visas alltid som ej verifierade.</div></div></CardContent></Card><Card className="xl:col-span-3"><CardHeader><CardTitle>Fortsätt med ett scenario</CardTitle></CardHeader><CardContent><div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">{scenarios.filter(item => item.engine === "integrated_term").map(item => <button key={item.id} className="rounded-md border p-3 text-left hover:border-sky-500" onClick={() => chooseScenario(item.id)}><div className="flex justify-between gap-2"><strong className="text-sm">{item.name}</strong><Badge>{item.origin === "user" ? "Eget" : "Inbyggt"}</Badge></div><p className="mt-1 line-clamp-2 text-xs text-slate-500">{item.description}</p></button>)}</div></CardContent></Card></div>

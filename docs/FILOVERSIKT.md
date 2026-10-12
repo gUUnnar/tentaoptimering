@@ -148,6 +148,31 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `tools/inventory.py` | Utvecklingsverktyg: importgraf, nåbarhet, oreferererade symboler, API-rutter, CLI-kommandon och frontendfiler. |
 | `tools/check_code_file_lengths.py` | Fristående kontroll: mål 500 rader, stark varning vid 800 och fel vid 1 000 rader. |
 
+## Frontend: vyer för gemensam körning
+
+| Fil | Ansvar |
+|---|---|
+| `frontend/src/lib/jointTypes.ts` | TypeScript-typer för API-kontraktet `/api/joint-runs`, händelser, varmstartsbeslut och sammanfattning. |
+| `frontend/src/lib/jointApi.ts` | Tunn typad API-klient, gemensamt `JointApi`-gränssnitt och växling till mockläge med `?mock=1`. |
+| `frontend/src/lib/jointState.ts` | Ren avledning av fasband, kostnadsserier, dagrutnät och gap ur händelselistan (samma kod för live och uppspelning). |
+| `frontend/src/lib/jointFormat.ts` | Svenska etiketter och formatering; ärlig kostnadsredovisning (intervall utan bevisat optimum) och tolkning av domar. |
+| `frontend/src/lib/jointFixture.ts` | Syntetiska inspelade exempelhändelser, kandidater, varmstartsbeslut och sammanfattning för mockläget. |
+| `frontend/src/lib/jointMock.ts` | Mockad datakälla som spelar upp fixturen i verklig tid (stopp, polling med `after`). |
+| `frontend/src/lib/useJointJob.ts` | React-hook för start, polling var sekund, stopp och återupptagning av pågående jobb. |
+| `frontend/src/lib/joint.test.ts` | Tester för kontraktsform, tillståndsavledning, ärliga texter och mockad datakälla (`npm test`, endast Node). |
+| `frontend/src/components/joint/joint-page.tsx` | Sidan "Gemensam körning" med flikarna Starta, Pågående körning och Resultat och uppspelning. |
+| `frontend/src/components/joint/start-panel.tsx` | Startpanel: scenario, varmstartsväljare med kandidatlista och avancerade resurser. |
+| `frontend/src/components/joint/live-view.tsx` | Livevy med status, förbrukad tid, stoppknapp och anslutningsvarning. |
+| `frontend/src/components/joint/run-panels.tsx` | Gemensam sammansättning av paneler för live och uppspelning. |
+| `frontend/src/components/joint/phase-band.tsx` | Fasband med steg, status och förbrukad tid. |
+| `frontend/src/components/joint/cost-panel.tsx` | Kostnadsgraf (verifierad kostnad, undre gräns, första lösning), gap och ärlig intervalltext. |
+| `frontend/src/components/joint/day-grid.tsx` | Dagrutnät per kontrolltyp, antal samtidiga kontroller och trådar per kontroll. |
+| `frontend/src/components/joint/resource-box.tsx` | Resursruta: tid, trådar, minne och parallellitet. |
+| `frontend/src/components/joint/result-view.tsx` | Resultatvy: sammanfattning och de tre domarna isär, med varning mot sammanblandning. |
+| `frontend/src/components/joint/warm-start-card.tsx` | Varmstartsbeslut med skäl, källa, omkontroll och ändrade parametrar. |
+| `frontend/src/components/joint/replay.tsx` | Uppspelning av en avslutad körnings händelser med tidsmarkör. |
+| `frontend/src/components/joint/status-chip.tsx` | Statusbrickor med ikon och text för dagar, domar och jobb. |
+
 ## Rapporter och genererade filer
 
 | Fil eller katalog | Ansvar |
