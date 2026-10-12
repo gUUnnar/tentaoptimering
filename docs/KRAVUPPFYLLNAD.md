@@ -115,3 +115,10 @@ Den tidigare formuleringen att **minsta planeringsperiod är en termin** har ers
 | Framtida systemkompatibel export | **Utanför PoC** | Dokumentera importformat för senare leverans; eventuell enkel fil inom PoC ska beskrivas som preliminär, inte direkt importerbar. |
 
 Skilj ett datumval för att **studera historiska bokningar** från en **planeringskörning**; de ska kunna använda samma tidsfilter utan krav på att användaren först optimerar. Nuläge och simulering måste dela planeringsperiod, data och antaganden för att kunna jämföras.
+
+
+### Snabb iteration med små perioder (ej verifierad, 2026-10-12)
+
+**Status: saknas i UX, delvis stöd i motorn.** Backendens `joint_selection.select_ready_demands` kan välja korta intervall med `date_from`/`date_to`, men de är ännu bundna till scenariofilen: ingen enkel datumväljare finns i körgränssnittet. Ett litet reproducerbart testfall går att köra i dag via befintligt namngivet delurval eller manuellt skapad scenariofil; det uppfyller inte kravet att kunna snabbt växla period från UX.
+
+Acceptanskriterier: dags- och veckourval direkt i UX utan TOML, redovisat antal tentor/oklarheter, verifierad fullständig placering, sparad specifikation och mätning av både tid till första verifierade lösning och total tid. Testa att redan lagda salbokningar utanför den valda optimeringspopulationen inte felaktigt betraktas som ledig resurs. Den korta perioden ska vara ett verkligt användningsfall för **kortvarselplanering** och för **snabba funktions-/regressionstester**.
