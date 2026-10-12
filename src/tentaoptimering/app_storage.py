@@ -242,6 +242,10 @@ class AppStorage:
             raise FileNotFoundError("Körningens frysta scenario saknas.")
         return _read_toml(path)
 
+    def run_directory(self, run_id: str) -> Path:
+        """The directory of a saved run; the id is validated so it cannot point outside the run directory."""
+        return self._run_dir(run_id)
+
     def _run_dir(self, run_id: str) -> Path:
         if not _SAFE_RUN_ID.fullmatch(run_id):
             raise ValueError("Körnings-id har ogiltigt format.")

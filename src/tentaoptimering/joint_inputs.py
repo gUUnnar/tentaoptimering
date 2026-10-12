@@ -28,10 +28,11 @@ from .joint_contract import (
     write_result,
 )
 from .joint_optimizer import solve_joint_optimization
+from .joint_progress import EVENTS_FILE, ProgressSink, emit, phase
 from .joint_strategy.resources import CancelToken, ExecutionBudget
 from .joint_strategy.warm_start import StartReport
 from .joint_validation import write_validation
-from .joint_warm_start import AUTO, decision_record, find_start, report_lines, write_decision
+from .joint_warm_start import AUTO, decision_record, explain, find_start, report_lines, write_decision
 from .optimizer_time import duration_minutes
 from .parameter_catalog import freeze_parameter_values, load_parameter_catalog
 from .provenance import sha256_file
@@ -268,22 +269,50 @@ def run_real_subset(
     warm_start: str | None = AUTO,
     budget: ExecutionBudget | None = None,
     cancel: CancelToken | None = None,
+    progress: ProgressSink | None = None,
 ) -> dict[str, Any]:
     """Build, solve, save and validate one run.
 
     `warm_start` is "auto" (the newest usable earlier run of the same problem), "none", or the run id of an
     earlier run. The earlier placement is only a starting point: the solver re-checks it against the new
     instance, and the independent post-validation of the new run is made as for any run.
+
+    `progress` only observes the run. The run directory is created as soon as the problem is built (and before
+    the solve), so that the sink can write `joint_events.jsonl` there while the run is going on; the artifacts
+    that exist afterwards are the same as without a sink, plus that file.
     """
     problem = build_real_subset_problem(config_path, processed_dir, catalog_path)
     choice = find_start(runs_dir, problem, warm_start)
     budget = (budget or ExecutionBudget()).resolve(problem.solver)
     report = StartReport()
-    result = solve_joint_optimization(problem, choice.start, budget, cancel, report)
-    decision = decision_record(choice, problem, report, budget)
     run_id = f"{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}-{problem.problem_id}"
     run_dir = runs_dir / run_id
     run_dir.mkdir(parents=True, exist_ok=False)
+    if progress is not None:
+        progress.run_id = run_id
+        progress.attach(run_dir / EVENTS_FILE)
+        progress.defer("finished")  # the last event comes after the artifacts are saved and validated
+        if choice.source is None:
+            emit(progress, "warm_start", decision="not_used", explanation=explain(choice, report), source_run_id=None)
+    report.source_run_id = choice.source.run_id if choice.source else None
+    try:
+        result = solve_joint_optimization(problem, choice.start, budget, cancel, report, progress)
+        decision = decision_record(choice, problem, report, budget)
+        with phase(progress, "finalize"):
+            return _save_and_validate(
+                problem, result, decision, choice, run_id, run_dir, config_path, processed_dir, catalog_path
+            )
+    finally:
+        if progress is not None:
+            progress.release()
+            progress.close()  # the log file is this run's; the events stay readable from memory
+
+
+def _save_and_validate(
+    problem: JointOptimizationInput, result: Any, decision: dict[str, Any], choice: Any, run_id: str, run_dir: Path,
+    config_path: Path, processed_dir: Path, catalog_path: Path,
+) -> dict[str, Any]:
+    """Write the artifacts of a solved run and validate them independently."""
     write_problem(problem, run_dir / "joint_input.json")
     write_result(result, run_dir / "joint_result.json")
     (run_dir / "joint_report.md").write_text(_report(problem, result), encoding="utf-8")

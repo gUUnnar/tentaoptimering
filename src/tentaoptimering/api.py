@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -15,6 +15,7 @@ from .app_paths import frontend_dist_dir
 from .app_storage import AppStorage
 from .integrated_runs import run_integrated_term
 from .integrated_validation import write_validation_report
+from . import joint_api
 from .job_manager import LocalJobManager
 from .optimization_runs import run_optimization
 from .pipeline import run_pipeline
@@ -185,6 +186,52 @@ def create_app(storage_root: Path | None = None) -> FastAPI:
     def warm_start_candidates(problem_id: str | None = None) -> dict[str, Any]:
         """Saved joint runs that can be offered as a warm start. Listing only: the solver re-checks any choice."""
         return {"candidates": storage.warm_start_candidates(problem_id)}
+
+    @app.get("/api/joint-runs/scenarios")
+    def joint_scenarios() -> dict[str, Any]:
+        """Bundled scenarios that the joint engine can run."""
+        return {"scenarios": joint_api.list_scenarios()}
+
+    @app.post("/api/joint-runs")
+    def start_joint_run(request: joint_api.JointRunRequest) -> dict[str, Any]:
+        """Start a joint run as a background job; follow it with `/api/joint-runs/{job_id}/events`."""
+        try:
+            return joint_api.start_joint_run(jobs, storage, request)
+        except Exception as error:
+            raise _error(error) from error
+
+    @app.get("/api/joint-runs/{job_id}/events")
+    def joint_job_events(job_id: str, after: int = Query(0, ge=0)) -> dict[str, Any]:
+        try:
+            return joint_api.job_events(jobs, job_id, after)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+        except Exception as error:
+            raise _error(error) from error
+
+    @app.post("/api/joint-runs/{job_id}/cancel")
+    def cancel_joint_run(job_id: str) -> dict[str, Any]:
+        try:
+            return joint_api.cancel_job(jobs, job_id)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+        except Exception as error:
+            raise _error(error) from error
+
+    @app.get("/api/joint-runs/{run_id}/summary")
+    def joint_run_summary(run_id: str) -> dict[str, Any]:
+        try:
+            return joint_api.run_summary(storage, run_id)
+        except Exception as error:
+            raise _error(error) from error
+
+    @app.get("/api/runs/{run_id}/events")
+    def saved_run_events(run_id: str) -> dict[str, Any]:
+        """The whole saved event log of a finished joint run, for replay."""
+        try:
+            return joint_api.run_events(storage, run_id)
+        except Exception as error:
+            raise _error(error) from error
 
     @app.get("/api/runs/{run_id}/warm-start")
     def get_warm_start(run_id: str) -> dict[str, Any]:

@@ -33,6 +33,7 @@ from ..joint_contract import (
     RESULT_SCHEMA_VERSION, CostBreakdown, CoverageSummary, JointOptimizationInput, JointOptimizationResult, SolverSummary,
 )
 from ..joint_optimizer import _is_changed, _limitations, _verification
+from ..joint_progress import ProgressSink, emit, finished_event, phase, resources_event
 from .aggregate import Cut, solve_master
 from .resources import CancelToken, ExecutionBudget
 from .subproblems import Part
@@ -48,13 +49,18 @@ MAX_ROUNDS = 25
 def solve_decomposed(
     problem: JointOptimizationInput, start: tuple[dict[str, str], set[str]] | None = None,
     budget: ExecutionBudget | None = None, cancel: CancelToken | None = None, report: StartReport | None = None,
+    progress: ProgressSink | None = None,
 ) -> JointOptimizationResult:
-    """`start` is an earlier saved placement: exam -> slot, and the rooms it used. It is re-checked, not trusted."""
+    """`start` is an earlier saved placement: exam -> slot, and the rooms it used. It is re-checked, not trusted.
+
+    `progress` only observes the run (phases, day checks, solutions, bounds); it never changes a decision.
+    """
     started = time.perf_counter()
     report = report if report is not None else StartReport()
     deadline = started + problem.solver.time_limit_seconds
-    checker = Checker(problem, deadline, budget, cancel)
+    checker = Checker(problem, deadline, budget, cancel, progress)
     settings = checker.budget.settings(problem.solver)  # one thread budget for the relaxation and the day checks
+    resources_event(progress, checker.budget)
     cuts: list[Cut] = []
     best: tuple[int, int, Parts] | None = None  # cost, changed exams, parts
     best_source = ""
@@ -70,6 +76,7 @@ def solve_decomposed(
         total, changed = cost(problem, list(parts.values()))[-1], _changed(problem, list(parts.values()))
         if best is None or (total, changed) < best[:2]:
             best, best_source = (total, changed, parts), source
+            emit(progress, "incumbent", cost_ore=total, source=source, changed_exams=changed)
         if first_at is None:
             first_at = time.perf_counter() - started
             report.first_solution_seconds, report.first_solution_source = first_at, source
@@ -78,8 +85,9 @@ def solve_decomposed(
 
     hint = None
     if start is not None:
-        parts, hint = warm_start(checker, *start, report)
-        report.verified_cost_ore = consider(parts, "warm start")
+        with phase(progress, "warm_start_check"):
+            parts, hint = warm_start(checker, *start, report)
+            report.verified_cost_ore = consider(parts, "warm start")
         if parts is not None:
             report.status = ACCEPTED
     for rounds in range(1, MAX_ROUNDS + 1):
@@ -87,24 +95,29 @@ def solve_decomposed(
         if remaining <= 1.0 or checker.cancel.cancelled:
             break
         # The first relaxation keeps its planned share of the whole limit; a warm start must not shorten it.
-        master = solve_master(problem, min(remaining, MASTER_SHARE * problem.solver.time_limit_seconds) if rounds == 1 else remaining * 0.25,
-                              settings, tuple(cuts), hint,
-                              prefer_history_seconds=min(10.0, 0.1 * remaining), cancel=checker.cancel)
+        with phase(progress, "relaxation"):
+            master = solve_master(problem, min(remaining, MASTER_SHARE * problem.solver.time_limit_seconds) if rounds == 1 else remaining * 0.25,
+                                  settings, tuple(cuts), hint,
+                                  prefer_history_seconds=min(10.0, 0.1 * remaining), cancel=checker.cancel)
         LOG.debug("master %s: %s cost %s bound %s plans %d (%.1f s)", rounds, master.status, master.objective,
                   master.bound, len(master.plans), master.wall_seconds)
         if master.status == "infeasible":
             # The relaxation (with valid cuts) has no solution, so neither has the joint model.
-            return _no_solution(problem, "infeasible", "aggregate_infeasible", started, rounds,
-                                "Den aggregerade relaxationen saknar lösning: kapacitet, byggnad eller kalender räcker inte.")
+            return finished_event(progress, _no_solution(
+                problem, "infeasible", "aggregate_infeasible", started, rounds,
+                "Den aggregerade relaxationen saknar lösning: kapacitet, byggnad eller kalender räcker inte."), checker.cancel.cancelled)
         if master.status == "unknown":
             break
         lower = max(lower, master.bound or 0)
+        if master.bound is not None:
+            emit(progress, "bound", lower_ore=lower, round=rounds)
         economic = master.plans[0]
         hint = economic.choice
         parts, new_cuts = verify(checker, economic)
         consider(parts, f"round {rounds}")
         if parts is not None and len(master.plans) > 1:
-            consider(prefer_history(checker, parts, economic, master.plans[1]), f"round {rounds} history")
+            with phase(progress, "history"):
+                consider(prefer_history(checker, parts, economic, master.plans[1]), f"round {rounds} history")
         cuts += new_cuts
         LOG.debug("round %s: best %s lower %s new cuts %d", rounds, best[0] if best else None, lower, len(new_cuts))
         if best is not None and master.status == "optimal" and best[0] <= lower:
@@ -117,11 +130,13 @@ def solve_decomposed(
     LOG.debug("time by step: %s", {kind: f"{seconds:.1f} s / {checker.calls[kind]}" for kind, seconds in checker.seconds.items()})
     report.interrupted = checker.cancel.cancelled
     if best is None:
-        return _no_solution(problem, "no_feasibility_conclusion", "decomposed_cancelled" if report.interrupted else "decomposed_no_verified_solution",
-                            started, rounds, "Körningen avbröts innan någon dag-för-dag-verifierad lösning fanns." if report.interrupted
-                            else "Ingen dag-för-dag-verifierad lösning hittades inom tidsgränsen.")
+        return finished_event(progress, _no_solution(
+            problem, "no_feasibility_conclusion", "decomposed_cancelled" if report.interrupted else "decomposed_no_verified_solution",
+            started, rounds, "Körningen avbröts innan någon dag-för-dag-verifierad lösning fanns." if report.interrupted
+            else "Ingen dag-för-dag-verifierad lösning hittades inom tidsgränsen."), report.interrupted)
     report.final_cost_ore, report.final_source = best[0], best_source
-    return _result(problem, list(best[2].values()), lower, proven, started, rounds, len(cuts), first_at, report.interrupted)
+    return finished_event(progress, _result(problem, list(best[2].values()), lower, proven, started, rounds, len(cuts), first_at,
+                                            report.interrupted), report.interrupted)
 
 
 def _changed(problem: JointOptimizationInput, parts: list[Part]) -> int:

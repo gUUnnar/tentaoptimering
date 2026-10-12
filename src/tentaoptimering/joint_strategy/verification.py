@@ -17,7 +17,9 @@ import time
 from typing import Iterator, NamedTuple
 
 from ..joint_contract import JointOptimizationInput
+from ..joint_progress import ProgressSink, phase
 from .aggregate import Cut, Plan
+from .batch_progress import BatchReporter
 from .resources import CancelToken, ExecutionBudget, plan_batch, run_ordered, task_memory_mb
 from .subproblems import Part, infeasible_core, restrict, solve_part
 
@@ -49,9 +51,10 @@ class Checker:
 
     def __init__(
         self, problem: JointOptimizationInput, deadline: float, budget: ExecutionBudget | None = None,
-        cancel: CancelToken | None = None,
+        cancel: CancelToken | None = None, progress: ProgressSink | None = None,
     ) -> None:
         self.problem = problem
+        self.progress = progress  # observation only: the checks never read it
         self.deadline = deadline
         self.budget = (budget or ExecutionBudget()).resolve(problem.solver)
         self.cancel = cancel or CancelToken()
@@ -101,14 +104,17 @@ class Checker:
         biggest = max(self._pairs(request) for _, request in items)
         parallel, workers = plan_batch(len(items), task_memory_mb(biggest), self.budget)
         settings = self.budget.settings(self.problem.solver, workers)
-        outcomes = run_ordered([partial(self._solve_one, request, settings) for _, request in items], parallel, self.cancel)
+        reporter = BatchReporter(self.progress, items[0][1].kind, len(items), parallel, workers)
+        outcomes = run_ordered([partial(self._solve_reported, request, settings, reporter) for _, request in items], parallel, self.cancel)
         repeated = 0
         if workers < self.budget.threads:
             full = self.budget.settings(self.problem.solver)
             for index, ((result, _), (_, request)) in enumerate(zip(outcomes, items)):
                 if result[0] == "unknown" and not self.expired:
                     outcomes[index] = self._solve_one(request, full)
+                    reporter.repeated(request, *outcomes[index])
                     repeated += 1
+        reporter.finish([result[0] for result, _ in outcomes])
         fresh: dict[tuple, Outcome] = {}
         for (key, request), (result, elapsed) in zip(items, outcomes):
             self.calls[request.kind] += 1
@@ -123,6 +129,11 @@ class Checker:
                       len(items), items[0][1].kind, parallel, workers, time.perf_counter() - started,
                       sum(elapsed for _, elapsed in outcomes), repeated)
         return fresh
+
+    def _solve_reported(self, request: Request, settings, reporter: BatchReporter) -> tuple[Outcome, float]:
+        outcome, elapsed = self._solve_one(request, settings)
+        reporter.checked(request, outcome, elapsed)
+        return outcome, elapsed
 
     def _solve_one(self, request: Request, settings) -> tuple[Outcome, float]:
         started = time.perf_counter()
@@ -170,53 +181,55 @@ def verify(checker: Checker, plan: Plan) -> tuple[Parts | None, list[Cut]]:
     parts: Parts = {}
     failed: list[date] = []
     ordered = sorted(exams_on)
-    outcomes = checker.check_many([Request("day", frozenset({day}), exams_on[day], cap, portfolio) for day in ordered])
+    with phase(checker.progress, "day_checks"):
+        outcomes = checker.check_many([Request("day", frozenset({day}), exams_on[day], cap, portfolio) for day in ordered])
     for day, (status, part, _) in zip(ordered, outcomes):  # the days are independent: one parallel batch, in date order
         if part is None:
             LOG.debug("day %s failed: %s (%d exams)", day, status, len(exams_on[day]))
             failed.append(day)
         else:
             parts[frozenset({day})] = part
-    cuts: list[Cut] = []
-    fallback: dict[date, Part | None] = {}
-    for day in list(failed):
-        # Diagnose the day alone; only proven infeasibility becomes a cut, never a timeout.
-        block, exams = frozenset({day}), exams_on[day]
-        capped_status = checker.check("day", block, exams, cap, portfolio)[0]
-        status, part, pool_bound = checker.check("diagnosis", block, exams, None, portfolio)
-        if part is not None and (cap is None or peak_staff(problem, list(part.sessions)) <= cap):
-            parts[block] = part  # the capped check only timed out; this placement fits the plan's pool
-            failed.remove(day)
-            continue
-        if not checker.expired:
-            if status == "infeasible":
-                cuts.append(("rooms", block, checker.core(block, exams, portfolio, None), plan.owned, 0))
-            elif cap is not None:
-                if pool_bound is not None and pool_bound > cap:
-                    cuts.append(("pool", block, exams, plan.owned, pool_bound))
-                if capped_status == "infeasible":
-                    cuts.append(("pool", block, checker.core(block, exams, portfolio, cap), plan.owned, cap + 1))
-        fallback[day] = part
-    for block in _blocks(failed, days):
-        # Repair with the plan's portfolio and pool: exams may move between the failed day and its neighbours.
-        exams = frozenset().union(*(exams_on.get(day, frozenset()) for day in block))
-        status, part, _ = checker.check("repair", block, exams, cap, portfolio, seconds=BLOCK_SECONDS)
-        LOG.debug("repair %s..%s: %s", min(block), max(block), status)
-        if part is not None:
-            for key in [key for key in parts if key <= block]:
-                del parts[key]
-            parts[block] = part
-            continue
-        for day in sorted(block & set(failed)):
-            # Upper bound: the failed day alone with more staff, or also with rooms outside the portfolio.
-            part = fallback[day]
-            if part is None:
-                extra = frozenset(room.room_id for room in problem.rooms) - plan.owned
-                part = checker.check("fallback", frozenset({day}), exams_on[day], None, problem.rooms, extra)[1]
-            if part is None:
-                return None, cuts
-            parts[frozenset({day})] = part
-    return parts, cuts
+    with phase(checker.progress if failed else None, "repair"):  # diagnosis, cuts and repair of the failed days
+        cuts: list[Cut] = []
+        fallback: dict[date, Part | None] = {}
+        for day in list(failed):
+            # Diagnose the day alone; only proven infeasibility becomes a cut, never a timeout.
+            block, exams = frozenset({day}), exams_on[day]
+            capped_status = checker.check("day", block, exams, cap, portfolio)[0]
+            status, part, pool_bound = checker.check("diagnosis", block, exams, None, portfolio)
+            if part is not None and (cap is None or peak_staff(problem, list(part.sessions)) <= cap):
+                parts[block] = part  # the capped check only timed out; this placement fits the plan's pool
+                failed.remove(day)
+                continue
+            if not checker.expired:
+                if status == "infeasible":
+                    cuts.append(("rooms", block, checker.core(block, exams, portfolio, None), plan.owned, 0))
+                elif cap is not None:
+                    if pool_bound is not None and pool_bound > cap:
+                        cuts.append(("pool", block, exams, plan.owned, pool_bound))
+                    if capped_status == "infeasible":
+                        cuts.append(("pool", block, checker.core(block, exams, portfolio, cap), plan.owned, cap + 1))
+            fallback[day] = part
+        for block in _blocks(failed, days):
+            # Repair with the plan's portfolio and pool: exams may move between the failed day and its neighbours.
+            exams = frozenset().union(*(exams_on.get(day, frozenset()) for day in block))
+            status, part, _ = checker.check("repair", block, exams, cap, portfolio, seconds=BLOCK_SECONDS)
+            LOG.debug("repair %s..%s: %s", min(block), max(block), status)
+            if part is not None:
+                for key in [key for key in parts if key <= block]:
+                    del parts[key]
+                parts[block] = part
+                continue
+            for day in sorted(block & set(failed)):
+                # Upper bound: the failed day alone with more staff, or also with rooms outside the portfolio.
+                part = fallback[day]
+                if part is None:
+                    extra = frozenset(room.room_id for room in problem.rooms) - plan.owned
+                    part = checker.check("fallback", frozenset({day}), exams_on[day], None, problem.rooms, extra)[1]
+                if part is None:
+                    return None, cuts
+                parts[frozenset({day})] = part
+        return parts, cuts
 
 
 def prefer_history(checker: Checker, parts: Parts, economic: Plan, history: Plan) -> Parts:
