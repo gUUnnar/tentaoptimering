@@ -101,6 +101,8 @@ class SolverSettings:
     random_seed: int = 20261009
     num_workers: int = 1
     deterministic: bool = False
+    strategy: str = "monolithic"
+    relative_gap_limit: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -137,6 +139,7 @@ class SolverSummary:
     relative_gap: float | None
     wall_time_seconds: float
     change_preference_status: str
+    strategy: str = "monolithic"
 
 
 @dataclass(frozen=True)

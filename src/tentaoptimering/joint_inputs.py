@@ -91,7 +91,7 @@ def build_real_subset_problem(
         ),
         solver=SolverSettings(
             float(values["solver.time_limit_seconds"]), int(values["solver.seed"]), int(values["solver.workers"]),
-            bool(values["solver.deterministic"]),
+            bool(values["solver.deterministic"]), str(values["solver.strategy"]), float(values["solver.relative_gap_limit"]),
         ),
         parameters=parameters,
         scope=ScopeSummary(
@@ -293,6 +293,17 @@ def run_real_subset(
     }
 
 
+def _proof_lines(solver: Any) -> list[str]:
+    """A solution without an optimality proof is never presented as the largest possible saving."""
+    if solver.outcome != "feasible_not_proven" or solver.best_objective_bound_ore is None:
+        return []
+    return [
+        f"- Kostnaden är en verifierad övre gräns, inte ett bevisat optimum: den lägsta möjliga kostnaden i modellen "
+        f"ligger mellan {solver.best_objective_bound_ore} och {solver.objective_value_ore} öre. "
+        "Besparingen får därför inte redovisas som bevisad maximal besparing.",
+    ]
+
+
 def _validation_lines(summary: dict[str, Any]) -> list[str]:
     """Report the three verdicts separately; the solver result itself is never altered."""
     return [
@@ -401,11 +412,12 @@ def _report(problem: JointOptimizationInput, result: Any) -> str:
     costs = result.costs
     return "\n".join([
         f"# Gemensam verklig delmängd: {problem.problem_id}", "",
-        f"- Solverutfall: `{solver.outcome}` (`{solver.raw_status}`).",
+        f"- Solverutfall: `{solver.outcome}` (`{solver.raw_status}`), strategi `{solver.strategy}`.",
         f"- Beräkningstid: {solver.wall_time_seconds:.3f} sekunder.",
         f"- Funnet jämförbart kostnadsmål: {solver.objective_value_ore} öre.",
         f"- Bästa kostnadsgräns: {solver.best_objective_bound_ore} öre.",
         f"- Relativt gap: {solver.relative_gap}.",
+        *_proof_lines(solver),
         f"- Teknisk placeringsfullständighet: {result.coverage.technical_placement_complete}.",
         f"- Behov/deltagare: {result.coverage.exam_demands_scheduled}/{result.coverage.exam_demands_total}, {result.coverage.participants_total} deltagare.",
         f"- Bemanningspool: {result.staff_pool_size} anonyma samtidiga resurser.",
