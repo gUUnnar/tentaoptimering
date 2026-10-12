@@ -181,6 +181,21 @@ def create_app(storage_root: Path | None = None) -> FastAPI:
         except Exception as error:
             raise _error(error) from error
 
+    @app.get("/api/joint-runs/warm-start-candidates")
+    def warm_start_candidates(problem_id: str | None = None) -> dict[str, Any]:
+        """Saved joint runs that can be offered as a warm start. Listing only: the solver re-checks any choice."""
+        return {"candidates": storage.warm_start_candidates(problem_id)}
+
+    @app.get("/api/runs/{run_id}/warm-start")
+    def get_warm_start(run_id: str) -> dict[str, Any]:
+        try:
+            decision = storage.warm_start(run_id)
+            if decision is None:
+                return {"decision": "not_recorded", "explanation": "Körningen har ingen sparad varmstartsbeskrivning."}
+            return decision
+        except Exception as error:
+            raise _error(error) from error
+
     @app.get("/api/runs/{run_id}/validation")
     def get_validation(run_id: str) -> dict[str, Any]:
         try:

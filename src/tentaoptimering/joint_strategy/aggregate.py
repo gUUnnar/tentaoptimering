@@ -26,6 +26,7 @@ from ortools.sat.python import cp_model
 
 from ..joint_contract import ExamDemand, JointOptimizationInput, Room, SolverSettings, StaffingStep
 from ..joint_optimizer import _conflicts, _overlap, staffing_cut_edges
+from .resources import CancelToken, solve_cancellable, wall_time
 
 # A cut excludes, or prices, master solutions where every listed exam lies on the listed days and no
 # room outside `rooms` is owned. kind "rooms": that combination is infeasible; kind "pool": it needs
@@ -60,6 +61,7 @@ def solve_master(
     cuts: tuple[Cut, ...] = (),
     hint: dict[str, str] | None = None,
     prefer_history_seconds: float = 0.0,
+    cancel: CancelToken | None = None,
 ) -> MasterSolution:
     """Minimise the relaxed cost; optionally then keep historical slots with the same portfolio and pool.
 
@@ -69,8 +71,8 @@ def solve_master(
     model, x, owned, pool, cost = _build(problem, cuts, hint)
     built = time.perf_counter()
     solver = cp_solver(max(0.1, time_limit - (built - started)), settings)
-    status = solver.Solve(model)
-    LOG.debug("master build %.2f s, solve %.2f s of %.2f s", built - started, solver.WallTime(), time_limit - (built - started))
+    status = solve_cancellable(solver, model, cancel)
+    LOG.debug("master build %.2f s, solve %.2f s of %.2f s", built - started, wall_time(solver), time_limit - (built - started))
     wall = time.perf_counter() - started
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
         name = "infeasible" if status == cp_model.INFEASIBLE else "unknown"
@@ -93,7 +95,7 @@ def solve_master(
                 var = model.GetIntVarFromProtoIndex(index)
                 model.AddHint(var, solver.Value(var))
             second = cp_solver(prefer_history_seconds, settings)
-            if second.Solve(model) in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+            if solve_cancellable(second, model, cancel) in (cp_model.OPTIMAL, cp_model.FEASIBLE):
                 history = _plan(second, x, owned, pool)
                 if history != economic:
                     plans = (economic, history)
@@ -169,7 +171,8 @@ def _build(problem: JointOptimizationInput, cuts: tuple[Cut, ...], hint: dict[st
     _add_cuts(model, problem, slots, x, owned, pool, cuts)
     if hint:
         for (demand, slot_id), var in x.items():
-            model.AddHint(var, int(hint.get(demand) == slot_id))
+            if demand in hint:  # an exam without an earlier placement gets no hint, not a hint of "nowhere"
+                model.AddHint(var, int(hint[demand] == slot_id))
     return model, x, owned, pool, cost
 
 

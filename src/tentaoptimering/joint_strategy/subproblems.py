@@ -23,6 +23,7 @@ from ortools.sat.python import cp_model
 from ..joint_contract import JointOptimizationInput, Room, SolverSettings
 from ..joint_optimizer import _build_variables_and_constraints, _extract
 from .aggregate import cp_solver
+from .resources import CancelToken, solve_cancellable, wall_time
 
 LOG = logging.getLogger(__name__)
 MIN_STEP = 0.5  # seconds; a step that cannot get this much time before the deadline is not started
@@ -64,7 +65,7 @@ def restrict(
 
 def solve_part(
     sub: JointOptimizationInput, days: frozenset[date], pool_cap: int | None, extra_rooms: frozenset[str],
-    step_seconds: float, deadline: float, settings: SolverSettings,
+    step_seconds: float, deadline: float, settings: SolverSettings, cancel: CancelToken | None = None,
 ) -> tuple[str, Part | None, int | None]:
     """Place the exams of `sub` with the joint constraints.
 
@@ -109,7 +110,7 @@ def solve_part(
         LOG.debug("part %s..%s: no time left after a %.2f s build", min(days), max(days), built - started)
         return "unknown", None, None
     solver = cp_solver(budget_end - built, settings)
-    status = solver.Solve(model)
+    status = solve_cancellable(solver, model, cancel)
     log_step("part", days, len(sub.demands), started, built, solver, budget_end - built)
     if status == cp_model.INFEASIBLE:
         return "infeasible", None, None
@@ -128,15 +129,16 @@ def log_step(kind: str, days, size: int, started: float, built: float, solver: c
     """Record build and solve time separately; flag a solve that ran past its limit."""
     done = time.perf_counter()
     first, last = (min(days), max(days)) if days else ("-", "-")
+    solved = wall_time(solver)
     LOG.debug("%s %s..%s (%d): build %.2f s, solve %.2f s of %.2f s, total %.2f s",
-              kind, first, last, size, built - started, solver.WallTime(), limit, done - started)
-    if solver.WallTime() > limit + 1.0:
-        LOG.warning("%s %s..%s: CP-SAT used %.1f s with a %.1f s limit", kind, first, last, solver.WallTime(), limit)
+              kind, first, last, size, built - started, solved, limit, done - started)
+    if solved > limit + 1.0:
+        LOG.warning("%s %s..%s: CP-SAT used %.1f s with a %.1f s limit", kind, first, last, solved, limit)
 
 
 def is_infeasible(
     problem: JointOptimizationInput, days: frozenset[date], exam_ids: set[str], rooms: tuple[Room, ...],
-    pool_cap: int | None, step_seconds: float, deadline: float, settings: SolverSettings,
+    pool_cap: int | None, step_seconds: float, deadline: float, settings: SolverSettings, cancel: CancelToken | None = None,
 ) -> bool:
     """True only when the joint model proves the exams cannot be placed on `days` in `rooms` within the pool."""
     started = time.perf_counter()
@@ -152,14 +154,14 @@ def is_infeasible(
     if budget_end - built < 0.1:
         return False
     solver = cp_solver(budget_end - built, settings)
-    status = solver.Solve(model)
+    status = solve_cancellable(solver, model, cancel)
     log_step("core-check", days, len(sub.demands), started, built, solver, budget_end - built)
     return status == cp_model.INFEASIBLE
 
 
 def infeasible_core(
     problem: JointOptimizationInput, days: frozenset[date], exam_ids: set[str], rooms: tuple[Room, ...],
-    pool_cap: int | None, step_seconds: float, deadline: float, settings: SolverSettings,
+    pool_cap: int | None, step_seconds: float, deadline: float, settings: SolverSettings, cancel: CancelToken | None = None,
 ) -> frozenset[str]:
     """Shrink an infeasible exam set by deletion; an exam is dropped only when infeasibility is proven
     without it, so the returned set is always infeasible (a valid, stronger cut)."""
@@ -167,11 +169,11 @@ def infeasible_core(
     sizes = {item.exam_demand_id: item.participant_count for item in problem.demands}
     core = sorted(exam_ids, key=lambda exam: sizes[exam])
     chunk = max(1, len(core) // 2)
-    while chunk >= 1 and time.perf_counter() < stop:
+    while chunk >= 1 and time.perf_counter() < stop and not (cancel and cancel.cancelled):
         index, changed = 0, False
-        while index < len(core) and time.perf_counter() < stop:
+        while index < len(core) and time.perf_counter() < stop and not (cancel and cancel.cancelled):
             trial = core[:index] + core[index + chunk:]
-            if trial and is_infeasible(problem, days, set(trial), rooms, pool_cap, 2.0, stop, settings):
+            if trial and is_infeasible(problem, days, set(trial), rooms, pool_cap, 2.0, stop, settings, cancel):
                 core, changed = trial, True
             else:
                 index += chunk

@@ -1,6 +1,6 @@
 # Optimeringsstrategi: aggregerad relaxation och exakt kontroll dag för dag
 
-**Status:** analys och avgränsad prototyp. Prototypen är lösningsstrategin `solver.strategy = "decomposed"`; den monolitiska modellen finns kvar som `"monolithic"`. Mätningarna i avsnitt 5 gjordes 2026-10-11–12 med koden frusen i commit `5080899`. Rättningarna efter granskningen av PR #9 och deras riktade kontroller redovisas i avsnitt 8.
+**Status:** analys och avgränsad prototyp; avsnitt 9 beskriver PR #10 (parallella dagkontroller och varmstart). Prototypen är lösningsstrategin `solver.strategy = "decomposed"`; den monolitiska modellen finns kvar som `"monolithic"`. Mätningarna i avsnitt 5 gjordes 2026-10-11–12 med koden frusen i commit `5080899`. Rättningarna efter granskningen av PR #9 och deras riktade kontroller redovisas i avsnitt 8.
 
 PoC:n ska svara på två frågor: hur mycket lokalbehovet kan minska med bättre schemaläggning, och vad det motsvarar ekonomiskt. I modellen avgörs svaret av två storheter:
 
@@ -259,8 +259,8 @@ Vad mätningarna stöder:
 
 Ordnat efter betydelse för interaktiv användning, efter rättningarna i avsnitt 8.
 
-1. **Varmstarten är inte inkopplad i kommandoraden eller gränssnittet.** Den finns i `solve_joint_optimization(problem, start)`. Nästa steg är att låta en ny körning peka på föregående körnings `joint_result.json`.
-2. **Dagkontrollerna körs i tur och ordning.** Mätt på 73 dagar (varmstartskontrollen för tre starttider): 77 s med 8 CP-SAT-trådar per dag, 51 s med en tråd, 18 s med 4 dagar parallellt och 2 trådar var, och 11 s med 8 dagar parallellt och en tråd var. Alla dagar fick samma utfall. Parallella dagkontroller är den största återstående tidsvinsten.
+1. **Varmstarten är inte inkopplad i kommandoraden eller gränssnittet.** *Åtgärdat i PR #10 (avsnitt 9):* `optimize-joint --warm-start auto|none|RUN_ID`. Gränssnittet har skrivskyddade ändpunkter men ingen vy.
+2. **Dagkontrollerna körs i tur och ordning.** Mätt på 73 dagar (varmstartskontrollen för tre starttider): 77 s med 8 CP-SAT-trådar per dag, 51 s med en tråd, 18 s med 4 dagar parallellt och 2 trådar var, och 11 s med 8 dagar parallellt och en tråd var. Alla dagar fick samma utfall. Parallella dagkontroller är den största återstående tidsvinsten. *Infört i PR #10 (avsnitt 9), med lägre vinst än i provet: 2,4–3,1 gånger på samma 73 dagar.*
 3. **Gapet på dimensionerande dagar** (oftast en poolresurs) kvarstår, eftersom snitten är lokala. Starkare bemanningsgräns i relaxationen för pågående tillfällen kan minska det.
 4. **Antalet flyttade tentor är fortfarande högre än nödvändigt** (300 för hela terminen i kontrollkörningen, varav 56 tvingade). Förslag i avsnitt 8.5.
 5. **Tre starttider utan varmstart:** relaxationen blir inte bevisad på 72 s och de täta dagarna i vecka 3 tar slut på tid. Utan en tidigare lösning är resultatet fortfarande osäkert på 3 minuter.
@@ -397,3 +397,148 @@ Mätt på 73 dagars varmstartskontroll:
 | 8 dagar parallellt, 1 tråd var | 11 s |
 
 Alla dagar fick samma utfall i alla fyra. Små dagmodeller tjänar alltså mer på att köras parallellt än på flera trådar per modell. Relaxationen och de få täta dagarna har fortsatt nytta av flera trådar. Detta är inte infört i den här PR:en (avsnitt 7, punkt 2).
+
+## 9. PR #10: parallella dagkontroller och varmstart som normal väg
+
+Detta steg handlar om genomförandets effektivitet. Parametrar, kostnadsdefinitioner, verksamhetskrav och relaxationens och dagmodellens villkor är oförändrade. Mätningarna gjordes 2026-10-12 på samma dator och med samma frysta instanser som i avsnitt 5 (8 trådar, en körning åt gången). De körningar som redovisas som slutliga använder koden i den slutliga commiten, utom där det anges.
+
+### 9.1 Vad som ändrats
+
+**Gemensam budget för trådar och minne** (`joint_strategy/resources.py`).
+- Körningen har ett antal CP-SAT-trådar (standard: scenariots `solver.workers`; `--threads` ändrar) och en minnesgräns (`--memory-mb`; standard hälften av ledigt minne).
+- Ett batch oberoende dagkontroller delar trådarna: samtidiga kontroller × trådar per kontroll överstiger aldrig budgeten. Åtta kontroller får alltså inte åtta trådar var.
+- Minnet uppskattas per kontroll ur modellens storlek (konstanterna är grovt kalibrerade, se 9.6) och begränsar antalet samtidiga kontroller.
+- Uppdelningen beror bara på batchens storlek, inte på vilken kontroll som blir klar först.
+
+**Vilka kontroller som körs parallellt.**
+- Parallellt: dagkontrollerna i `verify` (en per dag), omkontrollen vid varmstart och dagkontrollerna för historikbytet.
+- Sekventiellt: diagnos och reparation av misslyckade dagar. De delar granndagar och cacheposter, och är få.
+- Antalet samtidiga kontroller är det största `trådar/2^k` där varje plats får minst två kontroller. En kontroll med en tråd är flera gånger långsammare än med åtta, och små batcher fick annars en lång svans. Första versionen delade alltid upp i en tråd per kontroll. Det gjorde `w13` långsammare (17,8 s mot 6,9 s sekventiellt) och `w8` fick sämre lösning i den mätningen (1 010 000 mot 855 000 kr). Den versionen rättades innan slutmätningen.
+- En kontroll som tar slut på tid med färre trådar upprepas ensam med alla trådar innan den räknas som misslyckad.
+
+**Deterministisk sammanställning.**
+- Resultaten läggs in i begärd ordning, aldrig i färdigordning.
+- Cache, statistik och räknare uppdateras bara i huvudtråden.
+- Dubbletter i ett batch löses en gång.
+- En kontroll som missar deadline eller avbryts cachas inte och ger aldrig ett snitt.
+
+**Fel och avbrott.**
+- Om en kontroll kastar fel stoppas de andra, trådarna avslutas och felet från den lägst numrerade kontrollen kastas, oavsett vilken som föll först.
+- `CancelToken` stoppar pågående CP-SAT-anrop med `StopSearch`, och inga nya startar.
+- Ctrl+C i kommandoraden stoppar lösaren och sparar den bästa fullständiga, verifierade lösningen hittills. Den redovisas som `feasible_not_proven` med `_cancelled` i `raw_status`, eller som `no_feasibility_conclusion` om ingen lösning fanns. En partiell placering skrivs aldrig.
+- Ett andra Ctrl+C avbryter utan att spara.
+
+**Varmstart** (`joint_strategy/warm_start.py`, `joint_warm_start.py`, `joint_inputs.py`, `cli.py`).
+- *Val av startkörning.* `--warm-start auto` (standard) tar den senaste användbara körningen av samma `problem_id` bland de fem nyaste. `none` stänger av, och ett körnings-id väljer en bestämd körning. Endast sparade körningsartefakter och deras id används.
+- *Krav på kandidaten.*
+  - Filerna stämmer med manifestets SHA-256.
+  - Resultatversionen är känd.
+  - Det finns en fullständig placering.
+  - **Den oberoende eftervalideringen körs på nytt** och måste ge teknisk `pass`. En sparad `joint_validation.json` godtas aldrig, och en sparad underkänd status utesluter kandidaten. Kontrollen tog 1,0 s på hela terminen.
+- *Omkontroll mot de nya reglerna.* Lösaren kontrollerar varje dag exakt med fasta pass och den nya instansens salar, kapacitet, bemanningstrappa, kurskrockar och ställtid.
+  - Kostnad, pool och lokalbestånd räknas om med de nya priserna.
+  - Placeringen blir första övre gräns bara om alla dagar klarar kontrollen. Omkontrollen får använda högst hälften av tidsgränsen.
+- *Delvis återanvändning.* Om placeringen inte kan återanvändas som helhet ges de tentor vars tidigare pass fortfarande är tillåtna som ledtråd till relaxationen. Tidigare fick tentor utan tidigare placering en ledtråd om att inte läggas någonstans; det är rättat.
+- *Redovisning.*
+  - Beslutet och skälen sparas i `joint_warm_start.json` i den nya körningen, och källkörningens id och hash i dess manifest.
+  - Beslutet står även i rapporten och i CLI-utdata: accepterad, avvisad eller endast ledtråd. Skälen är t.ex. "N tentors tidigare pass tillåts inte längre", "tentorna ryms inte längre på dagen (bevisat ogenomförbart)", "tentor saknar tidigare placering" och saknade salar.
+  - Ändrade parametrar sedan startkörningen listas, och om underlaget skiljer sig anges det.
+- *Fallback.* En avvisad varmstart ger samma optimering som utan start. Testerna jämför kostnaden med en kall körning.
+
+**Gränssnitt (förberett, ingen vy).** `GET /api/runs/{run_id}/warm-start` och `GET /api/joint-runs/warm-start-candidates` läser sparade artefakter. Det finns inget separat lagringssystem. Gränssnittet kör ännu bara den äldre termmotorn.
+
+### 9.2 Korrekthet
+
+- **Kostnadsfunktion och tillåtna lösningar är oförändrade.** Dagmodellen, relaxationen och kostnadsberäkningen är samma kod. Parallelliseringen och varmstarten ändrar bara när och i vilken ordning kontroller körs, och vad som är första sökpunkt.
+- **En sparad lösning godkänns aldrig av tidigare status.** Se kandidatkraven och omkontrollen ovan. Den nya körningen eftervalideras dessutom oberoende som alla körningar.
+- **Tester** (`tests/test_joint_parallel_checks.py`, `tests/test_joint_warm_start.py`; hela sviten: 219 tester gröna):
+  - trådbudgeten överskrids aldrig (invariant över batchstorlekar och trådantal), och minnesgränsen begränsar samtidigheten;
+  - resultatet är identiskt när kontrollerna fördröjs slumpmässigt, så att färdigordningen blandas (deterministisk CP-SAT);
+  - parallell och sekventiell körning når samma optimum som den monolitiska modellen på 10 slumpade fall med extern hyra och på snittvägen, och alla resultat passerar eftervalideringen;
+  - tidsgränsen hålls med parallella kontroller (1 och 3 s);
+  - avbrott före start ger ingen lösning. Avbrott mitt i körningen ger en fullständig validerad lösning eller ingen. Avbrott efter en verifierad varmstart ger `feasible_not_proven` med samma kostnad. Ett fel i en kontroll stoppar körningen utan kvarlämnade trådar;
+  - en kontroll som missat deadline eller avbrutits cachas inte;
+  - varmstart: accepterad (kostnad omräknad med nya priser: 1 900 öre för den gamla placeringen, 1 800 öre optimum), avvisad p.g.a. otillåtet pass, tentor utan tidigare placering, dag som inte längre ryms (bevisat) och påhittad placering. En saknad sal noteras, och kontrollen görs med återstående salar. Kostnaden är i alla fall lika med den kalla körningens;
+  - körningsval: fel hash, ändrat resultat med uppdaterat manifest (ny validering underkänner trots sparad pass), sparad underkänd status, körning utan placering, ogiltiga id:n, körningar av annat problem, och CLI-flöden med `--warm-start`, `--threads`, `--memory-mb` och `--sequential-day-checks`.
+  - Testerna och granskningen hittade två fel i avbrottsvägen, nu rättade med riktade regressionstester (`tests/test_joint_cancel_regressions.py`):
+    - `WallTime()` lästes på en lösare som aldrig startats, i loggningen av dagkontrollerna och av relaxationen. Ett avbrott mellan varvskontrollen och relaxationens lösning kraschade därför körningen. Nu används en gemensam `wall_time()` som ger 0 för en ostartad lösare.
+    - Den monolitiska strategin ignorerade avbrottstoken i båda faserna. Båda använder nu samma `solve_cancellable`. Ett avbrott före första fasen ger `no_feasibility_conclusion` utan placering, och aldrig `infeasible`. Ett avbrott mellan faserna eller under den andra fasen behåller det verifierade ekonomiska optimumet. Ett avbrott mitt i första fasen ger en fullständig validerad lösning eller ingen.
+
+### 9.3 Samma dagkontroller, sekventiellt och parallellt
+
+Samma plan (den frusna terminslösningen, 73 dagar, tre starttider), samma budget, 8 trådar (`runs/strategiexperiment/equiv.py`):
+
+| Kontroll | Sekventiellt (8 trådar per dag) | Parallellt (8 × 1 tråd) | Vinst | Samma beslut per dag |
+|---|---:|---:|---:|---|
+| Omkontroll med fasta pass | 35,4 s | 11,3 s | 3,1 × | 73 av 73 (status, rörlig kostnad, antal flyttade) |
+| Dagkontroll mot poolen, minsta antal flyttar | 99,1 s | 41,1 s | 2,4 × | 72 av 73. På en dag: sekventiellt `optimal` med 14 flyttade, parallellt `feasible` med 15. Samma kostnad, men kontrollen med en tråd nådde sin 10-sekundersgräns innan flyttantalet bevisats minimalt. |
+
+Uppdelning av 8 trådar på samma dagkontroll mot poolen (73 dagar):
+
+| Uppdelning | Tid |
+|---|---:|
+| 1 kontroll åt gången, 8 trådar | 100,7 s |
+| 2 samtidiga × 4 trådar | 63–67 s |
+| 4 × 2 | 66 s |
+| 8 × 1 | 45 s |
+
+Vinsten är lägre än i provet i avsnitt 8.6 (77 s mot 11 s). Provet mätte omkontroll med fasta pass, där kontrollerna är lätta. Dagkontrollen med minsta antal flyttar är tyngre per dag, och en tråd är då klart långsammare. Några få dagar sätter svansen (10-sekundersgränsen). Att starta de största dagarna först hjälpte inte (45,0 mot 45,2 s) och infördes inte.
+
+### 9.4 Hela körningar, sekventiella och parallella (utan varmstart)
+
+`Första` är tid från lösarens start till första fullständiga, dag för dag verifierade lösning. Kostnad och undre gräns i kr (modellkostnad med proxypriserna som i avsnitt 5). Alla körningar passerade eftervalideringen tekniskt.
+
+| Instans | Budget | Läge | Första lösning | Kostnad / undre gräns | Utfall | Total tid |
+|---|---:|---|---:|---|---|---:|
+| v3, 120 tentor | 120 s | parallellt | 33,5 s | 1 065 000 / 1 065 000 | optimal | 33,5 s |
+| v3, 120 tentor | 120 s | sekventiellt\* | 35,3 s | 1 065 000 / 1 065 000 | optimal | 35,3 s |
+| v13 (2 körningar) | 120 s | parallellt | 2,7 och 3,8 s | 913 000 / 913 000 | optimal | 4,2 och 5,8 s |
+| v13 (2 körningar) | 120 s | sekventiellt | 3,6 och 42,8 s | 913 000 / 913 000 | optimal | 6,0 och 45,9 s |
+| v8 (2 körningar) | 120 s | parallellt | 30,2 och 52,1 s | 882 000 / 832 000 | genomförbar | 120 s |
+| v8 (2 körningar) | 120 s | sekventiellt | 37,3 och 41,5 s | 882 000 / 832 000 | genomförbar | 120 s |
+| hela terminen | 300 s | parallellt | 109,6 s | 1 823 000 / 1 773 000 | genomförbar (gap 2,7 %) | 299 s |
+| hela terminen | 300 s | sekventiellt\* | 136,6 s | 1 823 000 / 1 773 000 | genomförbar (gap 2,7 %) | 280 s |
+
+\* Mätt i första mätomgången. Den sekventiella vägen påverkades inte av de senare ändringarna, men varmstartens tidsandel och relaxationens budget ändrades efteråt. Ingen av dessa körningar använder varmstart.
+
+Vad mätningarna stöder:
+- **Samma ekonomiska resultat.** I varje par med samma instans och budget blev kostnad och undre gräns lika. Pool och antal salar var lika där båda körningarna avslutades med bevisat optimum. Antalet flyttade tentor varierar mellan körningar (v13: 28–86, hela terminen: 242–284) i båda lägena, som i avsnitt 5.5.
+- **Tiden till första lösning är något kortare eller lika, inte radikalt kortare.** Hela terminen 110 mot 137 s. Relaxationen och de få täta dagarna dominerar en kall körning. Den stora vinsten ligger i omkontrollen (9.3) och i varmstarten (9.5).
+- **Variationen mellan körningar är stor jämfört med skillnaden** (v13 sekventiellt 6,0 respektive 45,9 s, utan koppling till parallellisering). Det är för få upprepningar för att ange en spridning.
+- **Minne:** högsta arbetsminne var jämförbart (hela terminen 1 192 MB parallellt mot 1 134 MB sekventiellt).
+
+### 9.5 Varmstart: tid till första verifierade lösning
+
+Startkörning: den kontrollerade terminskörningen med två starttider från PR #9 (`term-decomposed-300-fix`, 1 823 000 kr). Startkörningen kontrollerades på nytt av den oberoende valideraren (1,0 s), och alla varmstarter nedan accepterades efter omkontroll mot den nya instansen.
+
+| Instans | Budget | Utan varmstart | Med varmstart (parallell omkontroll) | Omkontroll sekventiellt |
+|---|---:|---|---|---|
+| hela terminen, samma parametrar | 300 s | 109,6 s | **13,7 s** | – |
+| tre starttider | 180 s | **ingen lösning inom 180 s** | **15,7 s** | 47,9 s |
+| flyttfönster ±2 dagar | 180 s | 117,8 s | **16,2 s** | – |
+
+Slutresultat i samma körningar (kostnad / undre gräns, kr):
+
+| Instans | Utan varmstart | Med varmstart |
+|---|---|---|
+| hela terminen | 1 823 000 / 1 773 000 (genomförbar) | 1 823 000 / 1 773 000 (genomförbar) |
+| tre starttider | – | 1 823 000 / 1 685 000 (gap 7,5 %, genomförbar; samma som startlösningen) |
+| flyttfönster ±2 | 1 593 000 / 1 509 000 (genomförbar, 156 s) | 1 509 000 / 1 509 000 (**optimal**, 105,5 s) |
+
+Förbehåll:
+- Varmstarten ger snabbt en första verifierad lösning. Den garanterar inte en bättre slutlösning. I första mätomgången gav flyttfönster ±2 utan varmstart det bevisade optimumet 1 509 000 kr på 117 s. I slutmätningen gav det ingen bevisad lösning, medan varmstarten gjorde det. Utfallet hör till sökningens slump (avsnitt 5.5), inte till varmstarten.
+- Hela terminen med samma parametrar gav samma kostnad. I första omgången gav en varmstartskörning 1 789 000 kr (under 1 823 000), men den gjordes med en tidigare version av koden och gick inte att återskapa.
+- Tre starttider: ingen billigare lösning än startlösningen hittades inom tiden. Det är därför fortfarande oavgjort om tre starttider sänker kostnaden.
+- Sekventiell omkontroll tog 47,9 s mot 15,7 s parallellt. Med en fjärdedel av tidsgränsen som andel (första versionen) avvisades den sekventiella varmstarten för att tiden tog slut, och körningen fick ingen lösning alls. Andelen är nu hälften.
+- Verkliga data: den verkliga 12-tentorskörningen (`joint_real_subset`) kördes två gånger via kommandoraden. Den andra körningen accepterade placeringen från den första efter omkontroll, och eftervalideringen gav `pass`.
+
+### 9.6 Begränsningar och kvarstående
+
+1. **Resultat som beror på väggtid.** Vilken kontroll som når sin tidsgräns beror på datorns last, i båda lägena. Resultatet är därför inte bitvis reproducerbart mellan körningar när tidsgränser nås (se även avsnitt 7, punkt 8). Innehåll och ordning är däremot oberoende av färdigordningen när tidsgränserna inte nås (testat).
+2. **Diagnos och reparation är sekventiella.** De är få i de mätta körningarna. Reparationer av olika, disjunkta block är oberoende och kan parallelliseras senare.
+3. **Minnesuppskattningen är grov.** Konstanterna (32 MB + 0,02 MB per kandidat × sal) gäller små dagmodeller med högst cirka 2 000 variabler. Mätt högsta arbetsminne ändrades inte märkbart av parallelliseringen, men gränsen är inte prövad nära ett verkligt minnestak.
+4. **Modellbygget (under 1 s) kan inte avbrytas,** och ett CP-SAT-anrop som inte stannar av sig självt stoppas inte heller (avsnitt 7, punkt 6).
+5. **Varmstart är allt eller inget för första lösningen.** Delvis återanvändning används bara som ledtråd. En nästan fungerande placering kunde reparera enbart de dagar som misslyckas, men det är inte infört.
+6. **Automatiskt val av startkörning gör att två körningar med samma indata kan skilja sig** i antal flyttade tentor och tid. Beslutet sparas i körningen, och `--warm-start none` ger den kalla vägen. Optimum påverkas inte.
+7. **En vy i gränssnittet saknas.** Endast ändpunkterna är förberedda.
+8. **Mätningarna är enstaka körningar** på en bärbar dator och ska läsas som storleksordning.
