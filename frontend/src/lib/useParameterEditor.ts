@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { jointApi } from "./jointApi"
-import type { FieldError, ParameterInfo, ParametersResponse } from "./jointTypes"
+import type { FieldError, JointOptions, ParameterInfo, ParametersResponse } from "./jointTypes"
 import {
   changesToRequest, collectErrors, computeChanges, crossErrors, splitServerErrors, type EditMap, type ErrorMap, type GroupMeta, type ParamChange,
 } from "./paramDiff"
 import { sameValue, toDraft } from "./paramValues"
+import type { OptionsLoad } from "./paramOptions"
+import { useJointOptions } from "./useJointOptions"
 
 export type EditorLoad = { status: "idle" | "loading" | "ready" | "error"; error: string; response: ParametersResponse | null }
 
@@ -13,6 +15,10 @@ export type ParameterEditor = {
   params: ParameterInfo[]
   /** Läsbara gruppnamn och gruppordning från katalogen. */
   groupMeta: GroupMeta
+  /** Salar och tentamenstyper i underlaget: laddningsstatus, och alternativen själva (null när de saknas). */
+  optionsLoad: OptionsLoad
+  options: JointOptions | null
+  reloadOptions(): void
   edits: EditMap
   changes: ParamChange[]
   /** Fel per parameter-id (eget formatfel, fel mellan parametrar och fel från servern). */
@@ -31,8 +37,13 @@ export type ParameterEditor = {
   reload(): void
 }
 
-/** Parametrarna för ett scenario och användarens ändringar av dem. Originalscenariot ändras aldrig. */
-export function useParameterEditor(scenarioId: string): ParameterEditor {
+/**
+ * Parametrarna för ett scenario och användarens ändringar av dem. Originalscenariot ändras aldrig.
+ * `optionsRefreshKey` hämtar alternativen ur underlaget på nytt när den ändras.
+ */
+export function useParameterEditor(scenarioId: string, optionsRefreshKey?: unknown): ParameterEditor {
+  const optionsSource = useJointOptions(scenarioId, optionsRefreshKey)
+  const options = optionsSource.available
   const [load, setLoad] = useState<EditorLoad>({ status: "idle", error: "", response: null })
   const [edits, setEdits] = useState<EditMap>({})
   const [serverErrors, setServerErrors] = useState<ErrorMap>({})
@@ -52,7 +63,7 @@ export function useParameterEditor(scenarioId: string): ParameterEditor {
 
   const params = useMemo(() => load.response?.parameters ?? [], [load.response])
   const groupMeta = useMemo<GroupMeta>(() => ({ labels: load.response?.group_labels, order: load.response?.group_order }), [load.response])
-  const changes = useMemo(() => computeChanges(params, edits), [params, edits])
+  const changes = useMemo(() => computeChanges(params, edits, options), [params, edits, options])
   const localErrors = useMemo(() => collectErrors(changes, crossErrors(params, edits), {}), [changes, params, edits])
   const errors = useMemo(() => ({ ...serverErrors, ...localErrors }), [serverErrors, localErrors])
   const request = useMemo(() => changesToRequest(changes), [changes])
@@ -67,7 +78,7 @@ export function useParameterEditor(scenarioId: string): ParameterEditor {
   }, [clearServerError])
 
   return {
-    load, params, groupMeta, edits, changes, errors, generalErrors, request,
+    load, params, groupMeta, optionsLoad: optionsSource.load, options, reloadOptions: optionsSource.reload, edits, changes, errors, generalErrors, request,
     hasErrors: Object.keys(localErrors).length > 0,
     draftFor: param => param.id in edits ? edits[param.id] : toDraft(param),
     setDraft,

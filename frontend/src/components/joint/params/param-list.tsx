@@ -4,19 +4,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { filterParameters, groupParameters, lockedParameters } from "@/lib/paramDiff"
 import type { ParameterEditor } from "@/lib/useParameterEditor"
 import { ChangesBar } from "./changes-bar"
-import { ParamRow } from "./param-row"
+import { ParamRow, type OptionsContext } from "./param-row"
 
 /** Parametrarna grupperade, med sökning, avancerade parametrar bakom en knapp och ändringsfältet överst. */
-export function ParamList({ editor }: { editor: ParameterEditor }) {
+export function ParamList({ editor, onOpenUnderlay }: { editor: ParameterEditor; onOpenUnderlay: () => void }) {
   const [query, setQuery] = useState("")
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [showLocked, setShowLocked] = useState(false)
   const changed = useMemo(() => new Set(editor.changes.map(change => change.id)), [editor.changes])
-  const visible = useMemo(() => filterParameters(editor.params, { query, showAdvanced, showLocked, keep: changed, groupLabels: editor.groupMeta.labels }), [editor.params, query, showAdvanced, showLocked, changed, editor.groupMeta])
+  const visible = useMemo(() => filterParameters(editor.params, { query, showAdvanced, showLocked, keep: changed, groupLabels: editor.groupMeta.labels, options: editor.options }), [editor.params, editor.options, query, showAdvanced, showLocked, changed, editor.groupMeta])
   const groups = useMemo(() => groupParameters(visible, editor.groupMeta), [visible, editor.groupMeta])
   const advancedCount = editor.params.filter(param => param.advanced && param.editable).length
-  const lockedCount = lockedParameters(editor.params).length
+  const lockedCount = lockedParameters(editor.params, editor.options).length
   const changeById = useMemo(() => new Map(editor.changes.map(change => [change.id, change])), [editor.changes])
+
+  const optionsContext = useMemo<OptionsContext>(() => ({ load: editor.optionsLoad, options: editor.options, onOpenUnderlay, onRetry: editor.reloadOptions }),
+    [editor.optionsLoad, editor.options, onOpenUnderlay, editor.reloadOptions])
 
   const jump = (id: string) => {
     const target = document.querySelector<HTMLElement>(`[data-param-id="${CSS.escape(id)}"]`)
@@ -46,7 +49,7 @@ export function ParamList({ editor }: { editor: ParameterEditor }) {
       <CardHeader><CardTitle>{label}</CardTitle></CardHeader>
       <CardContent><div className="divide-y divide-slate-200">
         {items.map(param => <ParamRow key={param.id} param={param} draft={editor.draftFor(param)} change={changeById.get(param.id)} error={editor.errors[param.id]}
-          onChange={draft => editor.setDraft(param, draft)} onReset={() => editor.reset(param.id)}/>)}
+          onChange={draft => editor.setDraft(param, draft)} onReset={() => editor.reset(param.id)} optionsContext={optionsContext}/>)}
       </div></CardContent>
     </Card>)}
   </div>

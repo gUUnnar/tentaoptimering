@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { describe, it } from "node:test"
-import { toJointSummary, type BackendSummary } from "./jointApi.ts"
+import { toJointOptions, toJointSummary, type BackendSummary } from "./jointApi.ts"
 import { assumptionView, assumptionsChanged, interpretationView, metricRows, NOT_COMPARED_TEXT, toCompareResult } from "./jointCompare.ts"
 import { errorText, toEventsResponse } from "./jointEvents.ts"
 import { formatKr } from "./jointFormat.ts"
@@ -296,5 +296,30 @@ describe("jämförelse: riktiga svar genom adaptern", () => {
     assert.deepEqual(result.metrics, {})
     assert.deepEqual(metricRows(result), [])
     assert.equal(assumptionView(result), null)
+  })
+})
+
+// ---- Alternativ ur underlaget (salar och tentamenstyper) -------------------------------------------------------------
+
+describe("alternativ: riktigt svar genom adaptern", () => {
+  const raw = load("options")
+  it("alla fält hanteras och inget tappas", () => {
+    for (const key of Object.keys(raw)) assert.ok(["data_available", "exam_types", "plan_area", "rooms", "scenario_id"].includes(key), `Fältet "${key}" hanteras inte av klienten`)
+    for (const room of raw.rooms) for (const key of Object.keys(room)) assert.ok(["address", "building_id", "capacity", "digital", "label", "room_id"].includes(key), `Salsfältet "${key}" hanteras inte`)
+    for (const type of raw.exam_types) for (const key of Object.keys(type)) assert.ok(["count", "label", "value"].includes(key), `Typfältet "${key}" hanteras inte`)
+    const out = toJointOptions(raw)
+    assert.equal(out.data_available, raw.data_available)
+    assert.equal(out.scenario_id, raw.scenario_id)
+    assert.equal(out.plan_area, raw.plan_area)
+    assert.deepEqual(out.rooms, raw.rooms)
+    assert.deepEqual(out.exam_types, raw.exam_types)
+  })
+  it("typens värde är gemener och digitalstödet ett av de kända", () => {
+    for (const type of toJointOptions(raw).exam_types) assert.equal(type.value, type.value.toLowerCase())
+    for (const room of toJointOptions(raw).rooms) assert.ok(["all", "partial", "none", "unknown"].includes(room.digital))
+  })
+  it("saknat underlag ger tomma listor", () => {
+    const out = toJointOptions({ ...raw, data_available: false, rooms: [], exam_types: [], plan_area: null })
+    assert.deepEqual([out.data_available, out.rooms, out.exam_types], [false, [], []])
   })
 })

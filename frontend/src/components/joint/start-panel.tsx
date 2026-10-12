@@ -29,7 +29,7 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
   const [options, setOptions] = useState<RunOptions>(DEFAULT_RUN_OPTIONS)
   const [submitting, setSubmitting] = useState(false)
   const [startError, setStartError] = useState("")
-  const editor = useParameterEditor(scenarioId)
+  const editor = useParameterEditor(scenarioId, scenarios)
 
   useEffect(() => {
     if (!scenarios.length) return
@@ -103,7 +103,7 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
         <CircleAlert size={18} className="mt-0.5 shrink-0" aria-hidden="true"/>
         <div><p>Kunde inte hämta parametrarna: {editor.load.error}</p><Button type="button" size="sm" variant="outline" className="mt-2" onClick={editor.reload}>Försök igen</Button></div>
       </div>}
-      {ready && <ParamList editor={editor}/>}
+      {ready && <ParamList editor={editor} onOpenUnderlay={onOpenUnderlay}/>}
     </section>
 
     <Card>

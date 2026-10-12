@@ -1,5 +1,7 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
+import { OPTIONS } from "./testing/optionsFixture.ts"
+import { NO_ROOMS_DRAFT } from "./paramValues.ts"
 import { byId, PARAMETERS } from "./testing/paramFixture.ts"
 import { changesToRequest, collectErrors, computeChanges, crossErrors, filterParameters, groupParameters, isEditable, lockedParameters, splitServerErrors } from "./paramDiff.ts"
 
@@ -124,13 +126,27 @@ describe("parametrar som inte kan ändras", () => {
     assert.equal(hiddenCount, expected)
     assert.equal(filterParameters(PARAMETERS, { ...base, showAdvanced: false, showLocked: true }).length, PARAMETERS.length - PARAMETERS.filter(param => param.advanced).length)
   })
-  it("en parameter som motorn använder men som saknar redigering här (lokalval) är också bortfiltrerad", () => {
-    const rooms = { ...byId("window.later_days"), id: "rooms.selection", label: "Lokaler som får användas", value_type: "room_id_list", editable: true, advanced: false }
-    const params = [...PARAMETERS, rooms]
-    assert.equal(isEditable(rooms), false)
-    assert.equal(filterParameters(params, base).some(param => param.id === "rooms.selection"), false)
-    assert.equal(filterParameters(params, { ...base, showLocked: true }).some(param => param.id === "rooms.selection"), true)
-    assert.ok(lockedParameters(params).some(param => param.id === "rooms.selection"))
+  it("salar och flyttbara typer är låsta utan alternativ ur underlaget och redigerbara med dem", () => {
+    const [rooms, types] = [byId("rooms.selection"), byId("flex.movable_types")]
+    for (const param of [rooms, types]) {
+      assert.equal(isEditable(param), false, param.id)
+      assert.equal(isEditable(param, null), false, param.id)
+      assert.equal(isEditable(param, OPTIONS), true, param.id)
+      assert.equal(filterParameters(PARAMETERS, base).some(item => item.id === param.id), false)
+      assert.equal(filterParameters(PARAMETERS, { ...base, showLocked: true }).some(item => item.id === param.id), true)
+      assert.equal(filterParameters(PARAMETERS, { ...base, options: OPTIONS }).some(item => item.id === param.id), true)
+      assert.ok(lockedParameters(PARAMETERS).some(item => item.id === param.id))
+      assert.equal(lockedParameters(PARAMETERS, OPTIONS).some(item => item.id === param.id), false)
+    }
+  })
+  it("en sal som inte finns bland alternativen är ett fel, och ändringen räknas bara med alternativen", () => {
+    assert.deepEqual(computeChanges(PARAMETERS, { "rooms.selection": ["A-101"] }), [])
+    const [change] = computeChanges(PARAMETERS, { "rooms.selection": ["A-101", "A-102"] }, OPTIONS)
+    assert.deepEqual([change.newValue, change.error, change.newText], [["A-101", "A-102"], null, "2 salar: A-101, A-102"])
+    assert.equal(change.oldText, "Alla salar")
+    const unknown = computeChanges(PARAMETERS, { "rooms.selection": ["Z-9"] }, OPTIONS)[0]
+    assert.match(unknown.error ?? "", /Z-9.*finns inte/)
+    assert.equal(computeChanges(PARAMETERS, { "rooms.selection": [NO_ROOMS_DRAFT] }, OPTIONS)[0].error, "Minst en sal måste vara vald.")
   })
   it("sökning hittar inte låsta parametrar förrän de visas", () => {
     const query = "ordningen inom kurs"

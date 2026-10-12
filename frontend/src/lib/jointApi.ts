@@ -1,6 +1,6 @@
 import type {
-  CompareResult, EventsResponse, FieldError, JointEvent, JointScenario, JointSummary, ParametersResponse, SavedRun, SaveScenarioBody,
-  StartJointRunBody, WarmStartCandidate, WarmStartRecord,
+  CompareResult, DigitalSupport, EventsResponse, FieldError, JointEvent, JointOptions, JointScenario, JointSummary, ParametersResponse, SavedRun,
+  SaveScenarioBody, StartJointRunBody, WarmStartCandidate, WarmStartRecord,
 } from "./jointTypes.ts"
 import { toCompareResult } from "./jointCompare.ts"
 import { normalizeEvents, toEventsResponse } from "./jointEvents.ts"
@@ -8,6 +8,8 @@ import { normalizeEvents, toEventsResponse } from "./jointEvents.ts"
 export interface JointApi {
   listScenarios(): Promise<JointScenario[]>
   parameters(scenarioId: string): Promise<ParametersResponse>
+  /** Salar och tentamenstyper som finns i underlaget (för kryssrutorna). */
+  options(scenarioId: string): Promise<JointOptions>
   saveScenario(body: SaveScenarioBody): Promise<JointScenario>
   listCandidates(problemId: string): Promise<WarmStartCandidate[]>
   startRun(body: StartJointRunBody): Promise<{ job_id: string }>
@@ -115,11 +117,33 @@ export function toJointScenario(raw: Partial<JointScenario> & { id: string; name
   }
 }
 
+const DIGITAL: readonly string[] = ["all", "partial", "none", "unknown"]
+const str = (value: unknown): string | null => typeof value === "string" && value !== "" ? value : null
+const num = (value: unknown): number | null => typeof value === "number" && Number.isFinite(value) ? value : null
+
+/** Svaret från options-rutten som klientens typ. Saknade listor blir tomma och okänt digitalstöd blir "unknown"; underlaget räknas som saknat utan data_available. */
+export function toJointOptions(raw: unknown): JointOptions {
+  const body = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>
+  const list = (value: unknown): Record<string, unknown>[] => Array.isArray(value) ? value.filter((item): item is Record<string, unknown> => !!item && typeof item === "object") : []
+  const rooms = list(body.rooms).flatMap(item => {
+    const id = str(item.room_id)
+    return id ? [{ room_id: id, label: str(item.label) ?? id, building_id: str(item.building_id), address: str(item.address), capacity: num(item.capacity),
+      digital: (DIGITAL.includes(item.digital as string) ? item.digital : "unknown") as DigitalSupport }] : []
+  })
+  const types = list(body.exam_types).flatMap(item => {
+    const value = str(item.value)
+    return value ? [{ value: value.toLowerCase(), label: str(item.label) ?? value, count: num(item.count) ?? 0 }] : []
+  })
+  const available = body.data_available === true
+  return { scenario_id: str(body.scenario_id) ?? "", data_available: available, rooms: available ? rooms : [], exam_types: available ? types : [], plan_area: str(body.plan_area) }
+}
+
 const enc = encodeURIComponent
 
 export const jointApi: JointApi = {
   listScenarios: async () => (await request<{ scenarios: JointScenario[] }>("/api/joint-runs/scenarios")).scenarios.map(toJointScenario),
   parameters: scenarioId => request(`/api/joint-runs/parameters?scenario=${enc(scenarioId)}`),
+  options: async scenarioId => toJointOptions(await request<unknown>(`/api/joint-runs/options?scenario=${enc(scenarioId)}`)),
   saveScenario: async body => toJointScenario(await request<JointScenario>("/api/joint-runs/scenarios", { method: "POST", body: JSON.stringify(body) })),
   listCandidates: async problemId => (await request<{ candidates: WarmStartCandidate[] }>(`/api/joint-runs/warm-start-candidates?problem_id=${enc(problemId)}`)).candidates,
   startRun: body => request("/api/joint-runs", { method: "POST", body: JSON.stringify(body) }),
