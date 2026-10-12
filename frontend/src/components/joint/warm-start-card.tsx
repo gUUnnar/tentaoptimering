@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 import { CircleCheck, CircleHelp, CircleMinus, CircleX, Lightbulb } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { DECISION_TEXT, DASH, formatCount, formatDuration, formatKr, sourceLabel } from "@/lib/jointFormat"
+import { DASH, DECISION_TEXT, formatCount, formatDuration, formatKr, sourceLabel, warmStartBadge, warmStartSentence } from "@/lib/jointFormat"
 import type { WarmStartDecisionName, WarmStartRecord } from "@/lib/jointTypes"
 import { Chip, VerdictChip } from "./status-chip"
 
@@ -24,9 +24,8 @@ export function WarmStartCard({ record }: { record: WarmStartRecord | null }) {
     <CardHeader><CardTitle>Start från förra körningen</CardTitle></CardHeader>
     <CardContent className="space-y-4 text-sm">
       <div className="space-y-1.5">
-        <div className="flex flex-wrap items-center gap-2"><Chip icon={look.icon} className={look.className}>{decision.label}</Chip><span className="text-xs text-slate-800">Begärt: {requestedText(record.requested)}</span></div>
-        <p>{record.explanation}</p>
-        <p className="text-xs text-slate-800">{decision.help} En tidigare placering kontrolleras alltid på nytt mot de nya reglerna.</p>
+        <div className="flex flex-wrap items-center gap-2">{warmStartBadge(record.decision) && <Chip icon={look.icon} className={look.className}>{decision.label}</Chip>}<span className="text-xs text-slate-800">Begärt: {requestedText(record.requested)}</span></div>
+        <p>{warmStartSentence(record.decision, record.explanation)}</p>
       </div>
 
       {record.source && <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-2" aria-label="Förra körningen">

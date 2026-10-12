@@ -4,11 +4,11 @@ import type { ParamChange } from "@/lib/paramDiff"
 
 type Props = { changes: ParamChange[]; errors: Record<string, string>; onReset: (id: string) => void; onResetAll: () => void; onJump: (id: string) => void }
 
-/** Fast fält högst upp: hur många ändringar som gjorts jämfört med scenariot, och vilka. */
+/** Hur många ändringar som gjorts jämfört med scenariot, och vilka. Antalet står också i den fasta körraden högst upp. */
 export function ChangesBar({ changes, errors, onReset, onResetAll, onJump }: Props) {
   const errorCount = Object.keys(errors).length
   const count = changes.length
-  return <section aria-label="Ändringar jämfört med scenariot" className="sticky top-0 z-10 rounded-lg border-2 border-slate-300 bg-white p-3 shadow-md">
+  return <section aria-label="Ändringar jämfört med scenariot" className="rounded-lg border-2 border-slate-300 bg-white p-3">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <p role="status" aria-live="polite" className="text-sm font-semibold text-slate-900">
         {count === 0 ? "Inga ändringar jämfört med scenariot" : `${count} ${count === 1 ? "ändring" : "ändringar"} jämfört med scenariot`}

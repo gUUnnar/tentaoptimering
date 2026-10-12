@@ -3,6 +3,7 @@ import type {
   StartJointRunBody, WarmStartCandidate, WarmStartRecord,
 } from "./jointTypes.ts"
 import { toCompareResult } from "./jointCompare.ts"
+import { normalizeEvents, toEventsResponse } from "./jointEvents.ts"
 
 export interface JointApi {
   listScenarios(): Promise<JointScenario[]>
@@ -67,7 +68,7 @@ export type BackendSummary = {
   wall_time_seconds: number | null; first_solution_seconds: number | null
   first_solution_basis?: string | null; first_solution_source?: string | null
   cancelled: boolean; warm_start_decision?: string | null
-  parameters_changed_from_default?: unknown
+  parameters_changed_from_default?: unknown; parameters_changed_count?: number | null; unverified_reason?: string | null
   verdicts: { technical_validation: string; business_verification: string; provenance: string; technically_validated?: boolean; source?: string }
 }
 
@@ -85,16 +86,21 @@ export function normalizeChangedParameters(raw: unknown): { id: string; label: s
 export function toJointSummary(raw: BackendSummary): JointSummary {
   const verdicts = raw.verdicts ?? ({} as BackendSummary["verdicts"])
   const outcome = raw.solver_outcome ?? "unknown"
+  // Utan verifierad lösning finns ingen kostnad att visa: kostnadsmåtten nollas även om servern skulle skicka dem.
+  const verified = raw.has_verified_solution === true
+  const money = <T,>(value: T | null | undefined): T | null => verified ? value ?? null : null
   return {
     run_id: raw.run_id ?? null, problem_id: raw.problem_id ?? null, scenario_id: raw.scenario_id ?? null, created_at: raw.created_at ?? null,
-    cost_ore: raw.cost_ore ?? null, bound_ore: raw.lower_bound_ore ?? null, gap_ore: raw.gap_ore ?? null, gap: raw.gap_relative ?? null,
-    changed_exams: raw.changed_exams ?? null, exams_total: raw.exams_total ?? null, staff_pool_size: raw.staff_pool_size ?? null,
+    cost_ore: money(raw.cost_ore), bound_ore: money(raw.lower_bound_ore), gap_ore: money(raw.gap_ore), gap: money(raw.gap_relative),
+    changed_exams: money(raw.changed_exams), exams_total: raw.exams_total ?? null, staff_pool_size: money(raw.staff_pool_size),
     first_solution_seconds: raw.first_solution_seconds ?? null, first_solution_basis: raw.first_solution_basis ?? null,
     first_solution_source: raw.first_solution_source ?? null, wall_seconds: raw.wall_time_seconds ?? null,
-    outcome, proven_optimum: raw.cost_is_proven_optimum === true || outcome === "optimal",
-    has_verified_solution: raw.has_verified_solution === true, cancelled: raw.cancelled === true,
+    outcome, proven_optimum: verified && (raw.cost_is_proven_optimum === true || outcome === "optimal"),
+    has_verified_solution: verified, cancelled: raw.cancelled === true,
     warm_start_decision: raw.warm_start_decision ?? null,
     parameters_changed_from_default: normalizeChangedParameters(raw.parameters_changed_from_default),
+    parameters_changed_count: typeof raw.parameters_changed_count === "number" ? raw.parameters_changed_count : null,
+    unverified_reason: typeof raw.unverified_reason === "string" && raw.unverified_reason ? raw.unverified_reason : null,
     technical_validation: verdicts.technical_validation ?? "not_evaluated",
     business_verification: verdicts.business_verification ?? "not_evaluated",
     provenance: verdicts.provenance ?? "not_evaluated",
@@ -117,9 +123,9 @@ export const jointApi: JointApi = {
   saveScenario: async body => toJointScenario(await request<JointScenario>("/api/joint-runs/scenarios", { method: "POST", body: JSON.stringify(body) })),
   listCandidates: async problemId => (await request<{ candidates: WarmStartCandidate[] }>(`/api/joint-runs/warm-start-candidates?problem_id=${enc(problemId)}`)).candidates,
   startRun: body => request("/api/joint-runs", { method: "POST", body: JSON.stringify(body) }),
-  events: (jobId, after) => request(`/api/joint-runs/${enc(jobId)}/events?after=${after}`),
+  events: async (jobId, after) => toEventsResponse(await request<unknown>(`/api/joint-runs/${enc(jobId)}/events?after=${after}`)),
   cancel: async jobId => { await request(`/api/joint-runs/${enc(jobId)}/cancel`, { method: "POST" }) },
-  runEvents: async runId => (await request<{ events: JointEvent[] }>(`/api/runs/${enc(runId)}/events`)).events,
+  runEvents: async runId => normalizeEvents((await request<{ events: unknown }>(`/api/runs/${enc(runId)}/events`)).events),
   warmStart: async runId => {
     try {
       const record = await request<WarmStartRecord>(`/api/runs/${enc(runId)}/warm-start`)

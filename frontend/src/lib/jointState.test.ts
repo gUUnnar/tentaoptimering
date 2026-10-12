@@ -3,7 +3,7 @@ import { describe, it } from "node:test"
 import { DEMO_RUN_ID, buildFixtureEvents, fixtureSummary } from "./testing/jointFixture.ts"
 import {
   activeBatch, applyEvent, costSeries, currentBoundOre, currentCostOre, dayCounts, dayGrid, emptyJointState, firstIncumbent, foldEvents,
-  gapFraction, hasRealStarts, mergeEvents, stepViews,
+  gapFraction, hasRealStarts, mergeEvents,
 } from "./jointState.ts"
 import type { JointEvent } from "./jointTypes.ts"
 
@@ -52,23 +52,6 @@ describe("reducerare: kostnad och faser", () => {
     const early = foldEvents(accepted.filter(event => event.t < 10))
     assert.equal(currentCostOre(early), null)
     assert.equal(firstIncumbent(early), null)
-  })
-
-  it("beräknar fassteg och hoppar över kontrollen av förra körningen när ingen används", () => {
-    const none = stepViews(foldEvents(buildFixtureEvents("none")), 1000)
-    assert.equal(none[0].state, "skipped")
-    assert.deepEqual(none.slice(1).map(step => step.state), ["done", "done", "done", "done"])
-    const all = stepViews(foldEvents(accepted), 1000)
-    assert.ok(all.every(step => step.state === "done"))
-    assert.ok(all[1].seconds > 50 && all[1].seconds < 60)
-  })
-
-  it("räknar förbrukad tid för pågående fas med nowT", () => {
-    const steps = stepViews(foldEvents(accepted.filter(event => event.t <= 40)), 40)
-    assert.equal(steps[0].state, "done")
-    assert.equal(steps[1].state, "active")
-    assert.ok(steps[1].seconds > 10 && steps[1].seconds < 20)
-    assert.equal(steps[2].state, "pending")
   })
 
   it("mergeEvents ignorerar redan mottagna händelser", () => {

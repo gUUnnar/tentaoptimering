@@ -8,7 +8,7 @@ export function UnderlayNotice({ onOpen, detail }: { onOpen: () => void; detail?
       <Database size={18} className="mt-0.5 shrink-0" aria-hidden="true"/>
       <div>
         <p className="font-semibold">Underlaget är inte förberett.</p>
-        <p className="mt-0.5">{detail ?? "Optimeringen räknar på ett förberett underlag och hela terminen kan inte köras utan det. Välj källdatakatalog och förbered underlaget under Underlag, kom sedan tillbaka hit."}</p>
+        <p className="mt-0.5">{detail ?? "Optimeringen räknar på ett förberett underlag och scenarier som väljer sina tentor ur underlaget kan inte köras utan det. Välj källdatakatalog och förbered underlaget under Underlag, kom sedan tillbaka hit."}</p>
       </div>
     </div>
     <Button type="button" variant="outline" onClick={onOpen}>Gå till Underlag</Button>

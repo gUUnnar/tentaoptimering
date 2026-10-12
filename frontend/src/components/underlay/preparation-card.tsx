@@ -10,7 +10,7 @@ type Props = {
 
 const STATUS_TEXT: Record<UnderlayStatus | "error", string> = {
   present: "Förberett underlag finns. Optimeringen kan köras.",
-  missing: "Underlaget är inte förberett än. Optimeringen av hela terminen kan inte köras förrän förberedelsen är klar.",
+  missing: "Underlaget är inte förberett än. Optimeringen av tentor ur underlaget kan inte köras förrän förberedelsen är klar.",
   unknown: "Det går inte att avgöra om underlaget är förberett.",
   error: "Kunde inte kontrollera om underlaget är förberett (servern svarade inte).",
 }
@@ -23,7 +23,7 @@ export function PreparationCard({ progress, error, status, canPrepare, why, onPr
     <CardContent className="space-y-3">
       <div className="max-w-3xl space-y-2 text-sm text-slate-900">
         <p>Förberedelsen läser Excel-filerna i källdatakatalogen (tentaplaceringar, Ladok-uppgifter om tentander och lokalhyror), rensar och kopplar ihop dem och sparar ett bearbetat underlag som optimeringen räknar på: tentor, deltagare, salar och möjliga placeringar.</p>
-        <p><strong>Förberedelsen krävs före en optimering.</strong> Hela terminen hämtar sina tentor ur det förberedda underlaget. Kör den första gången och igen när källfilerna har bytts ut. Det tar en stund; du kan lämna sidan under tiden.</p>
+        <p><strong>Förberedelsen krävs före en optimering.</strong> Scenarier som väljer tentor efter regler hämtar dem ur det förberedda underlaget. Kör den första gången och igen när källfilerna har bytts ut. Det tar en stund; du kan lämna sidan under tiden.</p>
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <Button type="button" disabled={!canPrepare} onClick={onPrepare} aria-describedby="prepare-why">{busy ? "Förbereder …" : "Förbered underlag"}</Button>

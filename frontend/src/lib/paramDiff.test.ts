@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
 import { byId, PARAMETERS } from "./testing/paramFixture.ts"
-import { changesToRequest, collectErrors, computeChanges, crossErrors, filterParameters, groupParameters, splitServerErrors } from "./paramDiff.ts"
+import { changesToRequest, collectErrors, computeChanges, crossErrors, filterParameters, groupParameters, lockedParameters, splitServerErrors } from "./paramDiff.ts"
 
 describe("ändringar jämfört med scenariot", () => {
   it("orörda parametrar och värden som skrivits tillbaka är inga ändringar", () => {
@@ -105,5 +105,28 @@ describe("grupper och filter", () => {
     assert.ok(find("STAFFING").includes("staffing.ladder"))
     assert.ok(find("bemanning").length >= 2)
     assert.equal(byId("solver.seed").advanced, true)
+  })
+})
+
+describe("parametrar som inte kan ändras", () => {
+  const base = { query: "", showAdvanced: true, keep: new Set<string>() }
+  it("är bortfiltrerade som standard och visas på begäran", () => {
+    const hidden = filterParameters(PARAMETERS, base)
+    assert.equal(hidden.some(param => !param.editable), false)
+    const shown = filterParameters(PARAMETERS, { ...base, showLocked: true })
+    assert.equal(shown.length - hidden.length, lockedParameters(PARAMETERS).length)
+    assert.ok(lockedParameters(PARAMETERS).length > 0)
+  })
+  it("antalet som visas stämmer med totalen minus de bortfiltrerade", () => {
+    const visible = filterParameters(PARAMETERS, { ...base, showAdvanced: false })
+    const hiddenCount = PARAMETERS.length - visible.length
+    const expected = PARAMETERS.filter(param => !param.editable || param.advanced).length
+    assert.equal(hiddenCount, expected)
+    assert.equal(filterParameters(PARAMETERS, { ...base, showAdvanced: false, showLocked: true }).length, PARAMETERS.length - PARAMETERS.filter(param => param.advanced).length)
+  })
+  it("sökning hittar inte låsta parametrar förrän de visas", () => {
+    const query = "ordningen inom kurs"
+    assert.equal(filterParameters(PARAMETERS, { ...base, query }).length, 0)
+    assert.equal(filterParameters(PARAMETERS, { ...base, query, showLocked: true }).length, 1)
   })
 })

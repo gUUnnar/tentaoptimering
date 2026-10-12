@@ -48,6 +48,7 @@ export const COMPARE_OK: CompareResult = {
     wall_time_seconds: { old: 299.2, new: 120, delta: -179.2 },
     first_solution_seconds: { old: 109.6, new: null, delta: null },
   },
+  assumption_changes: { cost: [], demand: [] },
   uncertainty_ore: 5_000_000, interpretable: false,
   interpretation: "Kostnaden sjönk med 13 000 kr, men det är mindre än osäkerheten (50 000 kr).",
 }

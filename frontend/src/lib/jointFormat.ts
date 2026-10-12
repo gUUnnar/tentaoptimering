@@ -51,27 +51,6 @@ export const DAY_STATUS_TEXT: Record<DayStatus | "pending" | "running", string> 
   pending: "Väntar", running: "Pågår", optimal: "Klar, bästa möjliga", feasible: "Klar, går att genomföra", infeasible: "Går inte", unknown: "Tidsgräns nådd",
 }
 
-export const DAY_STATUS_HELP: Record<DayStatus | "pending" | "running", string> = {
-  pending: "Dagen har inte kontrollerats ännu.",
-  running: "Dagen kontrolleras just nu.",
-  optimal: "Dagen går att genomföra och är bevisat den billigaste möjliga för dagen.",
-  feasible: "Dagen går att genomföra, men det är inte bevisat att den är billigast möjliga.",
-  infeasible: "Dagen går inte att genomföra med den fasta planen. Den rättas i nästa steg.",
-  unknown: "Kontrollen hann inte bli klar inom tidsgränsen och gav inget säkert svar.",
-}
-
-const KIND_TEXT: Record<string, string> = {
-  warm_start: "Förra körningens placering, dag för dag", warm_start_check: "Förra körningens placering, dag för dag",
-  day_checks: "Kontroll av varje dag mot den grova planen", economic_plan: "Kontroll av varje dag mot den grova planen", exact: "Noggrann kontroll av varje dag",
-  history: "Försök att behålla ursprungliga tider", history_swap: "Försök att behålla ursprungliga tider",
-  repair: "Rättning av dagar som inte gick",
-  // Namnen som backend skickar för kontrollerna.
-  "warm-start": "Förra körningens placering, dag för dag", day: "Kontroll av varje dag mot den grova planen",
-  diagnosis: "Utredning av dagar som inte gick (utan begränsning)", fallback: "Reservplan med fler lokaler eller vakter",
-  core: "Sökning efter vilka tentor som orsakar problemet",
-}
-export const kindLabel = (kind: string): string => KIND_TEXT[kind] ?? `Kontroller (${kind})`
-
 /** Var en lösning kom ifrån, med lösarens egna beteckningar översatta ("warm start", "round 2", "round 2 history"). */
 export function sourceLabel(source: string | null | undefined): string {
   if (!source) return DASH
@@ -129,4 +108,15 @@ export function describeVerdict(value: unknown): VerdictView {
     reason: typeof reason === "string" ? reason : null,
     details: Object.entries(rest).map(([key, item]) => [key, text(item)] as [string, string]),
   }
+}
+
+/** Start från förra körningen i en enda mening: backendens förklaring, annars beslutets egen hjälptext. */
+export function warmStartSentence(decision: WarmStartDecisionName, explanation: string | null | undefined): string {
+  const text = (explanation ?? "").trim()
+  return text || DECISION_TEXT[decision]?.help || ""
+}
+
+/** Kort besked (Användes, Användes inte, Endast som ledtråd). Tomt när ingen start gjordes eller beslutet saknas: rubriken säger redan det. */
+export function warmStartBadge(decision: WarmStartDecisionName): string | null {
+  return decision === "accepted" || decision === "rejected" || decision === "hint_only" ? DECISION_TEXT[decision].label : null
 }

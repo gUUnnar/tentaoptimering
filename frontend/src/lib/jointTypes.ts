@@ -96,8 +96,12 @@ export type FinishedEvent = EventBase & {
 export type JointEvent =
   | PhaseEvent | BatchEvent | DayEvent | DayStartedEvent | IncumbentEvent | BoundEvent | WarmStartEvent | ResourcesEvent | FinishedEvent
 
+/** Svaret från /events, efter normalisering: `error` är alltid text (eller null) och `elapsed_seconds` är körningens verkliga tid. */
 export type EventsResponse = {
-  status: JointJobStatus; events: JointEvent[]; last_seq: number; run_id: string | null; error?: string | null
+  status: JointJobStatus; events: JointEvent[]; last_seq: number; run_id: string | null
+  error: string | null
+  /** Körningens tid enligt servern, i sekunder. Null om servern inte skickar den (äldre server). */
+  elapsed_seconds: number | null
 }
 
 export type WarmStartCandidate = {
@@ -131,6 +135,7 @@ export type VerdictValue = string | { status?: string; reason?: string; [key: st
 
 export type JointSummary = {
   run_id: string | null; problem_id: string | null; scenario_id: string | null; created_at: string | null
+  /** Alla kostnadsmått är null när körningen saknar verifierad lösning. */
   cost_ore: number | null; bound_ore: number | null; gap_ore: number | null
   gap: number | null // gap som bråkdel, t.ex. 0.075
   changed_exams: number | null; exams_total: number | null; staff_pool_size: number | null
@@ -144,6 +149,9 @@ export type JointSummary = {
   warm_start_decision: string | null
   /** Parametrar som skiljer sig från katalogens standardvärde (inte från scenariot). */
   parameters_changed_from_default: { id: string; label: string | null }[]
+  parameters_changed_count: number | null
+  /** Skälet till att körningen saknar verifierad lösning. Text när has_verified_solution är false, annars null. */
+  unverified_reason: string | null
   technical_validation: VerdictValue
   business_verification: VerdictValue
   provenance: VerdictValue | Record<string, unknown>
@@ -163,6 +171,9 @@ export type MetricKey =
   | "cost_ore" | "lower_bound_ore" | "gap_ore" | "changed_exams" | "staff_pool_size" | "rooms_used"
   | "wall_time_seconds" | "first_solution_seconds"
 
+/** Antaganden som skiljer mellan körningarna, som läsbara namn. Är någon lista icke-tom går kostnadsskillnaden inte att tolka. */
+export type AssumptionChanges = { cost: string[]; demand: string[] }
+
 export type CompareResult = {
   run: CompareRunRef
   base: CompareRunRef | null
@@ -173,4 +184,5 @@ export type CompareResult = {
   uncertainty_ore: number | null
   interpretable: boolean | null
   interpretation: string
+  assumption_changes: AssumptionChanges
 }

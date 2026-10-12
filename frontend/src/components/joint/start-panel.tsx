@@ -12,7 +12,7 @@ import { useParameterEditor } from "@/lib/useParameterEditor"
 import { ParamList } from "./params/param-list"
 import { RunOptionsPanel } from "./run-options"
 import { SaveScenario } from "./save-scenario"
-import { ScenarioPicker } from "./scenario-picker"
+import { ScenarioInfo, ScenarioSelect } from "./scenario-picker"
 import { UnderlayNotice } from "./underlay-notice"
 
 type Props = {
@@ -65,12 +65,33 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
 
   const saveDisabled = !ready ? "Parametrarna har inte hämtats än." : editor.changes.length === 0 ? "Gör minst en ändring först." : editor.hasErrors ? "Rätta felen i parametrarna först." : null
 
+  const runHelp = why ?? (editor.changes.length ? (editor.changes.length === 1 ? "Körs med din ändring." : `Körs med dina ${editor.changes.length} ändringar.`) : "Körs med scenariots egna värden.")
+  const showChanges = () => document.getElementById("changes-bar")?.scrollIntoView({ block: "start", behavior: "smooth" })
+
   return <div className="space-y-4">
     {missingUnderlay && <UnderlayNotice onOpen={onOpenUnderlay}/>}
-    <Card>
-      <CardHeader><CardTitle>1. Välj scenario</CardTitle></CardHeader>
-      <CardContent><ScenarioPicker scenarios={scenarios} value={scenarioId} onChange={changeScenario} loadError={isMissingUnderlayMessage(loadError) ? "" : loadError}/></CardContent>
+    {/* Fast rad högst upp: scenariot, antalet ändringar och Kör finns kvar när man bläddrar bland parametrarna. */}
+    <Card className="sticky top-0 z-20 shadow-md" aria-label="Scenario och start">
+      <CardContent className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 pt-4">
+        <div className="min-w-[18rem] flex-1"><ScenarioSelect scenarios={scenarios} value={scenarioId} onChange={changeScenario} loadError={isMissingUnderlayMessage(loadError) ? "" : loadError}/></div>
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <p className="text-sm font-semibold" role="status" aria-live="polite">
+              {editor.changes.length === 0 ? "Inga ändringar" : `${editor.changes.length} ${editor.changes.length === 1 ? "ändring" : "ändringar"}`}
+              {editor.changes.length > 0 && <button type="button" onClick={showChanges} className="ml-2 rounded text-xs font-medium text-sky-900 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700">Visa</button>}
+            </p>
+            <Button type="button" size="lg" disabled={!canStart} onClick={() => void submit()} aria-describedby="start-why"><Play size={15} className="mr-1" aria-hidden="true"/>{submitting ? "Startar …" : "Kör"}</Button>
+          </div>
+          <p id="start-why" className="text-xs text-slate-800">{runHelp}</p>
+        </div>
+      </CardContent>
     </Card>
+    {scenario && <Card><CardContent className="pt-4"><ScenarioInfo scenario={scenario}/></CardContent></Card>}
+    {problems.length > 0 && <div role="alert" className="rounded-md border-2 border-red-700 bg-red-50 p-3 text-sm text-red-900">
+      <p className="font-semibold">{problems.length} {problems.length === 1 ? "parameter behöver rättas" : "parametrar behöver rättas"}:</p>
+      <ul className="mt-1 list-disc pl-5">{problems.map(item => <li key={item.id}><strong>{item.label}:</strong> {item.message}</li>)}</ul>
+    </div>}
+    {startError && !isMissingUnderlayMessage(startError) && <p role="alert" className="flex items-start gap-1.5 text-sm text-red-900"><CircleAlert size={16} className="mt-0.5 shrink-0" aria-hidden="true"/>{startError}</p>}
 
     <section aria-label="Parametrar" className="space-y-3">
       <div>
@@ -86,23 +107,12 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
     </section>
 
     <Card>
-      <CardHeader><CardTitle>3. Starta</CardTitle></CardHeader>
+      <CardHeader><CardTitle>3. Inställningar för körningen och spara som scenario</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <RunOptionsPanel problemId={scenario?.problem_id ?? ""} options={options} onChange={setOptions} hasChanges={editor.changes.length > 0}/>
         {estimate && <p className="flex items-start gap-2 rounded-md bg-slate-100 p-2.5 text-sm text-slate-900"><Clock size={16} className="mt-0.5 shrink-0" aria-hidden="true"/>{estimate.text}</p>}
-        {problems.length > 0 && <div role="alert" className="rounded-md border-2 border-red-700 bg-red-50 p-3 text-sm text-red-900">
-          <p className="font-semibold">{problems.length} {problems.length === 1 ? "parameter behöver rättas" : "parametrar behöver rättas"}:</p>
-          <ul className="mt-1 list-disc pl-5">{problems.map(item => <li key={item.id}><strong>{item.label}:</strong> {item.message}</li>)}</ul>
-        </div>}
-        {startError && !isMissingUnderlayMessage(startError) && <p role="alert" className="flex items-start gap-1.5 text-sm text-red-900"><CircleAlert size={16} className="mt-0.5 shrink-0" aria-hidden="true"/>{startError}</p>}
-        <div className="flex flex-wrap items-start gap-4">
-          <div>
-            <Button type="button" size="lg" disabled={!canStart} onClick={() => void submit()} aria-describedby="start-why"><Play size={15} className="mr-1" aria-hidden="true"/>{submitting ? "Startar …" : "Kör"}</Button>
-            <p id="start-why" className="mt-1 text-xs text-slate-800">{why ?? (editor.changes.length ? (editor.changes.length === 1 ? "Körs med din ändring." : `Körs med dina ${editor.changes.length} ändringar.`) : "Körs med scenariots egna värden.")}</p>
-          </div>
-          <SaveScenario baseId={scenarioId} baseName={scenario?.name ?? ""} parameters={editor.request} changeCount={editor.changes.length} disabledReason={saveDisabled}
-            onSaved={async saved => { await onSaved(saved); setScenarioId(saved.id) }}/>
-        </div>
+        <SaveScenario baseId={scenarioId} baseName={scenario?.name ?? ""} parameters={editor.request} changeCount={editor.changes.length} disabledReason={saveDisabled}
+          onSaved={async saved => { await onSaved(saved); setScenarioId(saved.id) }}/>
         <p className="flex items-start gap-1.5 text-xs text-slate-800"><Info size={14} className="mt-0.5 shrink-0" aria-hidden="true"/>Resultatet är en modellkostnad, inte faktisk kostnad. Parametrar som är märkta "Antagande" saknar verifierat underlag.</p>
       </CardContent>
     </Card>

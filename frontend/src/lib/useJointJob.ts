@@ -3,9 +3,9 @@ import { jointApi } from "./jointApi"
 import { emptyJointState, foldEvents, mergeEvents, type JointState } from "./jointState"
 import type { JointEvent, JointJobStatus, StartJointRunBody } from "./jointTypes"
 import { loadRemembered, remember, type RunChangeText } from "./jointJobMemory"
+import { RunClock } from "./runClock"
 
 const POLL_MS = 1000
-const EXTRAPOLATION_CAP_S = 5
 
 export type JointJob = {
   jobId: string | null
@@ -18,21 +18,23 @@ export type JointJob = {
   /** Parametrar som den här körningen ändrade jämfört med scenariot, i klartext. */
   changes: RunChangeText[]
   scenarioId: string | null
+  /** Körningens tid enligt servern vid avslut. Null medan körningen pågår. */
+  finalSeconds: number | null
 }
 
-const idle: JointJob = { jobId: null, status: "idle", events: [], runId: null, error: null, connectionLost: false, cancelRequested: false, changes: [], scenarioId: null }
+const idle: JointJob = { jobId: null, status: "idle", events: [], runId: null, error: null, connectionLost: false, cancelRequested: false, changes: [], scenarioId: null, finalSeconds: null }
 
 /** Startar, pollar (var sekund) och stoppar en optimeringskörning. Pågående körning återupptas efter navigering i samma flik. */
 export function useJointJob() {
   const api = jointApi
   const [job, setJob] = useState<JointJob>(idle)
   const afterRef = useRef(0)
-  const receivedAt = useRef(Date.now())
+  const clock = useRef(new RunClock())
   const [tick, setTick] = useState(0)
 
   useEffect(() => {
     const saved = loadRemembered()
-    if (saved) { afterRef.current = 0; setJob({ ...idle, jobId: saved.jobId, status: "running", changes: saved.changes, scenarioId: saved.scenarioId }) }
+    if (saved) { afterRef.current = 0; clock.current.reset(Date.now()); setJob({ ...idle, jobId: saved.jobId, status: "running", changes: saved.changes, scenarioId: saved.scenarioId }) }
   }, [])
 
   useEffect(() => {
@@ -47,10 +49,14 @@ export function useJointJob() {
         if (stopped) return
         failures = 0
         afterRef.current = Math.max(afterRef.current, answer.last_seq)
-        receivedAt.current = Date.now()
+        // Serverns tid är sanningen. Äldre servrar saknar den; då används senaste händelsens tid.
+        const elapsed = answer.elapsed_seconds ?? answer.events.reduce((latest, event) => Math.max(latest, event.t), 0)
+        if (answer.status === "running") clock.current.observe(elapsed, Date.now())
+        else clock.current.finish(answer.elapsed_seconds)
         setJob(current => ({
           ...current, events: mergeEvents(current.events, answer.events), status: answer.status, runId: answer.run_id ?? current.runId,
           error: answer.status === "failed" ? answer.error ?? current.error : current.error, connectionLost: false,
+          finalSeconds: answer.status === "running" ? null : answer.elapsed_seconds,
         }))
         if (answer.status !== "running") { remember(null); return }
       } catch (error) {
@@ -76,11 +82,12 @@ export function useJointJob() {
   /** Kastar fel vidare (t.ex. 422 med fel per parameter) så att startvyn kan visa dem vid rätt rad. */
   const start = useCallback(async (body: StartJointRunBody, changes: RunChangeText[] = []) => {
     afterRef.current = 0
+    clock.current.reset(Date.now())
     setJob({ ...idle, status: "starting", changes, scenarioId: body.scenario })
     try {
       const { job_id } = await api.startRun(body)
       remember({ jobId: job_id, changes, scenarioId: body.scenario })
-      receivedAt.current = Date.now()
+      clock.current.reset(Date.now())
       setJob({ ...idle, jobId: job_id, status: "running", changes, scenarioId: body.scenario })
     } catch (error) {
       setJob(idle)
@@ -95,11 +102,11 @@ export function useJointJob() {
   }, [api, job.jobId])
 
   const state: JointState = useMemo(() => foldEvents(job.events), [job.events])
-  // Aktuell körtid: senast kända händelsetid plus tiden sedan senaste svar (högst några sekunder), så att fasernas klocka går mellan pollningarna.
+  // Körtiden som visas: serverns senaste tid plus lokal klocka mellan svaren, aldrig bakåt. Efter avslut visas serverns slutvärde.
   const nowT = useMemo(() => {
-    if (!running) return state.lastT
-    return state.lastT + Math.min(EXTRAPOLATION_CAP_S, (Date.now() - receivedAt.current) / 1000)
-  }, [state.lastT, running, tick])
+    if (!running) return job.finalSeconds ?? state.lastT
+    return clock.current.read(Date.now())
+  }, [state.lastT, running, job.finalSeconds, tick])
 
   return { job, state, nowT, start, cancel }
 }

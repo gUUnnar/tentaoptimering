@@ -3,7 +3,7 @@ import type { JointScenario } from "./jointTypes.ts"
 /** Om det förberedda underlaget finns. "unknown" när det inte går att avgöra ur scenariolistan. */
 export type UnderlayStatus = "unknown" | "present" | "missing"
 
-/** Regelbaserade urval (till exempel hela terminen) får antalet tentor ur det förberedda underlaget; saknas antalet saknas underlaget. */
+/** Regelbaserade urval (till exempel alla tentor i underlaget under en period) får antalet tentor ur det förberedda underlaget; saknas antalet saknas underlaget. */
 export function scenarioNeedsUnderlay(scenario: JointScenario | undefined): boolean {
   return scenario?.subset?.selection === "rule" && (scenario.subset.exam_count === null || scenario.subset.exam_count === undefined)
 }

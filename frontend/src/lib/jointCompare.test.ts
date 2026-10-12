@@ -1,7 +1,8 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
 import { changeRows, formatDelta, interpretationView, metricRows, toCompareResult } from "./jointCompare.ts"
-import { costStatement, describeVerdict, formatDuration, formatGap, formatKr, kindLabel, sourceLabel } from "./jointFormat.ts"
+import { costStatement, describeVerdict, formatDuration, formatGap, formatKr, sourceLabel } from "./jointFormat.ts"
+import { kindLabel } from "./jointKinds.ts"
 import { COMPARE_OK } from "./testing/paramFixture.ts"
 
 describe("jämförelse av körningar", () => {

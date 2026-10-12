@@ -3,9 +3,11 @@ import { TriangleAlert } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { jointApi } from "@/lib/jointApi"
 import type { JointEvent, JointSummary, SavedRun, WarmStartRecord } from "@/lib/jointTypes"
+import { foldEvents } from "@/lib/jointState"
 import { CompareSection } from "./compare-section"
 import { HowToRead } from "./how-to-read"
 import { Replay } from "./replay"
+import { TimelineCard } from "./run-panels"
 import { SummaryCard } from "./summary-card"
 import { VerdictCards } from "./verdict-cards"
 import { WarmStartCard } from "./warm-start-card"
@@ -53,13 +55,14 @@ export function ResultView({ runId, runs, onSelectRun }: { runId: string | null;
     </CardContent></Card>
 
     <HowToRead/>
-    {!runId && <Card><CardContent className="pt-4 text-sm text-slate-900">Välj en avslutad körning för sammanfattning, jämförelse och uppspelning. En körning som stoppats utan kontrollerad lösning har inget resultat att visa.</CardContent></Card>}
+    {!runId && <Card><CardContent className="pt-4 text-sm text-slate-900">Välj en avslutad körning för sammanfattning, jämförelse och förlopp. En körning som stoppats utan kontrollerad lösning har inget resultat att visa.</CardContent></Card>}
     {data?.errors.map(error => <p key={error} className="flex items-start gap-1.5 rounded-md bg-red-50 p-2 text-xs text-red-900" role="alert"><TriangleAlert size={14} className="mt-0.5 shrink-0" aria-hidden="true"/>{error}</p>)}
 
     {data?.summary && <SummaryCard summary={data.summary} labels={data.labels}/>}
     {runId && data && <CompareSection runId={runId} runs={runs}/>}
     {data?.summary && <VerdictCards summary={data.summary}/>}
+    {data && runId && data.events.length > 0 && <TimelineCard state={foldEvents(data.events)} events={data.events} nowT={Math.max(...data.events.map(event => event.t))}/>}
     {data && runId && <WarmStartCard record={data.warm}/>}
-    {data && runId && <Replay events={data.events}/>}
+    {data && runId && <Replay events={data.events} costVisible={data.summary?.has_verified_solution === true}/>}
   </div>
 }

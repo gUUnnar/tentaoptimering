@@ -4,6 +4,7 @@ import { formatLooseValue } from "./paramFormat.ts"
 
 const num = (value: unknown): number | null => typeof value === "number" && Number.isFinite(value) ? value : null
 const str = (value: unknown): string | null => typeof value === "string" ? value : null
+const strings = (value: unknown): string[] => Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item !== "") : []
 const obj = (value: unknown): Record<string, unknown> => value && typeof value === "object" ? value as Record<string, unknown> : {}
 
 const toRef = (value: unknown): CompareRunRef | null => {
@@ -40,6 +41,7 @@ export function toCompareResult(raw: unknown): CompareResult {
     uncertainty_ore: num(body.uncertainty_ore),
     interpretable: typeof body.interpretable === "boolean" ? body.interpretable : null,
     interpretation: str(body.interpretation) ?? "",
+    assumption_changes: { cost: strings(obj(body.assumption_changes).cost), demand: strings(obj(body.assumption_changes).demand) },
   }
 }
 
@@ -75,17 +77,59 @@ export function formatDelta(kind: MetricKind, delta: number | null): { text: str
   return delta > 0 ? { text: `+${body}`, direction: "up" } : { text: `${MINUS}${body}`, direction: "down" }
 }
 
-export type MetricRow = { key: MetricKey; label: string; hint?: string; old: string; new: string; delta: string; direction: "up" | "down" | "same" | "unknown" }
+/** Har kostnads- eller efterfrågeantaganden ändrats mellan körningarna? Då jämförs inga kostnadsbelopp. */
+export const assumptionsChanged = (result: CompareResult): boolean =>
+  result.assumption_changes.cost.length > 0 || result.assumption_changes.demand.length > 0
+
+const PHYSICAL_KEYS: ReadonlySet<MetricKey> = new Set(["rooms_used", "staff_pool_size", "changed_exams"])
+const MONEY_KEYS: ReadonlySet<MetricKey> = new Set(["cost_ore", "lower_bound_ore", "gap_ore"])
+const TIME_KEYS: ReadonlySet<MetricKey> = new Set(["wall_time_seconds", "first_solution_seconds"])
+export const NOT_COMPARED_TEXT = "Jämförs inte (andra antaganden)"
+
+export type MetricRow = {
+  key: MetricKey; label: string; hint?: string; old: string; new: string; delta: string; direction: "up" | "down" | "same" | "unknown"
+  /** Kostnadsrad som inte jämförs eftersom antagandena ändrats: ingen skillnad visas. */
+  notCompared: boolean
+  /** Fysiskt mått (salar, vaktpool, flyttade tentor) som framhävs när antaganden ändrats. */
+  physical: boolean
+}
 
 export function metricRows(result: CompareResult): MetricRow[] {
-  return METRIC_DEFS.flatMap((def): MetricRow[] => {
+  const assumptions = assumptionsChanged(result)
+  const rows = METRIC_DEFS.flatMap((def): MetricRow[] => {
     const metric: MetricDelta | undefined = result.metrics[def.key]
     if (!metric) return []
-    // Är körningarna inte jämförbara skickar backend inga skillnader; då räknas inga fram.
-    const delta = metric.delta ?? (result.comparable && metric.old !== null && metric.new !== null ? metric.new - metric.old : null)
+    const notCompared = assumptions && result.comparable && MONEY_KEYS.has(def.key)
+    // Är körningarna inte jämförbara skickar backend inga skillnader; då räknas inga fram. Ändrade antaganden: aldrig en kostnadsskillnad.
+    const delta = notCompared ? null : metric.delta ?? (result.comparable && metric.old !== null && metric.new !== null ? metric.new - metric.old : null)
     const shown = formatDelta(def.kind, delta)
-    return [{ key: def.key, label: def.label, hint: def.hint, old: formatValue(def.kind, metric.old), new: formatValue(def.kind, metric.new), delta: shown.text, direction: shown.direction }]
+    // En körning utan verifierad lösning har inga lösningsmått: de visas inte ens om servern skulle skicka dem.
+    const hidden = (ref: CompareResult["run"] | null) => ref?.has_verified_solution === false && !TIME_KEYS.has(def.key)
+    const value = (side: number | null, ref: CompareResult["run"] | null) => formatValue(def.kind, hidden(ref) ? null : side)
+    return [{
+      key: def.key, label: def.label, hint: def.hint, old: value(metric.old, result.base), new: value(metric.new, result.run),
+      delta: notCompared ? NOT_COMPARED_TEXT : shown.text, direction: notCompared ? "unknown" : shown.direction,
+      notCompared, physical: assumptions && result.comparable && PHYSICAL_KEYS.has(def.key),
+    }]
   })
+  // Ändrade antaganden: de fysiska måtten är det som går att jämföra och står därför först.
+  return assumptions && result.comparable ? [...rows.filter(row => row.physical), ...rows.filter(row => !row.physical)] : rows
+}
+
+export type AssumptionView = { title: string; groups: { label: string; items: string[] }[]; text: string }
+
+/** Rutan "Antaganden har ändrats". Null när inga antaganden ändrats. */
+export function assumptionView(result: CompareResult): AssumptionView | null {
+  if (!assumptionsChanged(result)) return null
+  const { cost, demand } = result.assumption_changes
+  const groups = [
+    ...(cost.length ? [{ label: "Kostnadsantaganden som ändrats", items: cost }] : []),
+    ...(demand.length ? [{ label: "Efterfrågan (tentor och antal tentander) som ändrats", items: demand }] : []),
+  ]
+  return {
+    title: "Antaganden har ändrats", groups,
+    text: "Kostnadsbelopp jämförs bara mellan körningar med samma antaganden, så ingen kostnadsskillnad visas. Jämför i stället salar, bemanningspool och antal flyttade tentor.",
+  }
 }
 
 export type ChangeRow = { id: string; label: string; group: string; oldText: string; newText: string }

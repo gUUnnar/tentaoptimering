@@ -52,6 +52,6 @@ export function LiveView({ job, state, nowT, onCancel, onShowResult, onOpenUnder
           {job.changes.map(change => <li key={change.id} className="flex flex-wrap items-center gap-x-2"><strong>{change.label}:</strong><span>{change.oldText}</span><ArrowRight size={13} aria-hidden="true"/><span className="sr-only">till</span><strong>{change.newText}</strong></li>)}
         </ul>}
     </CardContent></Card>
-    <RunPanels state={state} nowT={nowT}/>
+    <RunPanels state={state} events={job.events} nowT={nowT}/>
   </div>
 }

@@ -3,7 +3,7 @@ import { describe, it } from "node:test"
 import { toJointScenario } from "./jointApi.ts"
 import { isMissingUnderlayMessage, jobProgress, scenarioNeedsUnderlay, underlayStatus } from "./underlay.ts"
 
-const rule = (exam_count: number | null) => toJointScenario({ id: "r", name: "R", subset: { plan_area: "Uppsala", selection: "rule", exam_count, description: "Hela terminen" } })
+const rule = (exam_count: number | null) => toJointScenario({ id: "r", name: "R", subset: { plan_area: "Uppsala", selection: "rule", exam_count, description: "Alla tentor i underlaget" } })
 const list = toJointScenario({ id: "l", name: "L", subset: { plan_area: "Uppsala", selection: "event_list", exam_count: 12, description: "12 tentor" } })
 
 describe("förberett underlag", () => {

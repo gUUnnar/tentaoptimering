@@ -102,36 +102,6 @@ export function gapFraction(costOre: number | null, boundOre: number | null): nu
   return Math.max(0, (costOre - boundOre) / costOre)
 }
 
-export type StepId = "warm_start_check" | "relaxation" | "day_checks" | "repair_history" | "finalize"
-export type StepState = "pending" | "active" | "done" | "skipped"
-export const STEP_DEFS: { id: StepId; label: string; help: string; phases: PhaseName[] }[] = [
-  { id: "warm_start_check", label: "Kontroll av förra körningen", help: "Förra körningens placering prövas mot de nya reglerna.", phases: ["warm_start_check"] },
-  { id: "relaxation", label: "Grov plan och undre gräns", help: "En förenklad modell väljer datum och lokaler och bevisar en lägsta möjlig kostnad.", phases: ["relaxation"] },
-  { id: "day_checks", label: "Kontroll av varje dag", help: "Varje dag prövas noga: ryms tentorna och finns bemanning?", phases: ["day_checks"] },
-  { id: "repair_history", label: "Rättning och förbättring", help: "Dagar som inte höll rättas. Därefter försöker modellen behålla ursprungliga tider.", phases: ["repair", "history"] },
-  { id: "finalize", label: "Slutkontroll och sparande", help: "Resultatet kontrolleras av en fristående kontroll och sparas.", phases: ["finalize"] },
-]
-
-export type StepView = { id: StepId; label: string; help: string; state: StepState; seconds: number; repeats: number }
-
-/** Förbrukad tid per steg. `nowT` är körningens aktuella tid i sekunder och används bara för pågående faser. */
-export function stepViews(state: JointState, nowT: number): StepView[] {
-  const finished = state.finished !== null
-  const views = STEP_DEFS.map((def): StepView => {
-    const runs = state.phases.filter(run => def.phases.includes(run.name))
-    const seconds = runs.reduce((sum, run) => sum + Math.max(0, (run.finishedAt ?? Math.max(nowT, run.startedAt)) - run.startedAt), 0)
-    const open = runs.some(run => run.finishedAt === null)
-    return { id: def.id, label: def.label, help: def.help, seconds, repeats: runs.length, state: open && !finished ? "active" : runs.length ? "done" : "pending" }
-  })
-  // Steg utan körning som ligger före ett senare påbörjat steg (eller efter körningens slut) markeras som överhoppade.
-  const lastStarted = views.reduce((last, view, index) => view.repeats ? index : last, -1)
-  return views.map((view, index) => {
-    if (view.state !== "pending") return view
-    if (index < lastStarted || (finished && index !== views.length - 1)) return { ...view, state: "skipped" }
-    return view
-  })
-}
-
 export type DayGridCell =
   | { kind: "known"; cell: DayCell }
   /** Kontrollen har börjat (händelsen day_started). */

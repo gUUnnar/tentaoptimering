@@ -1,7 +1,8 @@
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { DAY_STATUS_HELP, DAY_STATUS_TEXT, formatDuration, kindLabel } from "@/lib/jointFormat"
+import { DAY_STATUS_TEXT, formatDuration } from "@/lib/jointFormat"
+import { dayStatusHelp, kindLabel, kindText } from "@/lib/jointKinds"
 import { activeBatch, dayCounts, dayGrid, dayKinds, hasRealStarts, type DayGridCell, type JointState } from "@/lib/jointState"
 import { DAY_STYLE, DayStatusIcon, type DayCellStatus } from "./status-chip"
 
@@ -17,10 +18,10 @@ export function shortDate(date: string): string {
 /** Text för en ruta. En kontroll kan gälla flera dagar i följd (block); då anges alla. */
 function describe(cell: DayGridCell, kind: string): string {
   const status = cellStatus(cell)
-  if (cell.kind === "pending") return `${DAY_STATUS_TEXT[status]}: ${DAY_STATUS_HELP[status]}`
-  if (cell.kind === "running") return `${cell.date} · ${DAY_STATUS_TEXT.running} · ${kindLabel(kind)}. ${DAY_STATUS_HELP.running}`
+  if (cell.kind === "pending") return `${DAY_STATUS_TEXT[status]}: ${dayStatusHelp(status, kind)}`
+  if (cell.kind === "running") return `${cell.date} · ${DAY_STATUS_TEXT.running} · ${kindLabel(kind)}. ${dayStatusHelp("running", kind)}`
   const block = cell.cell.block && cell.cell.block.length > 1 ? ` Kontrollen gällde ${cell.cell.block.length} dagar i följd: ${cell.cell.block.join(", ")}.` : ""
-  return `${cell.cell.date} · ${DAY_STATUS_TEXT[status]} · ${formatDuration(cell.cell.seconds)} · ${kindLabel(kind)}. ${DAY_STATUS_HELP[status]}${block}`
+  return `${cell.cell.date} · ${DAY_STATUS_TEXT[status]} · ${formatDuration(cell.cell.seconds)} · ${kindLabel(kind)}. ${dayStatusHelp(status, kind)}${block}`
 }
 
 const cellLabel = (cell: DayGridCell, status: DayCellStatus): string =>
@@ -50,7 +51,7 @@ function KindGrid({ state, kind }: { state: JointState; kind: string }) {
   const total = batch?.total ?? cells.length
   return <section aria-label={kindLabel(kind)} className="space-y-2">
     <div className="flex flex-wrap items-baseline justify-between gap-2">
-      <h4 className="text-sm font-semibold">{kindLabel(kind)}</h4>
+      <div><h4 className="text-sm font-semibold">{kindLabel(kind)}</h4><p className="text-xs text-slate-800">{kindText(kind).explanation}</p></div>
       <div className="flex items-center gap-2 text-xs text-slate-900">
         <span className="tabular-nums">{done} av {total} klara</span>
         <div role="progressbar" aria-label={`${kindLabel(kind)}: ${done} av ${total} klara`} aria-valuemin={0} aria-valuemax={total} aria-valuenow={done} className="h-2 w-28 overflow-hidden rounded-full bg-slate-200"><div className="h-full bg-sky-800" style={{ width: total ? `${(done / total) * 100}%` : "0%" }}/></div>
@@ -73,6 +74,7 @@ function KindGrid({ state, kind }: { state: JointState; kind: string }) {
       {!cells.length && <li className="text-xs text-slate-800">Inga dagar rapporterade ännu.</li>}
     </ul>
     <p className="min-h-[2.25rem] rounded-md bg-slate-50 px-2 py-1 text-xs text-slate-900" aria-live="polite">{selected !== null && cells[selected] ? describe(cells[selected], kind) : "Välj en ruta (mus eller tangentbord) för detaljer."}</p>
+    {counts.infeasible > 0 && <p className="rounded-md border border-red-300 bg-red-50 px-2 py-1 text-xs text-red-950"><strong>Går inte ({counts.infeasible}):</strong> {dayStatusHelp("infeasible", kind)}</p>}
     <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs" aria-label="Teckenförklaring och antal">
       {ORDER.map(status => <li key={status} className="flex items-center gap-1"><span className={cn("inline-flex items-center gap-1 rounded border px-1.5 py-0.5", DAY_STYLE[status])}><DayStatusIcon status={status}/>{DAY_STATUS_TEXT[status]}</span><span className="tabular-nums">{counts[status]}</span></li>)}
     </ul>

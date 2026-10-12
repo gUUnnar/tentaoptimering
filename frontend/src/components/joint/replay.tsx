@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from "react"
-import { Pause, Play, SkipBack, SkipForward, StepBack, StepForward } from "lucide-react"
+import { ChevronDown, ChevronRight, Pause, Play, SkipBack, SkipForward, StepBack, StepForward } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDuration } from "@/lib/jointFormat"
@@ -10,8 +10,31 @@ import { RunPanels } from "./run-panels"
 const SPEEDS = [1, 5, 20, 60]
 const TICK_MS = 200
 
-/** Uppspelning av en avslutad körning: samma paneler som livevyn, styrda av en tidsmarkör. */
-export function Replay({ events }: { events: JointEvent[] }) {
+const INTRO = "Spela upp hur körningen gick till: när första lösningen kom, när den undre gränsen förbättrades och vilka dagar som misslyckades. Inget körs om."
+
+/** "Förlopp i efterhand": hopfälld som standard. Uppspelningen monteras först när den fälls ut. */
+export function Replay({ events, costVisible = true }: { events: JointEvent[]; costVisible?: boolean }) {
+  const id = useId()
+  const [open, setOpen] = useState(false)
+  return <section aria-label="Förlopp i efterhand">
+    <Card>
+      <CardHeader>
+        <CardTitle>Förlopp i efterhand</CardTitle>
+        <p className="text-xs text-slate-800">{INTRO}</p>
+      </CardHeader>
+      <CardContent>
+        {events.length === 0
+          ? <p className="text-sm text-slate-700">Körningen har inga sparade händelser att spela upp.</p>
+          : <Button type="button" size="sm" variant="outline" aria-expanded={open} aria-controls={`${id}-body`} onClick={() => setOpen(value => !value)}>
+            {open ? <ChevronDown size={14} className="mr-1" aria-hidden="true"/> : <ChevronRight size={14} className="mr-1" aria-hidden="true"/>}{open ? "Dölj förloppet" : "Visa förloppet"}
+          </Button>}
+      </CardContent>
+    </Card>
+    <div id={`${id}-body`} hidden={!open} className="mt-3">{open && events.length > 0 && <ReplayBody events={events} costVisible={costVisible}/>}</div>
+  </section>
+}
+
+function ReplayBody({ events, costVisible }: { events: JointEvent[]; costVisible: boolean }) {
   const id = useId()
   const endT = events.length ? Math.max(...events.map(event => event.t)) : 0
   const [position, setPosition] = useState(endT)
@@ -39,10 +62,9 @@ export function Replay({ events }: { events: JointEvent[] }) {
   const next = () => { setPlaying(false); setPosition(times.find(t => t > position + 1e-9) ?? endT) }
   const play = () => { if (position >= endT) setPosition(0); setPlaying(value => !value) }
 
-  if (!events.length) return <Card><CardHeader><CardTitle>Uppspelning</CardTitle></CardHeader><CardContent className="text-sm text-slate-700">Körningen har inga sparade händelser att spela upp.</CardContent></Card>
-  return <section className="space-y-3" aria-label="Uppspelning av körningen">
+  return <div className="space-y-3">
     <Card>
-      <CardHeader><CardTitle>Uppspelning</CardTitle></CardHeader>
+      <CardHeader><CardTitle>Spela upp förloppet</CardTitle></CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <Button size="sm" variant="outline" onClick={() => { setPlaying(false); setPosition(0) }} aria-label="Till början"><SkipBack size={14} aria-hidden="true"/></Button>
@@ -63,6 +85,6 @@ export function Replay({ events }: { events: JointEvent[] }) {
         </div>
       </CardContent>
     </Card>
-    <RunPanels state={state} nowT={position}/>
-  </section>
+    <RunPanels state={state} events={visible} nowT={position} costVisible={costVisible}/>
+  </div>
 }
