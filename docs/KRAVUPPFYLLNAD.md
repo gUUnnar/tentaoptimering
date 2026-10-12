@@ -99,7 +99,7 @@ Tabellen ovan är S0-planen. Efter att den äldre motorn togs bort gäller detta
 
 Det har tillkommit en [sammanställning av redovisade verksamhetsuppgifter](VERKSAMHETSUNDERLAG_2026-10-02.md): 1 109 ordinarie salplatser + 41 RPS, bemanningstrappa med minst två vakter/pass, förslag att pröva tre skrivpass per sal och dag, toppar till juni samt preliminära överbeställnings- och personalkostnader. **Uppgifterna är inte verifierade verksamhetsbeslut** och ändrar därför inte status *Uppfyllt* i matrisen.
 
-Inför leverans ska minst följande bedömas med explicita verifieringsprov: (a) helterminsavgränsning (det nuvarande `joint_full_term` omfattar endast 12 januari–31 mars), (b) verifierad kapacitet och sal-ID, (c) bemanningstrappa med entydiga intervall, (d) tidspass och längder vid försök med tre pass/dag, (e) jämförbara kostnadsantaganden och faktisk undvikbarhet (kraven N-1/N-5). Markera respektive krav som delvis eller saknas tills bevis finns.
+Inför leverans ska minst följande bedömas med explicita verifieringsprov: (a) valbar planeringsperiod (nuvarande `joint_underlay_period` är korrekt avgränsad till 12 januari–31 mars men perioden ska bli användarstyrd inom dataunderlaget), (b) verifierad kapacitet och sal-ID, (c) bemanningstrappa med entydiga intervall, (d) tidspass och längder vid försök med tre pass/dag, (e) jämförbara kostnadsantaganden och faktisk undvikbarhet (kraven N-1/N-5). Markera respektive krav som delvis eller saknas tills bevis finns.
 
 
 ## Nya uttryckliga krav 2026-10-12: periodval, läsvyer och export
