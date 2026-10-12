@@ -104,6 +104,8 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `tests/test_joint_validation_differential.py` | 40 slumpade småfall där optimerarens resultat måste godkännas av valideraren. |
 | `tests/test_joint_strategy.py` | Relaxationen är en undre gräns och den nedbrutna strategin når samma optimum som den monolitiska modellen på slumpade och handräknade fall, även när snitt behövs; resultaten passerar eftervalideringen; gapbegränsade resultat redovisas aldrig som bevisade. |
 | `tests/test_joint_parallel_checks.py` | Parallella dagkontroller: gemensam trådbudget och minnesgräns, resultatet oberoende av vilken kontroll som avslutas först, samma optimum som sekventiell och monolitisk körning, tidsbudget, avbrott och fel. |
+| `tests/test_joint_review_fixes.py` | Granskningens fynd: misslyckad slutlagring avslutar loggen som misslyckad, felmeddelande som text och verklig förbrukad tid, sammanfattning som valideras på nytt utan kostnad för ej verifierad körning, och jämförelse som inte visar kostnadsskillnad vid ändrade antaganden. |
+| `tests/test_joint_contract_snapshots.py` | Delat kontrakt mellan backend och frontend: svarens form jämförs mot ögonblicksbilderna i `frontend/src/lib/testing/contract/`. Förnyas med `UPDATE_CONTRACT=1`. |
 | `tests/test_joint_cancel_regressions.py` | Avbrott: ostartad lösare läses aldrig, ett avbrutet dagbeslut är `unknown` och aldrig ogenomförbart, och den monolitiska strategin stoppar i båda faserna och bevarar en verifierad lösning men aldrig en ofullständig. |
 | `tests/test_joint_warm_start.py` | Varmstart: accepteras och avvisas med redovisade skäl, kostnaden räknas om med de nya priserna, sparad verifieringsstatus godtas aldrig, körningsval via sparade artefakter och CLI. |
 | `tests/test_joint_progress.py` | Händelseström: trådsäker ordning, fil per rad, svalda fel, identiskt lösarresultat med och utan sink, händelser för faser/dagkontroller/lösningar/gränser/varmstart, samt samma artefakter plus `joint_events.jsonl`. |
@@ -132,6 +134,10 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `frontend/src/lib/jointCompare.ts` | Vymodell för jämförelsen mot föregående körning, utan beräknade skillnader när körningarna inte är jämförbara. |
 | `frontend/src/lib/jointScenarioInfo.ts` | Urval i klartext och uppgift om körtid för scenariot. |
 | `frontend/src/lib/jointJobMemory.ts` | Minne för pågående körning så att den återupptas efter omladdning. |
+| `frontend/src/lib/runClock.ts` | Körningens klocka: serverns förbrukade tid plus lokal klocka mellan svaren, och visningen går aldrig bakåt. |
+| `frontend/src/lib/jointEvents.ts`, `jointKinds.ts`, `jointSteps.ts` | Händelser, svenska rubriker och förklaringar per kontrolltyp (även "Går inte"-texter) och körningens steg i klartext. |
+| `frontend/src/lib/jointTimeline.ts`, `jointTimelineDetail.ts`, `jointTimelineSummary.ts` | Vymodell för tidslinjen: varv, segment, bredder, pågående segment, detaljer och sammanfattningsrad i klartext. |
+| `frontend/src/lib/jointSummaryView.ts` | Vymodell för sammanfattningen: ingen kostnad utan verifierad lösning, ändrade parametrar med etiketter. |
 | `frontend/src/lib/useJointJob.ts` | React-hook för start, polling var sekund, stopp och återupptagning av pågående jobb. |
 | `frontend/src/lib/paramUnits.ts` | Enheter och omräkning mellan kronor i vyn och öre i API:et. |
 | `frontend/src/lib/paramValues.ts` | Utkast, tolkning och lokal validering av parametervärden, inklusive bemanningstrappan. |
@@ -141,11 +147,13 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `frontend/src/lib/runOptions.ts` | Val av start från förra körningen och datorresurser. |
 | `frontend/src/lib/underlay.ts`, `underlayApi.ts`, `useUnderlay.ts` | Underlag: avgör om underlaget saknas, anrop mot `/api/settings`, `/api/preparation` och `/api/jobs/{id}`, samt hook med jobbpollning. |
 | `frontend/src/lib/testing/jointFixture.ts`, `paramFixture.ts` | Syntetiska händelser och parametrar som bara används av testerna. Appkod får aldrig importera dem. |
+| `frontend/src/lib/testing/contract/*.json` | Riktiga API-svar (sammanfattning, jämförelse, händelser) som ögonblicksbilder av kontraktet. `tests/test_joint_contract_snapshots.py` jämför deras form mot backend och `jointContract.test.ts` matar dem genom klientens adaptrar. |
 | `frontend/src/lib/*.test.ts` | Tester (`npm test`, endast Node): kontraktsform, tillståndsavledning, ärliga texter, parametervalidering och enhetsomräkning, ändringsberäkning, jämförelse, körval, underlag och en gränskontroll som fäller bygget om appkod importerar testdata eller anropar borttagna rutter. |
 | `frontend/src/components/joint/joint-page.tsx` | Sidan Optimering med flikarna Ställ in och kör, Körning och Resultat och jämförelse. |
 | `frontend/src/components/joint/scenario-picker.tsx`, `start-panel.tsx`, `run-options.tsx`, `save-scenario.tsx` | Val av scenario med urval i klartext, startpanel med Kör, start från förra körningen med datorresurser, och sparande av ändringarna som nytt scenario. |
 | `frontend/src/components/joint/params/` | Parameterredigeringen: lista per grupp, rad med enhet, hjälptext och återställning, inmatning per typ, listor, bemanningstrappa och fältet med antalet ändringar. |
-| `frontend/src/components/joint/live-view.tsx`, `run-panels.tsx`, `phase-band.tsx`, `cost-panel.tsx`, `day-grid.tsx`, `resource-box.tsx` | Livevy: status och stopp, fasband, kostnadsgraf, dagrutnät med verkligt "pågår" och resursruta. |
+| `frontend/src/components/joint/live-view.tsx`, `run-panels.tsx`, `cost-panel.tsx`, `day-grid.tsx`, `resource-box.tsx` | Livevy: status och stopp, kostnadsgraf, dagrutnät med verkligt "pågår" och resursruta. |
+| `frontend/src/components/joint/run-timeline.tsx`, `timeline-detail.tsx`, `timeline-look.tsx` | Tidslinje över det som körs: ett block per varv med segment efter körordning, bredd efter tid, pulserande pågående segment och detaljer per segment. Används i livevy, resultat och förlopp i efterhand. |
 | `frontend/src/components/joint/result-view.tsx`, `summary-card.tsx`, `compare-section.tsx`, `verdict-cards.tsx`, `warm-start-card.tsx`, `how-to-read.tsx`, `replay.tsx`, `status-chip.tsx` | Resultatvy: sammanfattning, jämförelse mot föregående körning, de tre domarna isär, beslut om start från förra körningen, förklaring av hur resultatet läses och uppspelning av en avslutad körning. |
 | `frontend/src/components/joint/underlay-notice.tsx` | Ruta när underlaget saknas, med knapp till sidan Underlag. |
 | `frontend/src/components/underlay/` | Sidan Underlag: val av källdatakatalog och förberedelse av underlaget. |

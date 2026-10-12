@@ -393,7 +393,7 @@ value_type = "number"
 unit = "seconds"
 default = 300.0
 default_basis = "experiment"
-help_text = "Tidsgräns i väggtid för hela körningen, inklusive modellbyggen, reparationer och ändringspreferens. Ett pågående CP-SAT-anrop avslutas först vid sin egen gräns (mätt: hela terminen 302 s mot 300 s). Mätt med decomposed: första fullständiga terminslösning efter cirka 134 s, 39 s med varmstart från en tidigare lösning. Se docs/OPTIMERINGSSTRATEGI.md."
+help_text = "Längsta tid för hela körningen, inklusive uppbyggnad av modeller och rättningar. Körningen kan överskrida gränsen med någon sekund, eftersom ett pågående delsteg avslutas först vid sin egen gräns. Alla tentor i underlaget (cirka 1 170) tar ungefär 2–5 minuter; med start från en tidigare körning kommer den första kontrollerade lösningen efter ungefär 15 sekunder."
 engine_support = "implemented"
 honored_by = "joint_optimizer._solver"
 
