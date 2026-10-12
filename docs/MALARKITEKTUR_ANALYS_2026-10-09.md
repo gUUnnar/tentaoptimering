@@ -1,5 +1,7 @@
 # Målarkitektur och leveransplan, revision 4 (S0 klar för granskning)
 
+> Den äldre kapacitets- och termmotorn är borttagen (finns i Git-historiken före den här grenen). Hänvisningar nedan till dess moduler, scenarier, kommandon och rutter beskriver därför det tidigare läget.
+
 **Datum:** 2026-10-09
 **Status:** S0 (inventering, beslutsarbete, prototyp) är genomfört. Ingen produktionskod är skriven; `tools/inventory.py` är ett utvecklingsverktyg. Implementationen (S1 och framåt) börjar först när S0-leveransen är granskad och godkänd.
 **Grenen** `feature/omtag-simuleringsmodell` är skapad från `main`. Mappväljarimplementationen från `feature/source-directory-picker` följer inte med; funktionen byggs in i den nya applikationen som del av inläsning av dataunderlag.

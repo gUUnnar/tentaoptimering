@@ -1,5 +1,7 @@
 # Revision av förprovet (platstopp under flyttfönster) – A6
 
+> Den äldre kapacitets- och termmotorn är borttagen (finns i Git-historiken före den här grenen). Hänvisningar nedan till dess moduler, scenarier, kommandon och rutter beskriver därför det tidigare läget.
+
 Alla skript och utdata ligger i samma mapp som den här filen. Repot är orört.
 Förkortningar: alla = alla veckodagar tillåtna, mfr = måndag–fredag. N = fönster ±N dagar. Basfall = probe5.py:s semantik (population 1 255, ställtid 30 i belastningen, kursordning på, originaltillfälle tillåtet bara om dess veckodag är tillåten, ingen klippning av fönstret, starttid fast).
 

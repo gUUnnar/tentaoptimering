@@ -88,7 +88,7 @@ class ScenarioListTests(unittest.TestCase):
         self.assertEqual(set(term), {"id", "name", "description", "problem_id", "origin", "subset", "schema_version"})
         self.assertEqual(set(term["subset"]), {"plan_area", "selection", "exam_count", "description"})
 
-    def test_a_saved_scenario_is_listed_as_the_users_own_and_kept_apart_from_the_older_scenario_page(self) -> None:
+    def test_a_saved_scenario_is_listed_as_the_users_own(self) -> None:
         workspace = Workspace(self)
         row = joint_api.create_scenario(workspace.storage, ScenarioCreate(
             name="mitt-test", description="Dyrare vakter", base="case", parameters={"cost.staff_annual_ore": 2000}),
@@ -96,8 +96,6 @@ class ScenarioListTests(unittest.TestCase):
         self.assertEqual((row["id"], row["origin"], row["problem_id"], row["description"]), ("mitt-test", "user", "mitt-test", "Dyrare vakter"))
         path = user_scenarios_dir(workspace.storage) / "mitt-test.toml"
         self.assertEqual(path.parent, workspace.storage.root / "joint_scenarios")
-        self.assertFalse((workspace.storage.scenarios_dir / "mitt-test.toml").exists())
-        self.assertNotIn("mitt-test", {item["id"] for item in workspace.storage.list_scenarios()})
         saved = tomllib.loads(path.read_text(encoding="utf-8"))
         base = tomllib.loads((workspace.scenarios / "case.toml").read_text(encoding="utf-8"))
         self.assertEqual(saved["schema_version"], "joint-real-subset-v1")

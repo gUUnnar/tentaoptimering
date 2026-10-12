@@ -35,7 +35,6 @@ from .joint_strategy.resources import CancelToken, ExecutionBudget
 from .joint_strategy.warm_start import StartReport
 from .joint_validation import write_validation
 from .joint_warm_start import AUTO, decision_record, explain, find_start, report_lines, write_decision
-from .optimizer_time import duration_minutes
 from .parameter_catalog import freeze_parameter_values, load_parameter_catalog
 from .provenance import sha256_file
 
@@ -115,7 +114,7 @@ def _prepare_events(ready: pd.DataFrame, values: dict[str, Any]) -> list[dict[st
         starts = set(str(value)[:5] for value in frame["booking_start_time"])
         if len(dates) != 1 or len(starts) != 1:
             raise ValueError(f"Samtentan {event_id} saknar gemensamt ursprungstillfälle.")
-        durations = {int(duration_minutes(str(value))) for value in frame["scheduled_time"]}
+        durations = {int(_duration_minutes(str(value))) for value in frame["scheduled_time"]}
         if len(durations) != 1:
             raise ValueError(f"Samtentan {event_id} har flera skrivtider: {sorted(durations)}")
         exam_types = sorted({str(value).lower() for value in frame["observed_exam_types"].fillna("")})
@@ -448,6 +447,13 @@ def _building_id(address: str) -> str:
 def _clock_minutes(value: str) -> int:
     hour, minute = (int(part) for part in value.split(":"))
     return hour * 60 + minute
+
+
+def _duration_minutes(value: str) -> int:
+    """Minutes in a `HH:MM-HH:MM` interval; an end at or before the start means the next day."""
+    start_text, end_text = value.split("-", maxsplit=1)
+    start, end = _clock_minutes(start_text), _clock_minutes(end_text)
+    return (end if end > start else end + 24 * 60) - start
 
 
 def _clock_text(value: int) -> str:

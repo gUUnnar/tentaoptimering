@@ -92,7 +92,7 @@ def run_pipeline(source_dir: Path, processed_dir: Path, report_dir: Path) -> Pip
     ladok = normalize_ladok(load_ladok(sources.ladok))
     leases = normalize_leases(load_leases(sources.leases))
     linkage = candidate_linkage(bookings, ladok)
-    parameter_path = REPO_ROOT / "config" / "parameters.toml"
+    parameter_path = REPO_ROOT / "config" / "data_preparation.toml"
     demand_measure = load_demand_measure(parameter_path)
     poc_policy = load_poc_policy(parameter_path)
     official_rooms = load_room_register(REPO_ROOT / "config" / "room_register.toml")
@@ -132,7 +132,7 @@ def run_pipeline(source_dir: Path, processed_dir: Path, report_dir: Path) -> Pip
     write_run_manifest(
         sources,
         {
-            "parameters": REPO_ROOT / "config" / "parameters.toml",
+            "data_preparation": REPO_ROOT / "config" / "data_preparation.toml",
             "room_register": REPO_ROOT / "config" / "room_register.toml",
         },
         {

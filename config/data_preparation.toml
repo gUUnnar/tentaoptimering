@@ -1,0 +1,37 @@
+version = 1
+description = "Konfiguration för dataförberedelsen (prepare): efterfrågemått och explorativa PoC-antaganden om lokalbestånd. Den ersätter den borttagna äldre parameterregistret config/parameters.toml; parametrarna för den gemensamma optimeringen finns i config/joint_parameter_catalog.toml."
+
+[[parameter]]
+id = "demand_measure"
+area = "demand"
+name_sv = "Deltagarantal som dimensionerar"
+unit = "measure_id"
+source = "user_instruction_2026-10-08_and_ladok_registration_data"
+status = "provisional_for_first_optimization_preparation"
+rule_status = "replaceable_when_data_owner_definition_exists"
+source_field = "registered_count"
+source_field_label = "VARAV_ANTAL_ANMALDA"
+definition_sv = "Provisoriskt mått på efterfrågan; inte faktisk närvaro och inte ett fastställt verksamhetsmått."
+
+[[parameter]]
+id = "allowed_room_inventory"
+area = "room_inventory"
+name_sv = "Tillåtet lokalbestånd"
+unit = "room_id_set"
+source = "official_public_room_register_and_user_instruction_2026-10-08"
+status = "provisional_for_exploratory_poc"
+rule_status = "explicit_poc_assumption"
+enabled = true
+selection_rule = "capacity_scope_room_and_capacity_seats_present"
+definition_sv = "Publicerade rumskapaciteter får användas för att undersöka möjligheter i PoC:n, men utgör inte verifierad historisk eller framtida tillgänglighet."
+
+[[parameter]]
+id = "poc_room_availability_mode"
+area = "room_inventory"
+name_sv = "Tillgänglighet i explorativ PoC"
+unit = "availability_mode"
+source = "user_instruction_2026-10-08"
+status = "provisional_for_exploratory_poc"
+rule_status = "explicit_poc_assumption"
+value = "candidate_inventory_without_calendar_guarantee"
+definition_sv = "Rummen är scenariokandidater för kapacitetsanalys. Underlaget påstår inte att de är lediga vid ett visst tillfälle."

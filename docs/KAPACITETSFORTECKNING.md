@@ -1,5 +1,7 @@
 # Kapacitetsförteckning (S0)
 
+> Den äldre kapacitets- och termmotorn är borttagen (finns i Git-historiken före den här grenen). Hänvisningar nedan till dess moduler, scenarier, kommandon och rutter beskriver därför det tidigare läget.
+
 Varje funktion som dagens system tillhandahåller får en rad: vart den tar vägen, eller varför den avvecklas. Förteckningen bygger på `tools/inventory.py` (importgraf, nåbarhet, oreferererade symboler, API-rutter, CLI-kommandon, frontendfiler) och på granskningen av koden. Omtaget godkänns först när varje rad har exakt en implementation i den nya koden eller en motiverad avveckling, och när `tools/inventory.py` visar att ingen avvecklad komponent finns kvar.
 
 **Resultat av inventeringsverktyget (nuvarande gren, 37 moduler):** moduler utan väg från produktionsingång: `cost_model`, `synthetic_integrated` (båda används bara av tester). Oreferererade publika symboler: `canonical_demand.build_canonical_exam_demands`, `cost_model.CostComponent`, `cost_model.uncalculated_savings`, `integrated_term.solve_integrated_term`, `synthetic_integrated.solve_synthetic_integrated`. API: 17 rutter. CLI: 10 kommandon. Frontend: 9 filer.

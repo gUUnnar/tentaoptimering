@@ -139,4 +139,4 @@ Beloppen följer proxyer (1 000 kr per plats och år, 50 000 kr per poolresurs o
 - Samtentor: disjunkta deltagargrupper är ett antagande.
 - Lokalinventariet (sju Uppsalasalar, 1 119 platser) är ett datagap för toppveckor (se 246-tentorsfallet).
 - Tidsgränsen är väggtid; avbrutna körningar kan skilja mellan datorer.
-- Den äldre konstruktiva motorn ligger kvar tills nödvändiga funktioner flyttats och ersättningen verifierats.
+- Den äldre kapacitets- och termmotorn är borttagen (finns i Git-historiken före den här grenen); den gemensamma motorn är den enda optimeringsvägen.

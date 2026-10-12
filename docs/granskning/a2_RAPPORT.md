@@ -1,5 +1,7 @@
 # Revision av datalinjen (A2): ursprungsfiler till optimeringsmodell
 
+> Den äldre kapacitets- och termmotorn är borttagen (finns i Git-historiken före den här grenen). Hänvisningar nedan till dess moduler, scenarier, kommandon och rutter beskriver därför det tidigare läget.
+
 Alla siffror är omräknade från originalfilerna i `C:\lokalt\tentalokaler\underlag` (skrivskyddat). Skript s1..s24 ligger i samma mapp. Kör med `.venv\Scripts\python.exe` (PYTHONIOENCODING=utf-8). Repot är orört (`git status` ren). Pipelinen kördes två gånger mot kopior i `rerun1/` och `rerun2/` med PYTHONDONTWRITEBYTECODE=1.
 
 ## A. Verifierat korrekt

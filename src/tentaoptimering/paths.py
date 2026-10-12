@@ -13,10 +13,10 @@ def _resource_root() -> Path:
         return Path(bundled)
     module_path = Path(__file__).resolve()
     for parent in module_path.parents:
-        if (parent / "config" / "parameters.toml").is_file():
+        if (parent / "config" / "data_preparation.toml").is_file():
             return parent
     current = Path.cwd()
-    if (current / "config" / "parameters.toml").is_file():
+    if (current / "config" / "data_preparation.toml").is_file():
         return current
     return module_path.parents[2]
 

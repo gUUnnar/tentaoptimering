@@ -1,5 +1,7 @@
 # Kravmatris (S0-utkast)
 
+> Den äldre kapacitets- och termmotorn är borttagen (finns i Git-historiken före den här grenen). Hänvisningar nedan till dess moduler, scenarier, kommandon och rutter beskriver därför det tidigare läget.
+
 Varje krav i `KONCEPTUELL_KRAVSPECIFIKATION.md` och i acceptanskriterierna (`AGENTS.md`) redovisas med dagens status, status efter första leveransen och det som bevisar den. Statusord: **Uppfyllt**, **Delvis**, **Saknas**, **Kan inte verifieras** (data saknas). Matrisen uppdateras vid varje steg; ett krav får inte markeras *Uppfyllt* utan ett test eller en kontroll.
 
 Underlag klassas **A** (finns i tillgängliga data), **B** (kräver antagande), **C** (kräver nya verksamhetsuppgifter).

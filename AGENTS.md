@@ -13,11 +13,11 @@ Bygg en PoC som uppskattar den lägsta långsiktiga årskostnaden för Uppsala u
 ## Läsordning
 1. `README.md`
 2. `docs/KONCEPTUELL_KRAVSPECIFIKATION.md`
-3. `docs/KODGRANSKNING_OCH_CODEX_UPPDRAG_2026-10-08.md`
-4. Vid behov: `docs/DATAMODELL.md`, `docs/KOSTNADSMODELL.md`, `docs/BLOCKERANDE_DATAGAP.md` och relevanta kod- och konfigurationsfiler.
+3. `docs/GEMENSAM_OPTIMERINGSDESIGN.md` och `docs/OBEROENDE_EFTERVALIDERING.md`
+4. Vid behov: `docs/KODGRANSKNING_OCH_CODEX_UPPDRAG_2026-10-08.md`, `docs/DATAMODELL.md`, `docs/KOSTNADSMODELL.md`, `docs/BLOCKERANDE_DATAGAP.md` och relevanta kod- och konfigurationsfiler.
 
 ## Aktuellt uppdrag
-Bygg och verifiera en fristående eftervaliderare för terminskörningen. Den ska läsa sparade modellindata, scenario och placeringsresultat, redovisa regelvis `pass`, `fail`, `not_evaluated` eller `not_applicable` och alltid skilja teknisk placeringsfullständighet från verksamhetsmässig genomförbarhet. Avsaknad av data eller modellstöd får aldrig bli ett godkänt krav.
+Utveckla den gemensamma optimeringsmotorn (`joint_*`, kommandot `optimize-joint`) och dess fristående eftervalidering av gemensamma körningar (`joint_validation/`, kommandot `validate-joint-run`). Eftervalideringen läser sparade modellindata, resultat och manifest, redovisar regelvis `pass`, `fail`, `not_evaluated` eller `not_applicable` och skiljer alltid teknisk placeringsfullständighet från verksamhetsmässig genomförbarhet. Avsaknad av data eller modellstöd får aldrig bli ett godkänt krav. Den äldre kapacitets- och termmotorn är borttagen (finns i Git-historiken före den här grenen); den gemensamma motorn är den enda optimeringsvägen.
 
 ## Leverans via feature-branch och PR
 
@@ -45,8 +45,10 @@ Bygg och verifiera en fristående eftervaliderare för terminskörningen. Den sk
 För databaslinjen på GitHub-main:
 ```powershell
 python -m tentaoptimering.cli
+python -m tentaoptimering.cli optimize-joint --config config/scenarios/joint_real_subset.toml
+python -m tentaoptimering.cli validate-joint-run --run-id <körnings-id>
 python tools/check_code_file_lengths.py
 python -m unittest discover -s tests -v
 ```
 
-Kontrollera att rådata inte förändras. Validera dessutom alla hårda regler och full efterfrågetäckning i solverns separata testsvit när den lokala implementationen har inventerats.
+Kontrollera att rådata inte förändras. Validera dessutom alla hårda regler och full efterfrågetäckning i den gemensamma motorns testsviter (`tests/test_joint_*.py`) och i den fristående eftervalideringen.

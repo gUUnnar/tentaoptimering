@@ -34,12 +34,12 @@ Gränssnittet hämtar katalogen med `GET /api/joint-runs/parameters?scenario=<id
 - **Tillåtna val.** Varje `choice`-parameter anger sina val som en lista `choices = [{value = "up", label = "Uppåt ..."}, ...]` (svenska etiketter). Katalogen laddas inte om en valparameter saknar val eller om standardvärdet inte finns bland dem. Testerna kontrollerar att motorn godtar varje listat val och att den avvisar andra.
 - **Validering.** `validate_overrides(katalog, ändringar)` (`parameter_validation.py`) används av körningsrutten och av rutten som sparar scenarier. Den avvisar okända parametrar, parametrar som är `contract_only` ("Stöds inte av motorn än"), värden av fel typ och orimliga intervall (heltal under noll, veckodagar utanför 1-7, klockslag som inte är HH:MM, en bemanningstrappa som inte stiger, ett första datum efter det sista) och svarar med `[{id, message}]`. Scenariofiler som läses från disk valideras inte på det sättet; deras värden är de tidigare frusna scenariovärdena.
 - **Ändringar i en körning.** En körning kan få `parameters: {id: värde}` (bara ändringar jämfört med scenariot). De slås ihop med en kopia av scenariot, med motiveringen "Ändrat i gränssnittet." per ändrad parameter. Scenariofilen ändras aldrig och scenariots id behålls, så att jämförelse och varmstart mot föregående körning av samma scenario fungerar. Den scenariofil som faktiskt användes sparas i körningsmappen som `joint_scenario.toml`.
-- **Egna scenarier.** `POST /api/joint-runs/scenarios` sparar ett scenario i mappen `joint_scenarios/` under appens datamapp (inte i den mapp som den äldre scenariosidan läser). Urvalet kopieras från basscenariot.
+- **Egna scenarier.** `POST /api/joint-runs/scenarios` sparar ett scenario i mappen `joint_scenarios/` under appens datamapp. Urvalet kopieras från basscenariot.
 - **Jämförelse.** `GET /api/joint-runs/{run_id}/compare` visar vilka parametrar som skiljer och hur kostnad, undre gräns, gap, ändrade tentor, pool och salar skiljer. Kostnadsskillnaden tolkas bara om den är större än det största gapet av de två körningarnas gap. Körningar på olika dataunderlag eller olika tentamängd jämförs aldrig. Alla belopp är modellkostnad med scenariots proxypriser.
 
 ## Spårning mot det tidigare registret
 
-Varje parameter i det tidigare registret (`config/parameters.toml`) och i terminsmotorns bindningar har en post här, angiven i `legacy_ids`. `test_catalog_keeps_every_legacy_parameter_or_a_declared_counterpart` kontrollerar att ingen försvinner. Ingen parameter har tagits bort för att motorstöd saknas.
+Varje parameter i det tidigare, nu borttagna registret (`config/parameters.toml`) och i den borttagna terminsmotorns bindningar har en post här, angiven i `legacy_ids`. `test_catalog_keeps_every_legacy_parameter_or_a_declared_counterpart` kontrollerar att ingen försvinner. Ingen parameter har tagits bort för att motorstöd saknas.
 
 ## Grund och motivering
 
