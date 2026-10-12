@@ -93,7 +93,7 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved }: Pro
         <div className="flex flex-wrap items-start gap-4">
           <div>
             <Button type="button" size="lg" disabled={!canStart} onClick={() => void submit()} aria-describedby="start-why"><Play size={15} className="mr-1" aria-hidden="true"/>{submitting ? "Startar …" : "Kör"}</Button>
-            <p id="start-why" className="mt-1 text-xs text-slate-800">{why ?? (editor.changes.length ? `Körs med dina ${editor.changes.length} ${editor.changes.length === 1 ? "ändring" : "ändringar"}.` : "Körs med scenariots egna värden.")}</p>
+            <p id="start-why" className="mt-1 text-xs text-slate-800">{why ?? (editor.changes.length ? (editor.changes.length === 1 ? "Körs med din ändring." : `Körs med dina ${editor.changes.length} ändringar.`) : "Körs med scenariots egna värden.")}</p>
           </div>
           <SaveScenario baseId={scenarioId} baseName={scenario?.name ?? ""} parameters={editor.request} changeCount={editor.changes.length} disabledReason={saveDisabled}
             onSaved={async saved => { await onSaved(saved); setScenarioId(saved.id) }}/>

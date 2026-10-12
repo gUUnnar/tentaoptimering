@@ -65,6 +65,10 @@ const KIND_TEXT: Record<string, string> = {
   day_checks: "Kontroll av varje dag mot den grova planen", economic_plan: "Kontroll av varje dag mot den grova planen", exact: "Noggrann kontroll av varje dag",
   history: "Försök att behålla ursprungliga tider", history_swap: "Försök att behålla ursprungliga tider",
   repair: "Rättning av dagar som inte gick",
+  // Namnen som backend skickar för kontrollerna.
+  "warm-start": "Förra körningens placering, dag för dag", day: "Kontroll av varje dag mot den grova planen",
+  diagnosis: "Utredning av dagar som inte gick (utan begränsning)", fallback: "Reservplan med fler lokaler eller vakter",
+  core: "Sökning efter vilka tentor som orsakar problemet",
 }
 export const kindLabel = (kind: string): string => KIND_TEXT[kind] ?? `Kontroller (${kind})`
 
