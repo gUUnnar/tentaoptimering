@@ -10,6 +10,8 @@ Bygg en PoC som uppskattar den lägsta långsiktiga årskostnaden för Uppsala u
 4. **Hårda villkor.** Fysisk sal-/formatkapacitet; digital kompatibilitet; skilda planeringsområden Uppsala och Visby; kurs- och programkrockar; tillämpliga lagar, avtal och arbetstidsvillkor.
 5. **Spårbara data.** Använd kvalificerade antaganden när data saknas. Alla antaganden ska deklareras och kunna ersättas genom kompletterande data utan större kodändringar. Håll isär faktisk kostnad, teoretisk årlig potential och verifierad realiserbar besparing.\n6. **Inspektera källdata och schema i UX.** Användaren kan för en vald period se hur en sal nyttjas och slå upp en specifik bokad tentamens datum, klockslag, sal(ar) och omfattning. Historisk bokning, rapporterad faktisk beläggning och simulerad placering skiljs åt, inklusive saknade/tvetydiga uppgifter.
 
+7. **Korta planeringsperioder för snabb återkoppling.** Användaren ska kunna välja en dag, en vecka eller valfritt kort intervall inom planeringsbar datatäckning och genomföra en mycket snabb men fullständigt eftervaliderad testkörning. Syften: kortvarselbokning och snabb kontroll av andra UX-/API-funktioner. Ingen manuell scenariofil ska krävas, och fasta bokningar som blockerar lokaler får inte ignoreras.
+
 ## Läsordning
 1. `README.md`
 2. `docs/KONCEPTUELL_KRAVSPECIFIKATION.md`
