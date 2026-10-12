@@ -99,12 +99,12 @@ export function groupParameters(params: ParameterInfo[], meta: GroupMeta = {}): 
 
 export type ParamFilter = {
   query: string; showAdvanced: boolean; keep: ReadonlySet<string>; groupLabels?: Record<string, string>
-  /** Visa parametrar som inte går att sätta (editable: false). Utan val är de bortfiltrerade. */
+  /** Visa parametrar som inte går att ändra här: motorn använder dem inte än, eller gränssnittet saknar redigering för typen. Utan val är de bortfiltrerade. */
   showLocked?: boolean
 }
 
-/** Parametrar som finns i modellen men inte går att sätta än. */
-export const lockedParameters = (params: ParameterInfo[]): ParameterInfo[] => params.filter(param => !param.editable)
+/** Parametrar som inte går att ändra i gränssnittet: motorn använder dem inte än, eller redigering saknas för typen. */
+export const lockedParameters = (params: ParameterInfo[]): ParameterInfo[] => params.filter(param => !isEditable(param))
 
 /**
  * Sökning på namn, id, hjälptext och grupp. Avancerade parametrar döljs om inte "Visa avancerade" är vald, utom de som ändrats.
@@ -113,7 +113,7 @@ export const lockedParameters = (params: ParameterInfo[]): ParameterInfo[] => pa
 export function filterParameters(params: ParameterInfo[], filter: ParamFilter): ParameterInfo[] {
   const query = filter.query.trim().toLowerCase()
   return params.filter(param => {
-    if (!param.editable && !filter.showLocked) return false
+    if (!isEditable(param) && !filter.showLocked) return false
     if (param.advanced && !filter.showAdvanced && !filter.keep.has(param.id)) return false
     if (!query) return true
     return [param.label, param.id, param.help_text, param.group, filter.groupLabels?.[param.group] ?? ""].some(field => field.toLowerCase().includes(query))
