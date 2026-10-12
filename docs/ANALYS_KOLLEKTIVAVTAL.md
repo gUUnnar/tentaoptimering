@@ -26,7 +26,7 @@
 
 Följande finns **inte** i avtalet och kan därför inte bli *Verifierade* ur detta dokument:
 
-- antal vakter per sal eller per antal deltagare (bemanningstrappan 1/2/3 vid 50/150/300);
+- antal vakter per sal eller per antal deltagare (modellens antagna bemanningstrappa 1/2/3 vid 50/150/300); den verksamhetsuppgift som senare tillkommit finns separat i `VERKSAMHETSUNDERLAG_2026-10-02.md`;
 - arbetspassens klockslag (modellens 07:30-18:30);
 - förberedelse- och avslutstid (30 + 30 minuter);
 - rastens längd och minsta uppehåll (modellen: 30 minuter);
@@ -67,3 +67,9 @@ Följande finns **inte** i avtalet och kan därför inte bli *Verifierade* ur de
 - Parameterkatalogen får de två verifierade regler som lätt kan modelleras i första steget: **kortaste betalda pass 2 h**, **rast vid pass över 5 h**. Övriga avtalsvärden (39 h, begränsningsperiod, ≤ 5 dagar, ≤ 4 helger) redovisas som *Verifierad* referensinformation men blir parametrar först när bemanningsmodellen räknar individer över begränsningsperioder (S7).
 - Samtliga övriga bemanningsparametrar behåller grunden **Antagande** med uttrycklig anteckning att avtalet inte reglerar dem.
 - **Nya verksamhetsuppgifter som behövs** (läggs i datagapregistret): bemanningsregler per sal och deltagarantal (källa saknas); centralt Villkorsavtal-T 4 kap. 5 § (dygns- och veckovila); det lokala avtalet om tillägg för obekväm arbetstid; uppgift om vilka vakter som är anställda respektive timavlönade; aktuella lönenivåer.
+
+## 6. Ny verksamhetsuppgift 2026-10-02 – ingen avtalsändring
+
+I [Utvecklingsarbete 2-10-26](VERKSAMHETSUNDERLAG_2026-10-02.md) anges **alltid minst två vakter per arbetspass**, med **2/3/4/5/6 vakter** i intervallen **1–65/66–135/136–220/221–250/250–300** tentander. Detta motsäger det äldre PoC-exemplet 1/2/3 vid 50/150/300 men är **inte en bestämmelse i det analyserade kollektivavtalet**. Presentationsuppgiften kräver verksamhetsbekräftelse: intervallen överlappar vid 250, över 300 är inte definierat, och det måste klargöras om vakterna fördelas per sal, tentamen eller arbetspass.
+
+Presentationen anger också 86 aktiva vakter, varav 20 anställda, samt **1 228,5 timmar bomtid**, **191,5 timmar ”Övt”** och beräknade kostnader **250 000 + 44 000 kr** för 2025. Kolumnrubriken ”Övt” och textens ”mertid” behöver redas ut före kostnadsberäkning. Vaktpool och kostnader kan därmed bli **nya undersökningsparametrar**, men ska inte få grunden *Verifierad* ur denna presentation. Ingen kollektiva avtalsregel eller standardkonfiguration ändras genom denna dokumentuppdatering.
