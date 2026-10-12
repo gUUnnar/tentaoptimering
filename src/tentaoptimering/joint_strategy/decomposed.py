@@ -86,7 +86,9 @@ def solve_decomposed(
         remaining = deadline - time.perf_counter()
         if remaining <= 1.0 or checker.cancel.cancelled:
             break
-        master = solve_master(problem, remaining * (MASTER_SHARE if rounds == 1 else 0.25), settings, tuple(cuts), hint,
+        # The first relaxation keeps its planned share of the whole limit; a warm start must not shorten it.
+        master = solve_master(problem, min(remaining, MASTER_SHARE * problem.solver.time_limit_seconds) if rounds == 1 else remaining * 0.25,
+                              settings, tuple(cuts), hint,
                               prefer_history_seconds=min(10.0, 0.1 * remaining), cancel=checker.cancel)
         LOG.debug("master %s: %s cost %s bound %s plans %d (%.1f s)", rounds, master.status, master.objective,
                   master.bound, len(master.plans), master.wall_seconds)

@@ -25,6 +25,8 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from test_joint_strategy import _group, _two_day_problem, _validate  # noqa: E402
 from test_joint_validation_run import CATALOG, PAIR_SCENARIO, _write_pair_dataset  # noqa: E402
+from tentaoptimering.api import create_app  # noqa: E402
+from tentaoptimering.app_storage import AppStorage  # noqa: E402
 from tentaoptimering.cli import main  # noqa: E402
 from tentaoptimering.joint_contract import ScopeSummary  # noqa: E402
 from tentaoptimering.joint_inputs import run_real_subset  # noqa: E402
@@ -319,6 +321,37 @@ class CliTests(unittest.TestCase):
         self.assertEqual(second["run"]["result"]["solver"]["outcome"], "optimal")
         _code, cold = self._main("--warm-start", "none")
         self.assertEqual(second["run"]["result"]["costs"], cold["run"]["result"]["costs"])
+
+
+class InterfaceTests(unittest.TestCase):
+    """What the local interface needs, from the saved run artifacts only."""
+
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.dir = Path(self.temp.name)
+        self.scenario = _write_pair_dataset(self.dir)
+        self.storage = AppStorage(self.dir / "app")
+        time.sleep(1.05)
+        self.first = run_real_subset(self.scenario, self.dir, CATALOG, self.storage.runs_dir, warm_start="none")
+        time.sleep(1.05)
+        self.second = run_real_subset(self.scenario, self.dir, CATALOG, self.storage.runs_dir)
+
+    def test_candidates_and_decisions_are_read_from_the_saved_runs(self) -> None:
+        rows = self.storage.warm_start_candidates("pair")
+        self.assertEqual([row["run_id"] for row in rows], [self.second["run_id"], self.first["run_id"]])
+        self.assertEqual([row["warm_start_decision"] for row in rows], ["accepted", "not_used"])
+        self.assertTrue(all(row["has_placement"] and row["stored_technical_validation"] == "pass" for row in rows))
+        self.assertEqual(self.storage.warm_start_candidates("other"), [])
+        self.assertEqual(self.storage.warm_start(self.second["run_id"])["source"]["run_id"], self.first["run_id"])
+        with self.assertRaises(ValueError):
+            self.storage.warm_start("../escape")
+
+    def test_the_interface_routes_exist_and_run_listing_is_unchanged(self) -> None:
+        paths = {route.path for route in create_app(self.storage.root).routes}
+        self.assertIn("/api/runs/{run_id}/warm-start", paths)
+        self.assertIn("/api/joint-runs/warm-start-candidates", paths)
+        self.assertEqual(self.storage.list_runs(), [])  # joint runs have their own artifacts; the term-run listing is not mixed up
 
 
 if __name__ == "__main__":

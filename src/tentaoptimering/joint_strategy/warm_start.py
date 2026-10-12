@@ -29,7 +29,7 @@ ACCEPTED = "accepted"
 REJECTED = "rejected"
 HINT_ONLY = "hint_only"
 
-WARM_START_SHARE = 0.25     # of the run's time limit that the re-check of a warm start may use
+WARM_START_SHARE = 0.5      # of the run's time limit that the re-check of a warm start may use
 MAX_REASONS = 6
 
 

@@ -56,6 +56,20 @@ Körningen sparar versionsmärkt modellindata, resultat, manifest och rapport un
 
 Standardstrategin är `solver.strategy = "decomposed"`. En aggregerad relaxation väljer datum, lokalportfölj och bemanningspool och ger en bevisad undre kostnadsgräns. Därefter kontrolleras varje dag exakt med samma hårda villkor. Den monolitiska modellen kan väljas med `"monolithic"`. Se [optimeringsstrategin](docs/OPTIMERINGSSTRATEGI.md) för analys och mätningar.
 
+### Varmstart och parallella dagkontroller
+
+När parametrar ändras startar `optimize-joint` som standard från den senaste användbara körningen av samma problem (`--warm-start auto`). Körningen väljs bland sparade körningsmappar under `runs/` och pekas ut med sitt körnings-id:
+
+```powershell
+.\.venv\Scripts\python.exe -m tentaoptimering.cli optimize-joint --config config\scenarios\joint_real_subset.toml --warm-start auto
+.\.venv\Scripts\python.exe -m tentaoptimering.cli optimize-joint --config <scenario> --warm-start 20261012T101500Z-joint_real_subset
+.\.venv\Scripts\python.exe -m tentaoptimering.cli optimize-joint --config <scenario> --warm-start none
+```
+
+Den tidigare körningen måste ha oförändrade filer enligt sitt manifest och godkännas av den oberoende eftervalideringen vid själva körningen; ett sparat godkännande räknas aldrig. Lösaren kontrollerar därefter placeringen dag för dag mot den nya instansens regler. Den blir en första övre gräns bara om varje dag klarar kontrollen. I annat fall används de tidigare passen som ledtråd och vanlig optimering körs. Beslutet och skälen sparas i `joint_warm_start.json` i den nya körningen och redovisas i rapporten.
+
+`--threads`, `--memory-mb` och `--sequential-day-checks` styr den gemensamma trådbudgeten och minnesgränsen för de parallella dagkontrollerna. Ctrl+C stoppar lösaren och sparar den bästa verifierade lösningen hittills. Se [optimeringsstrategin](docs/OPTIMERINGSSTRATEGI.md), avsnitt 9.
+
 ## Lokalt gränssnitt
 
 PoC:n har ett lokalt React- och FastAPI-gränssnitt för scenarier, parametrar, terminskörningar och eftervalidering. Se [lokalt gränssnitt](docs/LOKALT_GRANSSNITT.md) för utveckling, Windows-paketering och offlineverifiering.

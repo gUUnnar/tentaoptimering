@@ -34,6 +34,7 @@ DEFAULT_MEMORY_MB = 4096
 MEMORY_SHARE = 0.5          # of the physical memory that is free when the run starts
 BASE_TASK_MB = 32.0         # one day check: model, solver and Python objects
 PAIR_TASK_MB = 0.02         # per (exam, candidate slot, room) triple in the check
+MIN_CHECKS_PER_SLOT = 2     # a batch is spread over a parallel slot only if each slot gets at least this many checks
 
 
 @dataclass(frozen=True)
@@ -90,14 +91,21 @@ def task_memory_mb(pairs: int) -> float:
 def plan_batch(tasks: int, task_mb: float, budget: ExecutionBudget) -> tuple[int, int]:
     """(checks run at the same time, CP-SAT workers per check) for a batch of independent checks.
 
-    The estimate for the largest check in the batch bounds the number of simultaneous checks. A
-    batch of one, or a run with parallel checks switched off, uses all threads for one check.
+    A check with one worker is several times slower than with eight, so running many checks at once
+    pays only when every slot gets several checks to average out the slowest one. The number of
+    simultaneous checks is the largest `threads / 2^k` for which the batch has at least
+    `MIN_CHECKS_PER_SLOT` checks per slot; the checks share the threads equally. The estimate for the
+    largest check in the batch bounds the number of simultaneous checks by memory. A batch of one, or a run
+    with parallel checks switched off, uses all threads for one check at a time.
     """
     if not budget.parallel_day_checks or tasks <= 1:
         return 1, budget.threads
-    parallel = min(tasks, budget.threads)
     if budget.workers_per_check > 0:
         parallel = min(tasks, max(1, budget.threads // budget.workers_per_check))
+    else:
+        parallel = budget.threads
+        while parallel > 1 and tasks < MIN_CHECKS_PER_SLOT * parallel:
+            parallel //= 2
     if budget.memory_mb is not None:
         parallel = min(parallel, max(1, int(budget.memory_mb // max(1.0, task_mb))))
     return parallel, max(1, budget.threads // parallel)

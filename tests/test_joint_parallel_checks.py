@@ -67,11 +67,20 @@ class PlanTests(unittest.TestCase):
 
     def test_eight_checks_do_not_each_get_eight_threads(self) -> None:
         self.assertEqual(plan_batch(73, 40.0, ExecutionBudget(8, 10**6)), (8, 1))
-        self.assertEqual(plan_batch(4, 40.0, ExecutionBudget(8, 10**6)), (4, 2))
+        self.assertEqual(plan_batch(16, 40.0, ExecutionBudget(8, 10**6)), (8, 1))
+
+    def test_a_small_batch_is_not_split_into_slow_single_worker_checks(self) -> None:
+        """One worker is several times slower than eight: small batches keep their threads together."""
+        self.assertEqual(plan_batch(15, 40.0, ExecutionBudget(8, 10**6)), (4, 2))
+        self.assertEqual(plan_batch(8, 40.0, ExecutionBudget(8, 10**6)), (4, 2))
+        self.assertEqual(plan_batch(4, 40.0, ExecutionBudget(8, 10**6)), (2, 4))
+        self.assertEqual(plan_batch(2, 40.0, ExecutionBudget(8, 10**6)), (1, 8))
         self.assertEqual(plan_batch(1, 40.0, ExecutionBudget(8, 10**6)), (1, 8))
+        self.assertEqual(plan_batch(73, 40.0, ExecutionBudget(8, 10**6, workers_per_check=2)), (4, 2))
 
     def test_memory_limits_how_many_checks_run_at_once(self) -> None:
         self.assertEqual(plan_batch(73, 100.0, ExecutionBudget(8, 350)), (3, 2))
+        self.assertEqual(plan_batch(73, 100.0, ExecutionBudget(8, 650)), (6, 1))
         self.assertEqual(plan_batch(73, 100.0, ExecutionBudget(8, 50)), (1, 8))  # one check always fits: it runs alone
         self.assertLess(task_memory_mb(100), task_memory_mb(10000))
 

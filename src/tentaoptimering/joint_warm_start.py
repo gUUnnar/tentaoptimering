@@ -193,6 +193,45 @@ def explain(choice: StartChoice, report: Any) -> str:
             f"{report.hint_exams} tentors tidigare pass användes som ledtråd; vanlig optimering gjordes.")
 
 
+def read_decision(runs_dir: Path, run_id: str) -> dict[str, Any] | None:
+    """The saved warm-start decision of a run, for the interface; None for a run that has none."""
+    if not _SAFE_RUN_ID.fullmatch(run_id):
+        raise ValueError("Körnings-id har ogiltigt format.")
+    path = Path(runs_dir) / run_id / WARM_START_FILE
+    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
+
+
+def list_candidates(runs_dir: Path, problem_id: str | None = None) -> list[dict[str, Any]]:
+    """Saved joint runs that could be offered as a warm start, newest first (a quick listing for a picker).
+
+    Nothing is validated here: the listing only reads the saved result and stored verdict. A run is accepted
+    as a start only by `find_start`, which checks the files and validates them again.
+    """
+    runs_dir = Path(runs_dir)
+    if not runs_dir.is_dir():
+        return []
+    rows = []
+    for name in sorted((path.name for path in runs_dir.iterdir()), reverse=True):
+        directory = runs_dir / name
+        if not _SAFE_RUN_ID.fullmatch(name) or not all((directory / item).is_file() for item in (INPUT_FILE, RESULT_FILE, MANIFEST_FILE)):
+            continue
+        try:
+            problem = json.loads((directory / INPUT_FILE).read_text(encoding="utf-8"))
+            result = json.loads((directory / RESULT_FILE).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if not isinstance(problem, dict) or not isinstance(result, dict) or (problem_id is not None and problem.get("problem_id") != problem_id):
+            continue
+        solver = result.get("solver") if isinstance(result.get("solver"), dict) else {}
+        rows.append({
+            "run_id": name, "problem_id": problem.get("problem_id"), "solver_outcome": solver.get("outcome"),
+            "cost_ore": solver.get("objective_value_ore"), "has_placement": bool(result.get("schedule")),
+            "stored_technical_validation": _stored_validation(directory),
+            "warm_start_decision": (read_decision(runs_dir, name) or {}).get("decision"),
+        })
+    return rows
+
+
 def write_decision(run_dir: Path, record: dict[str, Any]) -> None:
     (Path(run_dir) / WARM_START_FILE).write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
 

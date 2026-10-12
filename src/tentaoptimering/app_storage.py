@@ -227,6 +227,15 @@ class AppStorage:
         path = self._run_dir(run_id) / "validation.json"
         return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
 
+    def warm_start(self, run_id: str) -> dict[str, Any] | None:
+        """The warm-start decision saved with a joint run (`joint_warm_start.json`), or None."""
+        from .joint_warm_start import read_decision
+        return read_decision(self.runs_dir, self._run_dir(run_id).name)
+
+    def warm_start_candidates(self, problem_id: str | None = None) -> list[dict[str, Any]]:
+        from .joint_warm_start import list_candidates
+        return list_candidates(self.runs_dir, problem_id)
+
     def run_scenario_content(self, run_id: str) -> dict[str, Any]:
         path = self._run_dir(run_id) / "scenario.toml"
         if not path.is_file():
