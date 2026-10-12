@@ -7,12 +7,16 @@ import { oreToKrText, parseKrToOre, unitInfo } from "./paramUnits.ts"
 export type LadderRow = { max: string; staff: string }
 export type RangeRow = { start: string; end: string }
 export type ParseResult = { ok: true; value: unknown } | { ok: false; error: string }
+/** Det som tolkningen behöver veta utöver parametern: vilka sal-id:n som finns i underlaget (okänt = ingen kontroll). */
+export type ParseContext = { roomIds?: readonly string[] }
+/** Utkastet för "ingen sal vald". Tom lista betyder alla salar, så "ingen" behöver en egen markering. Den kan aldrig skickas: tolkningen ger felet "Minst en sal måste vara vald." */
+export const NO_ROOMS_DRAFT = "__ingen_sal__"
 
 const EDITABLE: ReadonlySet<ParamValueType> = new Set([
-  "integer", "number", "boolean", "choice", "date", "time", "time_list", "integer_list", "string_list",
+  "integer", "number", "boolean", "choice", "date", "time", "time_list", "integer_list", "string_list", "room_id_list",
   "staffing_ladder", "date_range_list", "time_range_list",
 ])
-/** Typer som har en redigerare i gränssnittet. Övriga (matris, regeluppsättning, salslistor m.fl.) visas skrivskyddat. */
+/** Typer som har en redigerare i gränssnittet. Övriga (matris, regeluppsättning m.fl.) visas skrivskyddat. Salslistan kräver dessutom alternativ ur underlaget (se paramOptions.ts). */
 export const hasEditor = (valueType: ParamValueType): boolean => EDITABLE.has(valueType)
 
 export const WEEKDAYS = [
@@ -39,7 +43,7 @@ export function toDraft(param: ParameterInfo, value: unknown = param.value): unk
     case "boolean": return value === true
     case "choice": return value
     case "date": case "time": return text(value)
-    case "time_list": case "integer_list": case "string_list": return asArray(value).map(text)
+    case "time_list": case "integer_list": case "string_list": case "room_id_list": return asArray(value).map(text)
     case "staffing_ladder": return asArray(value).map((row): LadderRow => ({ max: text(asRecord(row).max_participants), staff: text(asRecord(row).required_staff) }))
     case "date_range_list": case "time_range_list": return asArray(value).map((row): RangeRow => ({ start: text(asRecord(row).start), end: text(asRecord(row).end) }))
     default: return value
@@ -131,6 +135,16 @@ function parseList(param: ParameterInfo, draft: unknown): ParseResult {
   return unknown !== undefined ? fail(`"${unknown}" är inget tillåtet alternativ.`) : ok(cleaned)
 }
 
+/** Sal-id:n. Tom lista betyder alla salar. Id:n sorteras så att ordningen inte spelar roll. */
+function parseRoomIds(draft: unknown, context: ParseContext): ParseResult {
+  const items = asArray(draft).map(item => text(item).trim())
+  if (items.includes(NO_ROOMS_DRAFT)) return fail("Minst en sal måste vara vald.")
+  if (items.some(item => item === "")) return fail("Ta bort tomma rader i listan.")
+  if (new Set(items).size !== items.length) return fail("Samma sal finns flera gånger.")
+  const unknown = context.roomIds ? items.find(item => !context.roomIds!.includes(item)) : undefined
+  return unknown !== undefined ? fail(`Salen "${unknown}" finns inte bland salarna i underlaget.`) : ok([...items].sort())
+}
+
 function parseRanges(param: ParameterInfo, draft: unknown): ParseResult {
   const rows = asArray(draft).map(row => ({ start: text(asRecord(row).start), end: text(asRecord(row).end) }))
   const valid = param.value_type === "date_range_list" ? isValidDate : isValidTime
@@ -143,7 +157,7 @@ function parseRanges(param: ParameterInfo, draft: unknown): ParseResult {
 }
 
 /** Tolkar utkastet till det värde som API:et förväntar sig. */
-export function parseDraft(param: ParameterInfo, draft: unknown): ParseResult {
+export function parseDraft(param: ParameterInfo, draft: unknown, context: ParseContext = {}): ParseResult {
   const allowEmpty = param.default === "" || param.default === null || param.value === ""
   switch (param.value_type) {
     case "integer": {
@@ -172,6 +186,7 @@ export function parseDraft(param: ParameterInfo, draft: unknown): ParseResult {
       return isValidTime(input) ? ok(input) : fail("Ange ett giltigt klockslag, till exempel 08:00.")
     }
     case "time_list": case "integer_list": case "string_list": return parseList(param, draft)
+    case "room_id_list": return parseRoomIds(draft, context)
     case "staffing_ladder": {
       const rows = asArray(draft) as LadderRow[]
       const check = validateLadder(rows)

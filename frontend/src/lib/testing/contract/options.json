@@ -1,0 +1,30 @@
+{
+  "data_available": true,
+  "exam_types": [
+    {
+      "count": 2,
+      "label": "Ordinarie tenta",
+      "value": "ordinarie tenta"
+    }
+  ],
+  "plan_area": "Uppsala",
+  "rooms": [
+    {
+      "address": "Adress 1",
+      "building_id": "adress-1",
+      "capacity": 60,
+      "digital": "all",
+      "label": "Adress 1 – uu-r1 (60 platser)",
+      "room_id": "uu-r1"
+    },
+    {
+      "address": "Adress 2",
+      "building_id": "adress-2",
+      "capacity": 60,
+      "digital": "all",
+      "label": "Adress 2 – uu-r2 (60 platser)",
+      "room_id": "uu-r2"
+    }
+  ],
+  "scenario_id": "case"
+}

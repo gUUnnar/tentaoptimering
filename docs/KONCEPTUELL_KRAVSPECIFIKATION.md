@@ -1,14 +1,14 @@
 # Kravspecifikation – optimering av tentamensverksamhet
 
 **Projekt:** Tentaoptimering, Uppsala universitet  
-**Version:** 2026-10-12 (kompletterad med planeringsperiod, beläggnings-UX och framtida export)  
+**Version:** 2026-10-08  
 **Status:** Konceptuell verksamhetskravspecifikation för PoC
 
 ## 1. Syfte och förväntat resultat
 
 PoC:n ska beräkna hur tentamensverksamhetens långsiktiga **årliga totalkostnad** kan minskas genom att tentamenstillfällen, tentamenslokaler och tentamensvakter planeras gemensamt. Den ska ge ett beräknat ekonomiskt optimum eller den bästa hittade genomförbara lösningen inom tillgänglig beräkningstid, redovisa osäkerhet och jämföra med en tydligt beskriven nulägeskostnad.
 
-**Planeringsperioden väljs av användaren** inom den dokumenterade tidsmässiga täckningen för dataunderlaget: en vecka, en månad, valfria datumintervall eller en eller flera terminer. En hel termin är alltså inte en minsta gräns. Om en viss kostnad ska tolkas som **kronor per år** från ett kortare intervall måste tidsnormalisering och antaganden redovisas öppet; kortperiodens modellkostnad får inte påstås vara en direkt årlig besparing. PoC:n avser i första hand långsiktig strukturell potential: faktisk genomförbarhet enligt hyresavtal, uppsägningstider och omställningskostnader kan utredas separat.
+Minsta planeringsperiod är **en termin**. Flera terminer kan kombineras. Ekonomiska resultat redovisas i **kronor per år**. PoC:n avser i första hand långsiktig strukturell potential: faktisk genomförbarhet enligt hyresavtal, uppsägningstider och omställningskostnader kan utredas separat.
 
 ## 2. Modellens beslut och gemensam målfunktion
 
@@ -35,7 +35,7 @@ En godkänd lösning ska uppfylla **hela den obligatoriska efterfrågan** inom v
 
 ## 4. Kalender och tentamenstillfällen
 
-Modellen omfattar en **valbar sammanhängande planeringsperiod** med explicit start- och slutdatum inom tillgänglig datatäckning, med parameterstyrda tillåtna kalenderdatum, skrivperioder, dagar (inklusive möjliga helger), provpass och startfönster. Gränssnittet föreslår ett relevant intervall men lägger inga godtyckligt snäva datumgränser utöver faktiskt underlag. Kontrollera att valda bokade tentor och tillåtna flyttdatum ligger inom tydligt angiven beräkningshorisont; om ett flyttfönster skulle passera periodgränsen ska gränshanteringen redovisas, aldrig tyst förlänga perioden. Ursprungligt datum, starttid och lokal kan vara bindande, önskat med prioritet eller flexibelt inom scenarioinställningarna.
+Modellen omfattar minst en hel termin, med parameterstyrda tillåtna kalenderdatum, skrivperioder, dagar (inklusive möjliga helger), provpass och startfönster. Ursprungligt datum, starttid och lokal kan vara bindande, önskat med prioritet eller flexibelt inom scenarioinställningarna.
 
 Varje tentamen har normalt en given skrivtid. En möjlig parameter `max_exam_duration_hours` representerar ett **explicit verksamhetsexperiment** med ändrade examinationsvillkor och måste redovisas som sådant.
 
@@ -63,7 +63,7 @@ Dagens uppgifter om cirka 86 aktiva vakter, varav cirka 20 anställda, är **ind
 
 ## 7. Efterfrågan och framtidsscenarier
 
-Historiska bokningar kombineras med Ladokuppgifter för att dimensionera antalet tentander. Separera önskade platser, anmälda tentander, verifierad faktisk närvaro och **verklig beläggning** (utnyttjande av lokal/tid/plats enligt mätkällan), vilka kan ha olika definition och täckning. Nästa dataleverans avses omfatta **1 januari–30 september, inklusive verklig beläggning**; år och exakta fält/nycklar bekräftas vid inläsning. Förväntad dataleverans är inte samma sak som redan mottagen eller verifierad data. För varje körning dokumenteras vilket efterfrågemått som används.
+Historiska bokningar kombineras med Ladokuppgifter för att dimensionera antalet tentander. Separera önskade platser, anmälda tentander och verifierad faktisk närvaro. För varje körning dokumenteras vilket efterfrågemått som används.
 
 - `demand_variation_pct`: gemensam procentuell förändring av **antal tentander per tentamen**. Antalet tillfällen ändras inte; avrundning anges explicit.
 - `digital_exam_share_pct`: hypotetisk andel digitala tentamina vid en framtida tidpunkt; vilka prov som klassificeras om och hur det sker måste vara reproducerbart.
@@ -77,7 +77,7 @@ Befintliga datakällor i `C:\lokalt\tentalokaler\underlag`:
 - `2026 Tentamenslokaler.xlsx` – lokal-/kostnadsrader som behöver kopplas till verkliga salar.
 - Verksamhetsdokument, beslut, tillämpningsregler, avtal och utvecklingspresentationer.
 
-Varje dataunderlag ska redovisa observerad första/sista datum, tillgängliga datum per datatyp (bokning, sal, Ladok, beläggning), saknade dagar/poster samt proveniens. Om valt datumintervall inte stöds av data ska systemet tydligt avvisa eller markera den berörda analysen som ofullständig; saknad beläggning får inte bli nollbeläggning.\n\nPoC:n ska vara **körbar med tillgängligt material**. Saknade uppgifter får ersättas med kvalificerade, uttryckligen märkta antaganden. Varje antagande ska ange namn, värde, enhet, motivering, källa, giltighet och status. Antaganden ska kunna ersättas med inkommande data utan ombyggnad av solverlogiken.
+PoC:n ska vara **körbar med tillgängligt material**. Saknade uppgifter får ersättas med kvalificerade, uttryckligen märkta antaganden. Varje antagande ska ange namn, värde, enhet, motivering, källa, giltighet och status. Antaganden ska kunna ersättas med inkommande data utan ombyggnad av solverlogiken.
 
 Källdatamodellen ska hålla isär **tentamensbehov/beställning, historisk salplacering, Ladokaktivitet, faktisk sal och avtals-/kostnadsobjekt**. Kopplingsosäkerhet och exkluderade poster redovisas.
 
@@ -127,10 +127,7 @@ Användaren ska utan kunskap om konfigurationsfiler, JSON, modellversioner, fils
 - **UX-5** undersöka resultat, antaganden och begränsningar, med resursbehov alltid jämfört mot Nuläge;
 - **UX-6** ändra förutsättningar och köra igen utan att tidigare körningar förändras;
 - **UX-7** jämföra körningar, där bara jämförbara körningar får jämföras och skillnaden i förutsättningar redovisas;
-- **UX-8** namnge, organisera, kopiera och radera simuleringar; radering visar vad som tas bort;
-- **UX-9** välja planeringsperiodens start- och slutdatum i ett enkelt datumval, med visad tillgänglig täckning per datakälla och antal inkluderade respektive oklara/exkluderade tentor;
-- **UX-10** välja en lokal och valfritt tidsintervall och få en översikt över bokade tentor, tider/pass och utnyttjande (beläggning, om data finns), samt vid behov klicka vidare till en bokning;
-- **UX-11** söka fram en specifik bokad tentamen via identifierare/kurs/datum och se historiskt schema inklusive sal(ar), start- och sluttid, bokat antal och eventuellt observerat utfall; visa motsvarande simulerade placering och ändringar när en körning finns. Oklara kopplingar märks uttryckligen.
+- **UX-8** namnge, organisera, kopiera och radera simuleringar; radering visar vad som tas bort.
 
 ### 11.3 Krav på parametrar och verifiering
 
@@ -156,20 +153,8 @@ Användaren ska utan kunskap om konfigurationsfiler, JSON, modellversioner, fils
 
 ### 11.5 Avgränsning av första användbara leverans
 
-Första leveransen ska möjliggöra experiment med: **självvald planeringsperiod inom dataunderlaget**, datum- och veckodagsflexibilitet inklusive flexibilitet per tentamenstyp, starttidsflexibilitet, efterfrågevariation och jämförelse av resursbehov (platser, lokaler, vaktbehov, tidsmått) mot Nuläge. Den ska dessutom låta användaren **inspektera en lokals användning under valfri tillgänglig period och slå upp historiskt schema för en viss bokad tentamen**. Faktisk beläggning visas separat när mätdata finns; annars anges att uppgiften saknas. Digital andel, externhyra, ersättningslokaler, maximal skrivtid och avancerad kostnadsoptimering ingår i målbilden men tillkommer först när motor och data stöder dem. Varje krav i denna specifikation redovisas i `docs/KRAVUPPFYLLNAD.md` som uppfyllt, delvis uppfyllt eller saknas, med bevisande test.
+Första leveransen ska möjliggöra experiment med: datum- och veckodagsflexibilitet inklusive flexibilitet per tentamenstyp, starttidsflexibilitet, efterfrågevariation och jämförelse av resursbehov (platser, lokaler, vaktbehov, tidsmått) mot Nuläge. Digital andel, externhyra, ersättningslokaler, maximal skrivtid och avancerad kostnadsoptimering ingår i målbilden men tillkommer först när motor och data stöder dem. Varje krav i denna specifikation redovisas i `docs/KRAVUPPFYLLNAD.md` som uppfyllt, delvis uppfyllt eller saknas, med bevisande test.
 
 ### 11.6 Krav på kodbasen
 
 Kodbasen ska innehålla en domänmodell, en parameterkatalog, en körnings- och valideringskedja, ett API och ett användargränssnitt. Ersatt eller historisk implementation, parallella scenariomodeller och kompatibilitetslager ska inte finnas kvar. Testkod som behövs för att verifiera resultat får finnas som tester.
-
-### 11.7 Framtida export till universitetets lokalbokningssystem (utanför PoC)
-
-På sikt ska en godkänd planering kunna levereras i en **maskinläsbar fil som universitetets lokalbokningssystem kan importera**. Faktiskt importformat, obligatoriska ID:n, regler och hantering av uppdatering/avbokning behöver hämtas från systemägaren innan kompatibilitet kan utlovas. **Bokningssystemspecifik export, import och integration är uttryckligen utanför PoC.** Om en enkel CSV/JSON-fil kan skapas med redan tillgängliga fält utan särskild utvecklingsinsats är det tillåtet som frivillig export av simulerad plan, märkt som preliminär och **inte garanterat importerbar**. Ingen direktändring eller automatisk inläsning i produktionssystemet ingår.
-
-### 11.8 Acceptanstester för periodval och utforskning
-
-- Välj ett kort intervall mitt i källdataperioden samt ett längre intervall och verifiera att endast omfattade bokningar/tentor ingår och att daggränser och flyttfönster hanteras explicit.
-- Försök välja ett intervall utanför täckningen och verifiera begripligt besked; verifiera att data utan faktisk beläggning inte presenteras som obelagd lokal.
-- Välj en sal och filtrera per vecka/månad: visa bokade tider och ett konsekvent utnyttjandemått (t.ex. bokade salstimmar av dokumenterat tillgängliga timmar, eller närvarande av bokade platser) med **definition och källa**. Blanda inte kapacitets-, tids- och personbeläggning.
-- Sök upp en bokad tenta med flera salplaceringar, visa alla; märk tveksam aktivitet–bokningskoppling i stället för att gissa. Jämför vid behov med simulerad placering.
-- Jämför endast körningar med jämförbar period, population, dataversion och kostnadsantaganden; redovisa eventuell årsuppräkning öppet.

@@ -20,7 +20,8 @@ export type JointScenario = {
 export type ParamValueType =
   | "integer" | "number" | "boolean" | "choice" | "date" | "time"
   | "time_list" | "integer_list" | "string_list" | "staffing_ladder" | "date_range_list" | "time_range_list"
-  | (string & {}) // matrix, rule_set, room_list m.fl.: visas skrivskyddat
+  | "room_id_list" // redigeras med kryssrutor när alternativen (GET /api/joint-runs/options) finns
+  | (string & {}) // matrix, rule_set m.fl.: visas skrivskyddat
 
 export type ParamChoice = { value: string | number | boolean; label: string }
 export type EngineSupport = "implemented" | "contract_only" | (string & {})
@@ -45,6 +46,22 @@ export type ParameterInfo = {
 export type ParametersResponse = {
   catalog_version: string; scenario_id: string; parameters: ParameterInfo[]
   group_labels?: Record<string, string>; group_order?: string[]
+}
+
+// ---- Alternativ ur underlaget (salar och tentamenstyper) -----------------------------------------------------------
+
+export type DigitalSupport = "all" | "partial" | "none" | "unknown"
+
+export type RoomOption = {
+  room_id: string; label: string; building_id: string | null; address: string | null
+  capacity: number | null; digital: DigitalSupport
+}
+/** `value` är typens text i gemener (matchas som delsträng mot parameterns ord); `label` är typen som den står i datan. */
+export type ExamTypeOption = { value: string; label: string; count: number }
+
+/** Svaret från GET /api/joint-runs/options. Saknas underlaget är data_available false och listorna tomma. */
+export type JointOptions = {
+  scenario_id: string; data_available: boolean; rooms: RoomOption[]; exam_types: ExamTypeOption[]; plan_area: string | null
 }
 
 export type FieldError = { id: string; message: string }

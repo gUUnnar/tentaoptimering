@@ -17,6 +17,7 @@ from .app_storage import AppStorage
 from .job_manager import LocalJobManager
 from .joint_compare import compare_runs
 from .joint_inputs import run_real_subset
+from .joint_options import options_payload, room_selection_errors
 from .joint_parameters import describe_parameters
 from .joint_progress import EVENTS_FILE, ProgressSink, read_events
 from .joint_scenarios import (
@@ -29,8 +30,8 @@ from .parameter_catalog import load_parameter_catalog
 
 __all__ = [
     "JOINT_SCENARIO_SCHEMA", "JointRunRequest", "ParameterValidationError", "ScenarioConflictError", "ScenarioCreate",
-    "cancel_job", "compare_runs", "create_scenario", "job_events", "list_scenarios", "parameters_payload", "run_events",
-    "run_summary", "scenario_path", "start_joint_run",
+    "cancel_job", "compare_runs", "create_scenario", "job_events", "list_scenarios", "options_payload_for",
+    "parameters_payload", "run_events", "run_summary", "scenario_path", "start_joint_run",
 ]
 RUNNING, COMPLETED, FAILED, CANCELLED = "running", "completed", "failed", "cancelled"
 
@@ -65,12 +66,31 @@ def parameters_payload(
     return describe_parameters(load_parameter_catalog(catalog_path or bundled_joint_catalog_path()), scenario_id, scenario_values(content))
 
 
+def options_payload_for(storage: AppStorage, scenario_id: str, scenarios_dir: Path | None = None) -> dict[str, Any]:
+    """The rooms and exam types that the scenario can be tuned with (`GET /api/joint-runs/options`)."""
+    path, _ = resolve_scenario(storage, scenario_id, scenarios_dir)
+    return options_payload(storage.processed_dir, scenario_id, read_scenario(path) or {})
+
+
+def _check_rooms(processed_dir: Path, content: dict[str, Any], changes: dict[str, Any]) -> None:
+    """Refuse a `rooms.selection` that names a room the scenario's plan area does not have (when the data is there)."""
+    if "rooms.selection" in changes:
+        errors = room_selection_errors(processed_dir, content, changes["rooms.selection"])
+        if errors:
+            raise ParameterValidationError(errors)
+
+
 def create_scenario(
     storage: AppStorage, request: ScenarioCreate, scenarios_dir: Path | None = None, catalog_path: Path | None = None,
     processed_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Save a user scenario (`POST /api/joint-runs/scenarios`); returns its entry as the scenario list shows it."""
-    save_user_scenario(storage, request, load_parameter_catalog(catalog_path or bundled_joint_catalog_path()), scenarios_dir)
+    catalog = load_parameter_catalog(catalog_path or bundled_joint_catalog_path())
+    base_path, _ = resolve_scenario(storage, request.base, scenarios_dir)
+    base = read_scenario(base_path) or {}
+    effective_changes(catalog, base, request.parameters)  # type errors first, then the room check
+    _check_rooms(processed_dir or storage.processed_dir, base, request.parameters)
+    save_user_scenario(storage, request, catalog, scenarios_dir)
     return next(row for row in scenario_rows(storage, scenarios_dir, processed_dir or storage.processed_dir) if row["id"] == request.name)
 
 
@@ -89,6 +109,7 @@ def start_joint_run(
     if request.parameters:
         content = read_scenario(original) or {}
         changes = effective_changes(load_parameter_catalog(catalog_file), content, request.parameters)
+        _check_rooms(storage.processed_dir, content, request.parameters)
         if changes:
             config = snapshot = write_run_snapshot(storage, merge_changes(content, changes))
     cancel, progress = CancelToken(), ProgressSink()

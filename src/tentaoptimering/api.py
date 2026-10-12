@@ -102,6 +102,14 @@ def create_app(storage_root: Path | None = None) -> FastAPI:
         except Exception as error:
             raise _error(error) from error
 
+    @app.get("/api/joint-runs/options")
+    def joint_options(scenario: str = Query(..., pattern=r"^[a-z0-9][a-z0-9_-]{0,79}$")) -> dict[str, Any]:
+        """The rooms and exam types of a scenario, for choosing `rooms.selection` and `flex.movable_types`."""
+        try:
+            return joint_api.options_payload_for(storage, scenario)
+        except Exception as error:
+            raise _error(error) from error
+
     @app.post("/api/joint-runs")
     def start_joint_run(request: joint_api.JointRunRequest) -> dict[str, Any]:
         """Start a joint run as a background job; follow it with `/api/joint-runs/{job_id}/events`."""

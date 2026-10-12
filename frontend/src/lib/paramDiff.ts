@@ -1,5 +1,6 @@
-import type { FieldError, ParameterInfo } from "./jointTypes.ts"
+import type { FieldError, JointOptions, ParameterInfo } from "./jointTypes.ts"
 import { formatParamValue } from "./paramFormat.ts"
+import { needsOptions, parseContext } from "./paramOptions.ts"
 import { baselineValue, hasEditor, parseDraft, sameValue, toDraft } from "./paramValues.ts"
 
 /** Utkast per parameter-id. Saknas ett id är parametern orörd. */
@@ -13,16 +14,22 @@ export type ParamChange = {
   error: string | null
 }
 
-export const isEditable = (param: ParameterInfo): boolean => param.editable && hasEditor(param.value_type)
+/**
+ * Går parametern att ändra här? Modellen måste använda den och gränssnittet ha redigering för typen. Salar och flyttbara tentamenstyper
+ * väljs bland det som finns i underlaget och kräver därför `options` (null eller undefined när underlaget eller svaret saknas).
+ */
+export const isEditable = (param: ParameterInfo, options?: JointOptions | null): boolean =>
+  param.editable && hasEditor(param.value_type) && (!needsOptions(param) || !!options)
 
 /** Ändringar jämfört med scenariot. En parameter som skrivits tillbaka till scenariots värde räknas inte som ändrad. */
-export function computeChanges(params: ParameterInfo[], edits: EditMap): ParamChange[] {
+export function computeChanges(params: ParameterInfo[], edits: EditMap, options?: JointOptions | null): ParamChange[] {
+  const context = parseContext(options)
   const changes: ParamChange[] = []
   for (const param of params) {
-    if (!(param.id in edits) || !isEditable(param)) continue
+    if (!(param.id in edits) || !isEditable(param, options)) continue
     const base = baselineValue(param)
     const oldText = formatParamValue(param, base)
-    const parsed = parseDraft(param, edits[param.id])
+    const parsed = parseDraft(param, edits[param.id], context)
     const common = { id: param.id, label: param.label, group: param.group, unit: param.unit, oldValue: base, oldText }
     if (parsed.ok) {
       if (sameValue(parsed.value, base)) continue
@@ -99,12 +106,14 @@ export function groupParameters(params: ParameterInfo[], meta: GroupMeta = {}): 
 
 export type ParamFilter = {
   query: string; showAdvanced: boolean; keep: ReadonlySet<string>; groupLabels?: Record<string, string>
-  /** Visa parametrar som inte går att sätta (editable: false). Utan val är de bortfiltrerade. */
+  /** Visa parametrar som inte går att ändra här: motorn använder dem inte än, eller gränssnittet saknar redigering för typen. Utan val är de bortfiltrerade. */
   showLocked?: boolean
+  /** Alternativen ur underlaget; utan dem är salar och flyttbara tentamenstyper låsta. */
+  options?: JointOptions | null
 }
 
-/** Parametrar som finns i modellen men inte går att sätta än. */
-export const lockedParameters = (params: ParameterInfo[]): ParameterInfo[] => params.filter(param => !param.editable)
+/** Parametrar som inte går att ändra i gränssnittet: motorn använder dem inte än, eller redigering saknas för typen. */
+export const lockedParameters = (params: ParameterInfo[], options?: JointOptions | null): ParameterInfo[] => params.filter(param => !isEditable(param, options))
 
 /**
  * Sökning på namn, id, hjälptext och grupp. Avancerade parametrar döljs om inte "Visa avancerade" är vald, utom de som ändrats.
@@ -113,7 +122,7 @@ export const lockedParameters = (params: ParameterInfo[]): ParameterInfo[] => pa
 export function filterParameters(params: ParameterInfo[], filter: ParamFilter): ParameterInfo[] {
   const query = filter.query.trim().toLowerCase()
   return params.filter(param => {
-    if (!param.editable && !filter.showLocked) return false
+    if (!isEditable(param, filter.options) && !filter.showLocked) return false
     if (param.advanced && !filter.showAdvanced && !filter.keep.has(param.id)) return false
     if (!query) return true
     return [param.label, param.id, param.help_text, param.group, filter.groupLabels?.[param.group] ?? ""].some(field => field.toLowerCase().includes(query))

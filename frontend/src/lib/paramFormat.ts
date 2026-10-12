@@ -28,6 +28,11 @@ export function formatParamValue(param: Describable, value: unknown): string {
       if (!items.length) return "(tom lista)"
       return items.map(item => param.choices?.find(choice => choice.value === item)?.label ?? String(item)).join(", ")
     }
+    case "room_id_list": {
+      const items = asArray(value).map(String)
+      if (!items.length) return "Alla salar"
+      return `${items.length} ${items.length === 1 ? "sal" : "salar"}: ${items.length > 8 ? `${items.slice(0, 8).join(", ")} …` : items.join(", ")}`
+    }
     case "staffing_ladder": {
       const rows = asArray(value).map(rec)
       return rows.length ? rows.map(row => `upp till ${row.max_participants} deltagare: ${row.required_staff} ${row.required_staff === 1 ? "vakt" : "vakter"}`).join("; ") : "(tom trappa)"

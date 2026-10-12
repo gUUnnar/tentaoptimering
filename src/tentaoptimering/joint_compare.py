@@ -80,8 +80,12 @@ def _parameter_changes(catalog: ParameterCatalog, old: dict[str, Any], new: dict
 
 
 def _assumption_kind(parameter_id: str) -> str | None:
-    """"cost" and "demand" parameters are assumptions about prices and volumes, not about how the exams are scheduled."""
-    if parameter_id.startswith("cost."):
+    """Parameters about prices, staffing rules and volumes are assumptions, not choices about how the exams are scheduled.
+
+    Staffing rules (`staffing.*`) are grouped with the cost assumptions: a different staffing ladder changes the cost of
+    the same plan, so the cost of two runs is comparable only when the staffing rules are the same (N-1).
+    """
+    if parameter_id.startswith("cost.") or parameter_id.startswith("staffing."):
         return "cost"
     if parameter_id.startswith("demand.") or parameter_id == "digital.exam_share_pct":
         return "demand"
@@ -100,11 +104,11 @@ def assumption_changes(changes: list[dict[str, Any]]) -> dict[str, list[str]]:
 def _assumption_text(found: dict[str, list[str]]) -> str:
     parts = []
     if found["cost"]:
-        parts.append(f"kostnadsantagandena har ändrats ({', '.join(found['cost'])})")
+        parts.append(f"kostnads- och bemanningsantagandena har ändrats ({', '.join(found['cost'])})")
     if found["demand"]:
         parts.append(f"efterfrågan har ändrats ({', '.join(found['demand'])})")
     first = " och ".join(parts)
-    return (first[0].upper() + first[1:] + ". Kostnadsbelopp jämförs bara mellan körningar med samma kostnads- och efterfrågeantaganden, "
+    return (first[0].upper() + first[1:] + ". Kostnadsbelopp jämförs bara mellan körningar med samma kostnads-, bemannings- och efterfrågeantaganden, "
             "eftersom en skillnad annars beror på antagandena och inte på en effektivare schemaläggning. Ingen kostnadsskillnad redovisas därför. "
             "Jämför i stället salar, bemanningspool och antal flyttade tentor, som visas nedan.")
 

@@ -74,6 +74,7 @@ def build() -> dict[str, dict]:
     done = _wait_for_end(workspace.jobs, job["job_id"])
     out["events_completed"] = one_event_per_type(done)
     out["summary_verified"] = joint_api.run_summary(workspace.storage, second)
+    out["options"] = joint_api.options_payload_for(workspace.storage, "case", workspace.scenarios)
     out["compare_assumption_changed"] = joint_api.compare_runs(workspace.storage, second, first, catalog)
     out["compare_no_previous"] = joint_api.compare_runs(workspace.storage, first, "previous", catalog)
     _change_result(workspace.storage.runs_dir / first, update_manifest=True)
@@ -112,6 +113,10 @@ class ContractSnapshotTests(unittest.TestCase):
         self.assertIsNone(unverified["cost_ore"])  # no cost without a verified solution
         self.assertIsInstance(load("events_failed")["error"], str)  # text, not an object
         self.assertIn("elapsed_seconds", load("events_completed"))
+        options = load("options")
+        self.assertIs(options["data_available"], True)
+        self.assertTrue(options["rooms"] and options["exam_types"])
+        self.assertEqual(set(options["rooms"][0]), {"room_id", "label", "building_id", "address", "capacity", "digital"})
         compared = load("compare_assumption_changed")
         self.assertIs(compared["interpretable"], False)
         self.assertEqual(compared["assumption_changes"]["cost"], ["Årskostnad per vaktresurs"])

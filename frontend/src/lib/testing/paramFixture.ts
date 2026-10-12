@@ -18,6 +18,8 @@ export const PARAMETERS: ParameterInfo[] = [
   make({ id: "calendar.end_date", value_type: "date", default: "", label: "Sista tillåtna datum", group: "Tidsflexibilitet" }),
   make({ id: "calendar.earliest_start_time", value_type: "time", default: "08:00", label: "Tidigaste start", group: "Tidsflexibilitet" }),
   make({ id: "demand.rounding", value_type: "choice", default: "up", label: "Avrundning", group: "Efterfrågan", choices: [{ value: "up", label: "Uppåt" }, { value: "nearest", label: "Närmaste" }] }),
+  make({ id: "rooms.selection", value_type: "room_id_list", default: [], label: "Lokaler som får användas", group: "Lokaler" }),
+  make({ id: "flex.movable_types", value_type: "string_list", default: ["ordinarie", "omtenta", "dugga", "hybrid"], label: "Flyttbara tentamenstyper", group: "Tidsflexibilitet" }),
   make({ id: "rooms.allow_split", value_type: "boolean", default: true, label: "Tillåt delning", group: "Lokaler" }),
   make({ id: "cost.staff_session_ore", value_type: "integer", unit: "ore_per_session", default: 125000, label: "Vaktkostnad per pass", group: "Kostnader" }),
   make({ id: "cost.annualization_factor", value_type: "number", unit: "factor", default: 1.5, label: "Årsfaktor", group: "Kostnader" }),
