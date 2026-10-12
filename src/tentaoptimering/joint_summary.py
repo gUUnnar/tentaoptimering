@@ -11,6 +11,7 @@ from typing import Any
 from .app_storage import AppStorage
 from .joint_progress import EVENTS_FILE, read_events
 from .joint_scenarios import scenario_id_for_problem
+from .joint_validation import validate_run
 
 _FIRST_SOLUTION = re.compile(r"first_solution_(\d+)s")
 _RUN_ID = re.compile(r"^(\d{8}T\d{6})Z-(.+)$")
@@ -37,10 +38,28 @@ def read_json(path: Path) -> dict[str, Any] | None:
     return value if isinstance(value, dict) else None
 
 
-def changed_parameter_count(directory: Path) -> int:
-    """How many frozen parameters of the run differ from the catalog default."""
+def changed_parameter_ids(directory: Path) -> list[str]:
+    """The ids of the frozen parameters of the run that differ from the catalog default."""
     items = (read_json(directory / "joint_input.json") or {}).get("parameters", ())
-    return sum(1 for item in items if isinstance(item, dict) and item.get("changed_from_default"))
+    return sorted(str(item["parameter_id"]) for item in items if isinstance(item, dict) and item.get("changed_from_default"))
+
+
+_VALIDATION_CACHE: dict[tuple, dict[str, Any]] = {}
+
+
+def validated_now(directory: Path) -> dict[str, Any]:
+    """The independent validation of the saved run, run now. A stored verdict is never taken as evidence.
+
+    The artifacts are hashed against the manifest by the validator itself, so a result that changed after its run
+    does not count as verified. The answer is cached per state of the files, because a validation takes seconds
+    for a whole term.
+    """
+    key = tuple((name, (directory / name).stat().st_mtime_ns, (directory / name).stat().st_size)
+                for name in ("joint_input.json", "joint_result.json", "joint_manifest.json") if (directory / name).is_file())
+    key = (str(directory.resolve()), *key)
+    if key not in _VALIDATION_CACHE:
+        _VALIDATION_CACHE[key] = validate_run(directory)["summary"]
+    return _VALIDATION_CACHE[key]
 
 
 def run_summary(storage: AppStorage, run_id: str, bundled_dir: Path | None = None) -> dict[str, Any]:
@@ -52,34 +71,40 @@ def run_summary(storage: AppStorage, run_id: str, bundled_dir: Path | None = Non
     solver = result.get("solver") if isinstance(result.get("solver"), dict) else {}
     coverage = result.get("coverage") if isinstance(result.get("coverage"), dict) else {}
     cost, bound = solver.get("objective_value_ore"), solver.get("best_objective_bound_ore")
-    validation = read_json(directory / "joint_validation.json")
-    verdict = validation.get("summary") if isinstance(validation, dict) and isinstance(validation.get("summary"), dict) else {}
+    verdict = validated_now(directory)
     decision = read_json(directory / "joint_warm_start.json") or {}
     first, basis, source = _first_solution(decision, solver, directory)
     events_path = directory / EVENTS_FILE
     cancelled = any(event.get("type") == "finished" and event.get("cancelled") for event in read_events(events_path)) \
         if events_path.is_file() else str(solver.get("raw_status", "")).endswith("_cancelled")
     technical = verdict.get("technical_validation", "not_evaluated")
+    verified = bool(solver.get("outcome") in ("optimal", "feasible_not_proven")
+                    and coverage.get("technical_placement_complete") and technical == "pass"
+                    and verdict.get("technically_validated", False))
+    changed_ids = changed_parameter_ids(directory)
     return {
         "run_id": run_id,
         "problem_id": result.get("problem_id"),
         "scenario_id": scenario_id_for_problem(storage, result.get("problem_id"), bundled_dir),
         "created_at": created_at(run_id),
-        "parameters_changed_from_default": changed_parameter_count(directory),
+        "parameters_changed_from_default": changed_ids,
+        "parameters_changed_count": len(changed_ids),
         "solver_outcome": solver.get("outcome"),
         # A run without a placement has nothing to validate wrongly, so its technical verdict can read `pass`;
         # only a complete placement that the independent validation accepts counts as a verified solution.
-        "has_verified_solution": bool(solver.get("outcome") in ("optimal", "feasible_not_proven")
-                                      and coverage.get("technical_placement_complete") and technical == "pass"),
-        "cost_is_proven_optimum": solver.get("outcome") == "optimal",
-        "cost_ore": cost,
-        "lower_bound_ore": bound,
-        "gap_ore": cost - bound if isinstance(cost, int) and isinstance(bound, int) else None,
-        "gap_relative": solver.get("relative_gap"),
-        "changed_exams": result.get("changed_exam_demands"),
+        "has_verified_solution": verified,
+        # Without a verified solution no cost is reported at all: a number from a result that the independent
+        # validation does not accept must not look like a result.
+        "unverified_reason": None if verified else _unverified_reason(solver, coverage, technical, verdict),
+        "cost_is_proven_optimum": verified and solver.get("outcome") == "optimal",
+        "cost_ore": cost if verified else None,
+        "lower_bound_ore": bound if verified else None,
+        "gap_ore": cost - bound if verified and isinstance(cost, int) and isinstance(bound, int) else None,
+        "gap_relative": solver.get("relative_gap") if verified else None,
+        "changed_exams": result.get("changed_exam_demands") if verified else None,
         "exams_total": coverage.get("exam_demands_total"),
         "technical_placement_complete": coverage.get("technical_placement_complete"),
-        "staff_pool_size": result.get("staff_pool_size"),
+        "staff_pool_size": result.get("staff_pool_size") if verified else None,
         "wall_time_seconds": solver.get("wall_time_seconds"),
         "first_solution_seconds": first,
         "first_solution_basis": basis,
@@ -92,9 +117,17 @@ def run_summary(storage: AppStorage, run_id: str, bundled_dir: Path | None = Non
             "business_verification": verdict.get("business_verification", "not_evaluated"),
             "provenance": verdict.get("provenance", "not_evaluated"),
             "technically_validated": bool(verdict.get("technically_validated", False)),
-            "source": "joint_validation.json" if verdict else "not_available",
+            "source": "validated_now",
         },
     }
+
+
+def _unverified_reason(solver: dict[str, Any], coverage: dict[str, Any], technical: str, verdict: dict[str, Any]) -> str:
+    if solver.get("outcome") not in ("optimal", "feasible_not_proven") or not coverage.get("technical_placement_complete"):
+        return "Körningen har ingen fullständig placering."
+    if verdict.get("provenance") == "fail":
+        return "Körningens filer stämmer inte med manifestet: de har ändrats efter körningen."
+    return f"Den oberoende tekniska eftervalideringen godkänner inte körningen (status: {technical})."
 
 
 def _first_solution(decision: dict[str, Any], solver: dict[str, Any], directory: Path) -> tuple[float | None, str | None, str | None]:

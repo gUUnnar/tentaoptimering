@@ -1,0 +1,89 @@
+{
+  "assumption_changes": {
+    "cost": [
+      "Årskostnad per vaktresurs"
+    ],
+    "demand": []
+  },
+  "base": {
+    "created_at": "2026-10-12T13:27:23Z",
+    "has_verified_solution": true,
+    "problem_id": "pair",
+    "run_id": "20261012T132723Z-pair",
+    "scenario_id": "pair",
+    "solver_outcome": "optimal"
+  },
+  "comparable": true,
+  "interpretable": false,
+  "interpretation": "Kostnaden ökade med 20 kr. Eftersom kostnadsantagandena har ändrats (Årskostnad per vaktresurs) beror kostnadsskillnaden på antagandena och går inte att läsa som en effektivare schemaläggning. Jämför i stället salar, bemanningspool och antal flyttade tentor, som visas nedan. Beloppen är modellkostnad med scenariots proxypriser, inte faktisk kostnad.",
+  "metrics": {
+    "changed_exams": {
+      "delta": 0,
+      "new": 1,
+      "old": 1
+    },
+    "cost_ore": {
+      "delta": 2000,
+      "new": 9000,
+      "old": 7000
+    },
+    "first_solution_seconds": {
+      "delta": 0.0,
+      "new": 0.0,
+      "old": 0.0
+    },
+    "gap_ore": {
+      "delta": 0,
+      "new": 0,
+      "old": 0
+    },
+    "lower_bound_ore": {
+      "delta": 2000,
+      "new": 9000,
+      "old": 7000
+    },
+    "rooms_used": {
+      "delta": 0,
+      "new": 1,
+      "old": 1
+    },
+    "staff_pool_size": {
+      "delta": 0,
+      "new": 1,
+      "old": 1
+    },
+    "wall_time_seconds": {
+      "delta": 0.0252895999874454,
+      "new": 0.03829759999644011,
+      "old": 0.013008000008994713
+    }
+  },
+  "parameter_changes": [
+    {
+      "group": "kostnad",
+      "id": "cost.staff_annual_ore",
+      "label": "Årskostnad per vaktresurs",
+      "new": 3000,
+      "old": 1000,
+      "unit": "ore_per_year"
+    },
+    {
+      "group": "tid",
+      "id": "window.later_days",
+      "label": "Får senareläggas",
+      "new": 1,
+      "old": 0,
+      "unit": "days"
+    }
+  ],
+  "reason": null,
+  "run": {
+    "created_at": "2026-10-12T13:27:24Z",
+    "has_verified_solution": true,
+    "problem_id": "pair",
+    "run_id": "20261012T132724Z-pair",
+    "scenario_id": "pair",
+    "solver_outcome": "optimal"
+  },
+  "uncertainty_ore": 0
+}

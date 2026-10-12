@@ -15,6 +15,7 @@ import threading
 import time
 import tomllib
 import unittest
+from unittest import mock
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -56,6 +57,15 @@ def _run(workspace: Workspace, scenario: str = "case", **fields) -> str:
     return end["run_id"]
 
 
+def _crafted():
+    """Runs with hand-made numbers cannot pass the independent validation. These tests are about the comparison,
+    so the validation is replaced by one that accepts every complete run."""
+    from tentaoptimering import joint_summary
+    return mock.patch.object(joint_summary, "validated_now", lambda directory: {
+        "technical_validation": "pass", "business_verification": "not_evaluated", "provenance": "not_evaluated",
+        "technically_validated": True})
+
+
 def _clone(storage: AppStorage, run_id: str, new_id: str, result: dict | None = None, problem: dict | None = None) -> str:
     """A copy of a saved run under another id, with changes to its result or input (for comparison cases)."""
     shutil.copytree(storage.runs_dir / run_id, storage.runs_dir / new_id)
@@ -76,15 +86,15 @@ class ScenarioListTests(unittest.TestCase):
     def test_bundled_scenarios_describe_their_selection_and_count_exams_from_the_data(self) -> None:
         workspace = Workspace(self)
         rows = {row["id"]: row for row in joint_api.list_scenarios(storage=workspace.storage, processed_dir=workspace.storage.processed_dir)}
-        term = rows["joint_full_term"]
+        term = rows["joint_underlay_period"]
         self.assertEqual((term["origin"], term["problem_id"], term["subset"]["selection"], term["subset"]["plan_area"]),
-                         ("bundled", "joint_full_term_2026", "rule", "Uppsala"))
+                         ("bundled", "joint_underlay_period_2026", "rule", "Uppsala"))
         self.assertEqual(term["subset"]["exam_count"], 2)  # counted in the (synthetic) prepared data: the two events of 12 January
         self.assertIn("Uppsala", term["subset"]["description"])
         small = rows["joint_real_subset"]
         self.assertEqual((small["subset"]["selection"], small["subset"]["exam_count"], small["problem_id"]), ("event_list", 12, "joint_real_subset_2026"))
         without_data = {row["id"]: row for row in joint_api.list_scenarios(storage=workspace.storage)}
-        self.assertIsNone(without_data["joint_full_term"]["subset"]["exam_count"])
+        self.assertIsNone(without_data["joint_underlay_period"]["subset"]["exam_count"])
         self.assertEqual(set(term), {"id", "name", "description", "problem_id", "origin", "subset", "schema_version"})
         self.assertEqual(set(term["subset"]), {"plan_area", "selection", "exam_count", "description"})
 
@@ -181,7 +191,8 @@ class ChangedParameterRunTests(unittest.TestCase):
         self.assertEqual((summary["scenario_id"], summary["problem_id"]), (PROBLEM, PROBLEM))  # no bundled scenario of that problem here
         self.assertEqual(joint_api.run_summary(workspace.storage, run_id, workspace.scenarios)["scenario_id"], "case")
         self.assertRegex(summary["created_at"], r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
-        self.assertEqual(summary["parameters_changed_from_default"], sum(item["changed_from_default"] for item in values.values()))
+        self.assertEqual(summary["parameters_changed_from_default"], sorted(key for key, item in values.items() if item["changed_from_default"]))
+        self.assertEqual(summary["parameters_changed_count"], len(summary["parameters_changed_from_default"]))
 
     def test_a_run_without_changes_runs_the_scenario_file_itself_and_keeps_a_copy(self) -> None:
         workspace = Workspace(self)
@@ -253,7 +264,10 @@ class CompareTests(unittest.TestCase):
         self.assertTrue(all(set(item) == {"old", "new", "delta"} for item in result["metrics"].values()))
         self.assertGreaterEqual(result["metrics"]["rooms_used"]["new"], 1)
         self.assertEqual(result["uncertainty_ore"], 0)  # both runs proved their optimum
-        self.assertIs(result["interpretable"], True)
+        # A changed price is a changed assumption: the difference is shown, but never called an efficiency gain.
+        self.assertIs(result["interpretable"], False)
+        self.assertEqual(result["assumption_changes"], {"cost": ["Årskostnad per vaktresurs"], "demand": []})
+        self.assertIn("kostnadsantagandena har ändrats (Årskostnad per vaktresurs)", result["interpretation"])
         self.assertIn("Kostnaden ökade med", result["interpretation"])
         self.assertIn("modellkostnad", result["interpretation"])
         self.assertEqual(joint_api.compare_runs(workspace.storage, second, first, self.catalog), result)  # an explicit base gives the same
@@ -291,6 +305,7 @@ class CompareTests(unittest.TestCase):
         self.assertIsNone(explicit["metrics"]["cost_ore"]["delta"])
 
     def test_the_uncertainty_is_the_larger_gap_and_decides_what_may_be_read_into_a_difference(self) -> None:
+        self.enterContext(_crafted())
         workspace = Workspace(self)
         current = _run(workspace)
         storage = workspace.storage
@@ -309,6 +324,7 @@ class CompareTests(unittest.TestCase):
         self.assertTrue(result["interpretation"].startswith("Kostnaden sjönk med 183 000 kr. Skillnaden är större än osäkerheten (50 000 kr) och kan därför tolkas."))
 
     def test_runs_on_different_data_or_exams_are_never_compared(self) -> None:
+        self.enterContext(_crafted())
         workspace = Workspace(self)
         current = _run(workspace)
         storage = workspace.storage
@@ -403,21 +419,21 @@ class RouteTests(unittest.TestCase):
     def test_parameters_scenarios_runs_and_comparison_over_http(self) -> None:
         status, listing = self._request("GET", "/api/joint-runs/scenarios")
         self.assertEqual(status, 200)
-        term = next(row for row in listing["scenarios"] if row["id"] == "joint_full_term")
+        term = next(row for row in listing["scenarios"] if row["id"] == "joint_underlay_period")
         self.assertEqual((term["origin"], term["subset"]["selection"], term["subset"]["exam_count"]), ("bundled", "rule", 2))
 
-        status, payload = self._request("GET", "/api/joint-runs/parameters?scenario=joint_full_term")
-        self.assertEqual((status, payload["catalog_version"], payload["scenario_id"], len(payload["parameters"])), (200, "2.3.0", "joint_full_term", 55))
+        status, payload = self._request("GET", "/api/joint-runs/parameters?scenario=joint_underlay_period")
+        self.assertEqual((status, payload["catalog_version"], payload["scenario_id"], len(payload["parameters"])), (200, "2.3.0", "joint_underlay_period", 55))
         self.assertEqual(self._request("GET", "/api/joint-runs/parameters?scenario=finns-inte")[0], 404)
         self.assertEqual(self._request("GET", "/api/joint-runs/parameters?scenario=../x")[0], 422)
         self.assertEqual(self._request("GET", "/api/joint-runs/parameters")[0], 422)
 
-        body = {"name": "snabb-termin", "description": "Kort tid", "base": "joint_full_term",
+        body = {"name": "snabb-termin", "description": "Kort tid", "base": "joint_underlay_period",
                 "parameters": {"solver.time_limit_seconds": 20.0, "solver.workers": 2, "cost.staff_annual_ore": 4000}}
         status, row = self._request("POST", "/api/joint-runs/scenarios", body)
         self.assertEqual((status, row["id"], row["origin"], row["problem_id"]), (200, "snabb-termin", "user", "snabb-termin"))
         self.assertEqual(self._request("POST", "/api/joint-runs/scenarios", body)[0], 409)
-        self.assertEqual(self._request("POST", "/api/joint-runs/scenarios", {**body, "name": "joint_full_term"})[0], 409)
+        self.assertEqual(self._request("POST", "/api/joint-runs/scenarios", {**body, "name": "joint_underlay_period"})[0], 409)
         self.assertEqual(self._request("POST", "/api/joint-runs/scenarios", {**body, "name": "annat", "base": "finns-inte"})[0], 404)
         self.assertEqual(self._request("POST", "/api/joint-runs/scenarios", {**body, "name": "Fel Namn"})[0], 422)
         status, error = self._request("POST", "/api/joint-runs/scenarios", {**body, "name": "annat", "parameters": {"rules.student_conflicts": True}})
@@ -443,7 +459,7 @@ class RouteTests(unittest.TestCase):
         self.assertTrue(any(event["type"] == "day_started" for event in events["events"]))
         status, summary = self._request("GET", f"/api/joint-runs/{run_id}/summary")
         self.assertEqual((status, summary["scenario_id"], summary["problem_id"], summary["has_verified_solution"]), (200, "snabb-termin", "snabb-termin", True))
-        self.assertGreaterEqual(summary["parameters_changed_from_default"], 1)
+        self.assertGreaterEqual(len(summary["parameters_changed_from_default"]), 1)
         status, comparison = self._request("GET", f"/api/joint-runs/{run_id}/compare")
         self.assertEqual((status, comparison["base"], comparison["comparable"], comparison["reason"]), (200, None, False, NO_PREVIOUS))
         self.assertEqual(self._request("GET", f"/api/joint-runs/{run_id}/compare?base=20250101T000000Z-x")[0], 404)

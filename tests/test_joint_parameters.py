@@ -26,7 +26,7 @@ from tentaoptimering.parameter_validation import check_value, validate_overrides
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCENARIOS = REPO_ROOT / "config" / "scenarios"
 PROCESSED = REPO_ROOT / "data" / "processed"
-FULL_TERM = SCENARIOS / "joint_full_term.toml"
+FULL_TERM = SCENARIOS / "joint_underlay_period.toml"
 CATALOG_DATA = load_parameter_catalog(CATALOG)
 BY_ID = {item.parameter_id: item for item in CATALOG_DATA.parameters}
 
@@ -167,7 +167,7 @@ class ValidationTests(unittest.TestCase):
                     errors = validate_overrides(CATALOG_DATA, content["parameters"])
                     # Older files may restate a parameter that the engine does not use yet, at its default.
                     self.assertEqual([item for item in errors if not item["message"].startswith("Stöds inte")], [])
-                    if path.name == "joint_full_term.toml":
+                    if path.name == "joint_underlay_period.toml":
                         self.assertEqual(errors, [])
 
 
@@ -184,8 +184,8 @@ class ListingTests(unittest.TestCase):
 
     def test_the_payload_separates_default_scenario_value_and_effective_value(self) -> None:
         content = tomllib.loads(FULL_TERM.read_text(encoding="utf-8"))
-        payload = describe_parameters(CATALOG_DATA, "joint_full_term", dict(content["parameters"]))
-        self.assertEqual((payload["catalog_version"], payload["scenario_id"]), ("2.3.0", "joint_full_term"))
+        payload = describe_parameters(CATALOG_DATA, "joint_underlay_period", dict(content["parameters"]))
+        self.assertEqual((payload["catalog_version"], payload["scenario_id"]), ("2.3.0", "joint_underlay_period"))
         self.assertEqual(len(payload["parameters"]), 55)
         self.assertEqual(set(payload["group_labels"]), {group for group, _ in GROUPS})
         rows = {row["id"]: row for row in payload["parameters"]}
@@ -302,7 +302,7 @@ class FullTermScenarioTests(unittest.TestCase):
         problem = build_real_subset_problem(FULL_TERM, PROCESSED, CATALOG)
         self.assertEqual({item.exam_demand_id for item in problem.demands}, expected)
         self.assertGreater(len(expected), 100)
-        self.assertEqual(problem.problem_id, "joint_full_term_2026")
+        self.assertEqual(problem.problem_id, "joint_underlay_period_2026")
         self.assertEqual((problem.solver.time_limit_seconds, problem.solver.num_workers, problem.solver.strategy), (300.0, 8, "decomposed"))
         self.assertEqual(problem.slots[0].scheduled_date, date(2026, 1, 12))  # the scenario fixes the first day
         values = {item.parameter_id: item.value for item in problem.parameters}

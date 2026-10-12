@@ -78,6 +78,34 @@ def _parameter_changes(catalog: ParameterCatalog, old: dict[str, Any], new: dict
     return rows
 
 
+def _assumption_kind(parameter_id: str) -> str | None:
+    """"cost" and "demand" parameters are assumptions about prices and volumes, not about how the exams are scheduled."""
+    if parameter_id.startswith("cost."):
+        return "cost"
+    if parameter_id.startswith("demand.") or parameter_id == "digital.exam_share_pct":
+        return "demand"
+    return None
+
+
+def assumption_changes(changes: list[dict[str, Any]]) -> dict[str, list[str]]:
+    found: dict[str, list[str]] = {"cost": [], "demand": []}
+    for item in changes:
+        kind = _assumption_kind(str(item["id"]))
+        if kind:
+            found[kind].append(str(item["label"]))
+    return found
+
+
+def _assumption_text(found: dict[str, list[str]]) -> str:
+    parts = []
+    if found["cost"]:
+        parts.append(f"kostnadsantagandena har ändrats ({', '.join(found['cost'])})")
+    if found["demand"]:
+        parts.append(f"efterfrågan har ändrats ({', '.join(found['demand'])})")
+    return ("Eftersom " + " och ".join(parts) + " beror kostnadsskillnaden på antagandena och går inte att läsa som en effektivare "
+            "schemaläggning. Jämför i stället salar, bemanningspool och antal flyttade tentor, som visas nedan.")
+
+
 def _metric(old: Any, new: Any, with_delta: bool) -> dict[str, Any]:
     both = isinstance(old, (int, float)) and isinstance(new, (int, float))
     return {"old": old, "new": new, "delta": new - old if both and with_delta else None}
@@ -121,8 +149,9 @@ def compare_runs(storage: AppStorage, run_id: str, base: str | None, catalog: Pa
     metrics = {name: _metric(other.get(name), current.get(name), reason is None) for name in _METRICS}
     gaps = [item.get("gap_ore") for item in (other, current)]
     uncertainty = max(gaps) if all(isinstance(gap, int) for gap in gaps) else None
+    changes = _parameter_changes(catalog, old_params, new_params)
     return _result(header, _header(storage, base_id, other, bundled_dir), reason is None, reason,
-                   _parameter_changes(catalog, old_params, new_params), metrics, uncertainty)
+                   changes, metrics, uncertainty)
 
 
 def _header(storage: AppStorage, run_id: str, summary: dict[str, Any], bundled_dir: Path | None) -> dict[str, Any]:
@@ -152,6 +181,14 @@ def _result(run: dict[str, Any], base: dict[str, Any] | None, comparable: bool, 
         interpretable, text = None, str(reason)
     else:
         interpretable, text = interpret(cost.get("delta"), uncertainty)
-    return {"run": run, "base": base, "comparable": comparable, "reason": reason, "parameter_changes": changes,
+        found = assumption_changes(changes)
+        if found["cost"] or found["demand"]:
+            # The cost difference then measures a different question: it is shown, but never called interpretable.
+            delta = cost.get("delta")
+            head = ("Kostnaden kan inte jämföras eftersom en av körningarna saknar kostnad." if delta is None else
+                    "Kostnaden är oförändrad." if delta == 0 else f"Kostnaden {'sjönk' if delta < 0 else 'ökade'} med {_kronor(delta)}.")
+            interpretable = False
+            text = f"{head} {_assumption_text(found)} Beloppen är modellkostnad med scenariots proxypriser, inte faktisk kostnad."
+    return {"assumption_changes": assumption_changes(changes), "run": run, "base": base, "comparable": comparable, "reason": reason, "parameter_changes": changes,
             "metrics": metrics, "uncertainty_ore": uncertainty if comparable else None, "interpretable": interpretable,
             "interpretation": text}

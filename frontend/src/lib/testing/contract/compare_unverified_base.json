@@ -1,0 +1,89 @@
+{
+  "assumption_changes": {
+    "cost": [
+      "Årskostnad per vaktresurs"
+    ],
+    "demand": []
+  },
+  "base": {
+    "created_at": "2026-10-12T13:27:23Z",
+    "has_verified_solution": false,
+    "problem_id": "pair",
+    "run_id": "20261012T132723Z-pair",
+    "scenario_id": "pair",
+    "solver_outcome": "optimal"
+  },
+  "comparable": false,
+  "interpretable": null,
+  "interpretation": "Minst en av körningarna saknar en fullständig verifierad lösning, så kostnaderna går inte att jämföra.",
+  "metrics": {
+    "changed_exams": {
+      "delta": null,
+      "new": 1,
+      "old": null
+    },
+    "cost_ore": {
+      "delta": null,
+      "new": 9000,
+      "old": null
+    },
+    "first_solution_seconds": {
+      "delta": null,
+      "new": 0.0,
+      "old": 0.0
+    },
+    "gap_ore": {
+      "delta": null,
+      "new": 0,
+      "old": null
+    },
+    "lower_bound_ore": {
+      "delta": null,
+      "new": 9000,
+      "old": null
+    },
+    "rooms_used": {
+      "delta": null,
+      "new": 1,
+      "old": 1
+    },
+    "staff_pool_size": {
+      "delta": null,
+      "new": 1,
+      "old": null
+    },
+    "wall_time_seconds": {
+      "delta": null,
+      "new": 0.03829759999644011,
+      "old": 0.013008000008994713
+    }
+  },
+  "parameter_changes": [
+    {
+      "group": "kostnad",
+      "id": "cost.staff_annual_ore",
+      "label": "Årskostnad per vaktresurs",
+      "new": 3000,
+      "old": 1000,
+      "unit": "ore_per_year"
+    },
+    {
+      "group": "tid",
+      "id": "window.later_days",
+      "label": "Får senareläggas",
+      "new": 1,
+      "old": 0,
+      "unit": "days"
+    }
+  ],
+  "reason": "Minst en av körningarna saknar en fullständig verifierad lösning, så kostnaderna går inte att jämföra.",
+  "run": {
+    "created_at": "2026-10-12T13:27:24Z",
+    "has_verified_solution": true,
+    "problem_id": "pair",
+    "run_id": "20261012T132724Z-pair",
+    "scenario_id": "pair",
+    "solver_outcome": "optimal"
+  },
+  "uncertainty_ore": null
+}

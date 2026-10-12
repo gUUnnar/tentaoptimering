@@ -93,6 +93,16 @@ class ProgressSink:
         except Exception:
             LOG.warning("held-back progress events could not be recorded", exc_info=True)
 
+    def discard(self, *types: str) -> None:
+        """Drop held-back events of these types (all held-back events if none are named) and stop holding back."""
+        with self._lock:
+            self._deferred = [item for item in self._deferred if types and item[0] not in types]
+            self._deferred_types.clear()
+
+    def elapsed(self) -> float:
+        """Seconds since the sink was created, i.e. since the run was queued."""
+        return round(time.perf_counter() - self._started, 3)
+
     def _append(self, type: str, fields: dict[str, Any]) -> None:  # noqa: A002
         event = {"seq": len(self._events) + 1, "t": round(time.perf_counter() - self._started, 3), "type": type, **fields}
         self._events.append(event)

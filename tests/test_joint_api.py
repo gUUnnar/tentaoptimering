@@ -142,7 +142,7 @@ class StartAndObserveTests(unittest.TestCase):
         self.assertEqual(summary["verdicts"], {
             "technical_validation": validation["technical_validation"], "business_verification": validation["business_verification"],
             "provenance": validation["provenance"], "technically_validated": validation["technically_validated"],
-            "source": "joint_validation.json",
+            "source": "validated_now",
         })
         self.assertEqual(summary["verdicts"]["technical_validation"], "pass")
         self.assertEqual(summary["verdicts"]["business_verification"], "not_evaluated")  # technically fine is not business-verified
@@ -178,7 +178,8 @@ class StartAndObserveTests(unittest.TestCase):
             (workspace.storage.processed_dir / name).unlink()  # the run cannot be built
         end = _wait_for_end(workspace.jobs, workspace.start()["job_id"])
         self.assertEqual(end["status"], "failed")
-        self.assertEqual(end["error"]["type"], "FileNotFoundError")
+        self.assertIsInstance(end["error"], str)  # the client shows it as text
+        self.assertTrue(end["error"].startswith("FileNotFoundError: "))
         self.assertEqual(end["events"][-1]["type"], "finished")
         self.assertEqual((end["events"][-1]["outcome"], end["events"][-1]["cost_ore"]), ("failed", None))
 
@@ -277,7 +278,8 @@ class RouteTests(unittest.TestCase):
             time.sleep(0.05)
         self.assertEqual(payload["status"], "failed")  # the processed data is not in the empty test directory
         self.assertEqual(payload["events"][-1]["type"], "finished")
-        self.assertEqual(set(payload), {"status", "events", "last_seq", "run_id", "error"})
+        self.assertEqual(set(payload), {"status", "events", "last_seq", "run_id", "error", "elapsed_seconds"})
+        self.assertIsInstance(payload["error"], str)
 
 
 if __name__ == "__main__":

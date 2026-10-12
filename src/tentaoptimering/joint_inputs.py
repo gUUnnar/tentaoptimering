@@ -296,12 +296,22 @@ def run_real_subset(
         result = solve_joint_optimization(problem, choice.start, budget, cancel, report, progress)
         decision = decision_record(choice, problem, report, budget)
         with phase(progress, "finalize"):
-            return _save_and_validate(
+            saved = _save_and_validate(
                 problem, result, decision, choice, run_id, run_dir, config_path, processed_dir, catalog_path
             )
+        if progress is not None:
+            progress.release()  # the solver's `finished` is the last event only once everything is saved and validated
+        return saved
+    except BaseException as error:
+        if progress is not None:
+            # The solver may have ended well, but the run did not: its held-back success event must not end the log.
+            progress.discard("finished")
+            if not progress.has("finished"):
+                emit(progress, "finished", outcome="failed", cost_ore=None, bound_ore=None,
+                     cancelled=bool(cancel and cancel.cancelled), error=f"{type(error).__name__}: {error}")
+        raise
     finally:
         if progress is not None:
-            progress.release()
             progress.close()  # the log file is this run's; the events stay readable from memory
 
 

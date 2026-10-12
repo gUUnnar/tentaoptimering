@@ -130,10 +130,21 @@ def job_events(jobs: LocalJobManager, job_id: str, after: int = 0) -> dict[str, 
     state = RUNNING if status in ("queued", "running") else FAILED if status == "failed" else (
         CANCELLED if result.get("cancelled") else COMPLETED)
     payload: dict[str, Any] = {"status": state, "events": progress.events(after), "last_seq": progress.last_seq,
-                               "run_id": result.get("run_id") or progress.run_id}
+                               "run_id": result.get("run_id") or progress.run_id,
+                               "elapsed_seconds": _elapsed(job, progress, state)}
     if state == FAILED:
-        payload["error"] = job.get("error")
+        error = job.get("error")
+        # A readable string: the client shows it as text. The job record itself keeps {type, message}.
+        payload["error"] = f"{error.get('type')}: {error.get('message')}" if isinstance(error, dict) else (str(error) if error else None)
     return payload
+
+
+def _elapsed(job: dict[str, Any], progress: ProgressSink, state: str) -> float:
+    """The run's time in seconds: live while it runs, the time of the last event once it is over."""
+    if state == RUNNING:
+        return progress.elapsed()
+    events = progress.events()
+    return float(events[-1]["t"]) if events else progress.elapsed()
 
 
 def cancel_job(jobs: LocalJobManager, job_id: str) -> dict[str, Any]:
