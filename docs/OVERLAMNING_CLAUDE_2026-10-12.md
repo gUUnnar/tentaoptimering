@@ -57,3 +57,17 @@ Be verksamhetsägaren verifiera 1 109 + 41 platser, bemanningstrappan och interv
 **Föreslagna acceptanstester:** valfritt datumintervall som skiljer sig från nuvarande fasta testintervall; period utanför täckning; salvisning med flera bokningar och uppmätt/okänd beläggning; tentamensuppslag som omfattar flera salar och oklar Ladokkoppling; historiskt vs simulerat schema; jämförelse som kräver identiska datumintervall. Uppdatera testerna efter nya dataleveransen.
 
 **Prioritet:** (1) definiera datatäckning/periodval och validera befintlig motor, (2) läs-UX för sal och bokad tentamen, (3) importera verklig beläggning när källschemat finns, (4) export efter PoC. Samordna med Claudes pågående PR #11 och återanvänd befintlig kod; ändra inte `main` och merga inte utan användarens godkännande.
+
+
+## Förtydligande 2026-10-12: snabb iteration är ett eget krav
+
+Korta planeringsperioder behövs av **två oberoende skäl**:
+
+1. **Verksamhet:** en betydande del av tentamensbokningarna görs med kort framförhållning. Enstaka dagar och veckor behöver kunna omplaneras på kort tid utan att andra redan lagda bokningar försvinner från salarnas tillgänglighetsbild.
+2. **Utveckling/test:** andra funktioner (parameterredigering, körningsprogress, lokal-/tentamensvisning, jämförelse och senare filutdata) ska kunna funktionstestas genom **mycket snabba och reproducerbara körningar** av korta perioder eller små urval, med samma ordinarie API, validering och resultathantering.
+
+Viktigt: det gamla kravet *minst en hel termin* var **inte genomförbart mot befintlig Ladokfil**, som slutar 31 mars. Det är inte terminslängden som är målet; användaren ska fritt välja planeringshorisont **inom för respektive funktion verifierad datatäckning**. För närvarande kan bokningar studeras fram till augusti medan efterfrågeunderlaget för optimering bara sträcker sig 12 januari–31 mars. Nytt underlag 1 januari–30 september inklusive verklig beläggning tillkommer senare.
+
+**Prioritera korta testfall som förstaklassflöde.** Genomför minst ett dagsurval, ett veckourval och ett större urval; mät tid till första fullständigt verifierade lösning och total tid på definierad dator. UI ska kunna välja period och starta körningen **utan manuell TOML-hantering**. En snabb körning ska inte tappa kvalitetskontrollerna, och befintliga fasta bokningar utanför valt optimeringsurval som påverkar salarnas ledighet måste beaktas eller synligt deklareras som en begränsning. Kontrollera jämförbarhetsnyckeln så att olika perioder inte behandlas som identiska.
+
+Se kravspecifikationen §11.9 och UX-9–11.
