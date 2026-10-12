@@ -32,7 +32,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 
 | Fil | Ansvar |
 |---|---|
-| `docs/BLOCKERANDE_DATAGAP.md` | Datagap som måste lösas före tillförlitlig optimering eller kronberäkning. |
+| `docs/BLOCKERANDE_DATAGAP.md` | Datagap som måste lösas före tillförlitlig optimering eller kronberäkning. |\n| `docs/VERKSAMHETSUNDERLAG_2026-10-02.md` | Källtrogen genomgång av verksamhetspresentationens kapacitet, planerade platser, bemanningsregler och historiska kalkyler, inklusive oklarheter och verifieringsbehov. |\n| `docs/OVERLAMNING_CLAUDE_2026-10-12.md` | Prioriterad överlämning till Claude om hur kompletterande verksamhetsuppgifter ska hanteras i den gemensamma optimeraren och PR #11. |
 | `docs/DATAMODELL.md` | Korn, nycklar och gränser mellan beställning, placering, Ladokaktivitet och lokalrad. |
 | `docs/FILOVERSIKT.md` | Denna innehållsförteckning och filernas ansvar. |
 | `docs/GEMENSAM_OPTIMERINGSDESIGN.md` | Teknisk specifikation för kanoniskt tentamensbehov, salstillfällen, integrerad bemanning och konsekvent årskostnad. |
