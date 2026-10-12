@@ -37,6 +37,7 @@ PHASES = ("warm_start_check", "relaxation", "day_checks", "repair", "history", "
 EVENT_TYPES: dict[str, tuple[str, ...]] = {
     "phase": ("name", "state"),
     "batch": ("kind", "total", "done", "parallel", "workers_per_check", "statuses"),
+    "day_started": ("date", "kind"),
     "day": ("date", "kind", "status", "seconds"),
     "incumbent": ("cost_ore", "source", "changed_exams"),
     "bound": ("lower_ore", "round"),

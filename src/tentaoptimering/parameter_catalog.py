@@ -27,6 +27,8 @@ class ParameterDefinition:
     engine_support: str
     honored_by: str | None
     legacy_ids: tuple[str, ...] = ()
+    # Allowed values of a `choice` parameter as ((value, Swedish label), ...); empty for other value types.
+    choices: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -50,6 +52,7 @@ def load_parameter_catalog(path: Path) -> ParameterCatalog:
             engine_support=str(item["engine_support"]),
             honored_by=str(item["honored_by"]) if item.get("honored_by") else None,
             legacy_ids=tuple(str(value) for value in item.get("legacy_ids", ())),
+            choices=tuple((str(choice["value"]), str(choice["label"])) for choice in item.get("choices", ())),
         )
         for item in payload["parameter"]
     )
@@ -61,6 +64,10 @@ def load_parameter_catalog(path: Path) -> ParameterCatalog:
             raise ValueError(f"Okänt motorstödstillstånd för {item.parameter_id}.")
         if item.default_basis not in BASIS_STATES:
             raise ValueError(f"Okänd standardgrund för {item.parameter_id}.")
+        if item.value_type == "choice" and not item.choices:
+            raise ValueError(f"Valparametern {item.parameter_id} saknar tillåtna val.")
+        if item.choices and item.default not in {value for value, _ in item.choices}:
+            raise ValueError(f"Standardvärdet för {item.parameter_id} finns inte bland de tillåtna valen.")
         if item.engine_support == "implemented" and not item.honored_by:
             raise ValueError(f"Implementerad parameter saknar honored_by: {item.parameter_id}.")
     return ParameterCatalog(str(payload["catalog_version"]), definitions)

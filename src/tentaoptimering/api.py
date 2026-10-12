@@ -11,13 +11,14 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from .app_paths import frontend_dist_dir
+from .app_paths import bundled_joint_catalog_path, frontend_dist_dir
 from .app_storage import AppStorage
 from .integrated_runs import run_integrated_term
 from .integrated_validation import write_validation_report
 from . import joint_api
 from .job_manager import LocalJobManager
 from .optimization_runs import run_optimization
+from .parameter_catalog import load_parameter_catalog
 from .pipeline import run_pipeline
 
 
@@ -35,6 +36,8 @@ class ScenarioUpdate(BaseModel):
 
 
 def _error(error: Exception) -> HTTPException:
+    if isinstance(error, joint_api.ParameterValidationError):
+        return HTTPException(status_code=422, detail={"errors": error.errors})
     status = 404 if isinstance(error, FileNotFoundError) else 409 if isinstance(error, (PermissionError, RuntimeError)) else 422
     return HTTPException(status_code=status, detail=str(error))
 
@@ -189,8 +192,24 @@ def create_app(storage_root: Path | None = None) -> FastAPI:
 
     @app.get("/api/joint-runs/scenarios")
     def joint_scenarios() -> dict[str, Any]:
-        """Bundled scenarios that the joint engine can run."""
-        return {"scenarios": joint_api.list_scenarios()}
+        """Scenarios that the joint engine can run: the bundled ones and the user's own."""
+        return {"scenarios": joint_api.list_scenarios(storage=storage, processed_dir=storage.processed_dir)}
+
+    @app.post("/api/joint-runs/scenarios")
+    def create_joint_scenario(request: joint_api.ScenarioCreate) -> dict[str, Any]:
+        """Save a user scenario: a bundled or saved one plus changed parameter values."""
+        try:
+            return joint_api.create_scenario(storage, request)
+        except Exception as error:
+            raise _error(error) from error
+
+    @app.get("/api/joint-runs/parameters")
+    def joint_parameters(scenario: str = Query(..., pattern=r"^[a-z0-9][a-z0-9_-]{0,79}$")) -> dict[str, Any]:
+        """Every parameter of the catalog with default, the scenario's value and whether the engine supports it."""
+        try:
+            return joint_api.parameters_payload(storage, scenario)
+        except Exception as error:
+            raise _error(error) from error
 
     @app.post("/api/joint-runs")
     def start_joint_run(request: joint_api.JointRunRequest) -> dict[str, Any]:
@@ -222,6 +241,14 @@ def create_app(storage_root: Path | None = None) -> FastAPI:
     def joint_run_summary(run_id: str) -> dict[str, Any]:
         try:
             return joint_api.run_summary(storage, run_id)
+        except Exception as error:
+            raise _error(error) from error
+
+    @app.get("/api/joint-runs/{run_id}/compare")
+    def joint_run_compare(run_id: str, base: str = Query("previous", pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,159}$")) -> dict[str, Any]:
+        """Compare a run with `base` (a run id, or `previous`: the closest earlier verified run of the same scenario)."""
+        try:
+            return joint_api.compare_runs(storage, run_id, base, load_parameter_catalog(bundled_joint_catalog_path()))
         except Exception as error:
             raise _error(error) from error
 

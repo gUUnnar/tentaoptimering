@@ -111,6 +111,7 @@ class Checker:
             full = self.budget.settings(self.problem.solver)
             for index, ((result, _), (_, request)) in enumerate(zip(outcomes, items)):
                 if result[0] == "unknown" and not self.expired:
+                    reporter.started(request)
                     outcomes[index] = self._solve_one(request, full)
                     reporter.repeated(request, *outcomes[index])
                     repeated += 1
@@ -131,6 +132,7 @@ class Checker:
         return fresh
 
     def _solve_reported(self, request: Request, settings, reporter: BatchReporter) -> tuple[Outcome, float]:
+        reporter.started(request)
         outcome, elapsed = self._solve_one(request, settings)
         reporter.checked(request, outcome, elapsed)
         return outcome, elapsed

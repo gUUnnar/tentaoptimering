@@ -1,4 +1,4 @@
-catalog_version = "2.2.0"
+catalog_version = "2.3.0"
 
 [[parameter]]
 id = "demand.variation_pct"
@@ -20,6 +20,7 @@ value_type = "choice"
 default = "up"
 default_basis = "assumption"
 help_text = "Avrundningsregel efter efterfrågevariation."
+choices = [{value = "up", label = "Uppåt (försiktigt, fler platser)"}, {value = "nearest", label = "Till närmaste heltal"}, {value = "down", label = "Nedåt"}]
 engine_support = "implemented"
 honored_by = "joint_inputs.build_real_subset_problem"
 
@@ -475,6 +476,7 @@ value_type = "choice"
 default = "registered_count"
 default_basis = "source_data"
 help_text = "Dimensionerande deltagarantal. Endast registrerade tentander (VARAV_ANTAL_ANMALDA) stöds; andra värden avvisas."
+choices = [{value = "registered_count", label = "Registrerade tentander (VARAV_ANTAL_ANMALDA)"}]
 engine_support = "implemented"
 honored_by = "joint_inputs.build_real_subset_problem"
 
@@ -522,6 +524,7 @@ value_type = "choice"
 default = "published_dates"
 default_basis = "assumption"
 help_text = "Salar är tillgängliga enligt publicerade datum i registret; ingen verifierad salkalender finns. Andra lägen saknar motorstöd."
+choices = [{value = "published_dates", label = "Publicerade datum i salregistret"}]
 engine_support = "contract_only"
 
 [[parameter]]
@@ -533,6 +536,7 @@ value_type = "choice"
 default = "allow_unverified"
 default_basis = "assumption"
 help_text = "allow_unverified: salar med status supports_e_exam får ta digitala tentor och resultatet märks som ej verifierat. exclude: endast salar där alla platser stödjer digitalt."
+choices = [{value = "allow_unverified", label = "Tillåt (resultatet märks som ej verifierat)"}, {value = "exclude", label = "Uteslut salar utan fullt digitalstöd"}]
 engine_support = "implemented"
 honored_by = "joint_inputs.build_real_subset_problem"
 
@@ -544,6 +548,7 @@ value_type = "choice"
 default = "require_e_exam"
 default_basis = "assumption"
 help_text = "require_e_exam: okänd status kräver digitalkapabel sal (försiktigt). assume_paper: okänd status behandlas som papperstenta."
+choices = [{value = "require_e_exam", label = "Kräv digitalkapabel sal (försiktigt)"}, {value = "assume_paper", label = "Behandla som pappersskrivning"}]
 engine_support = "implemented"
 honored_by = "joint_inputs.build_real_subset_problem"
 
@@ -620,6 +625,7 @@ value_type = "choice"
 default = "decomposed"
 default_basis = "experiment"
 help_text = "decomposed: aggregerad relaxation väljer datum, lokalportfölj och pool och ger en undre kostnadsgräns; varje dag kontrolleras sedan exakt med samma hårda villkor. monolithic: hela modellen i en CP-SAT-körning. Båda ger fullständig placering eller ingen lösning; jämförelse i docs/OPTIMERINGSSTRATEGI.md."
+choices = [{value = "decomposed", label = "Nedbruten (relaxation och exakt dagkontroll)"}, {value = "monolithic", label = "Hel modell i en CP-SAT-körning"}]
 engine_support = "implemented"
 honored_by = "joint_optimizer.solve_joint_optimization"
 

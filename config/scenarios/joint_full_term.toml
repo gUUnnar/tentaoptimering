@@ -1,0 +1,50 @@
+schema_version = "joint-real-subset-v1"
+
+[scenario]
+id = "joint_full_term_2026"
+name = "Hela terminen VT 2026"
+description = "Alla tentor som är klara för modellering i Uppsala under vårterminen 2026 (12 januari till 31 mars), planerade tillsammans: datum, salar och bemanning."
+
+[subset]
+plan_area = "Uppsala"
+selection = "all_ready"
+date_from = "2026-01-12"
+date_to = "2026-03-31"
+
+[parameters]
+"demand.variation_pct" = 0
+"demand.rounding" = "up"
+"window.earlier_days" = 1
+"window.later_days" = 1
+"calendar.start_date" = "2026-01-12"
+"calendar.end_date" = "2026-03-31"
+"calendar.weekdays" = [1, 2, 3, 4, 5, 6, 7]
+"calendar.start_times" = ["08:00", "14:00"]
+"calendar.turnaround_minutes" = 30
+"flex.movable_types" = ["ordinarie", "omtenta", "dugga", "hybrid"]
+"rooms.max_rooms_per_exam" = 8
+"rooms.allow_split_across_buildings" = false
+"staffing.ladder" = [
+  {max_participants = 50, required_staff = 1},
+  {max_participants = 150, required_staff = 2},
+  {max_participants = 300, required_staff = 3},
+]
+"staffing.preparation_minutes" = 30
+"staffing.closing_minutes" = 30
+"cost.room_annual_per_seat_ore" = 100000
+"cost.staff_annual_ore" = 5000000
+"cost.staff_session_ore" = 0
+"solver.time_limit_seconds" = 300.0
+"solver.workers" = 8
+"solver.strategy" = "decomposed"
+"solver.seed" = 20261009
+
+[rationales]
+"window.earlier_days" = "Flyttfönster en dag åt vardera hållet; utgångsläge för terminsstudien."
+"window.later_days" = "Flyttfönster en dag åt vardera hållet; utgångsläge för terminsstudien."
+"calendar.weekdays" = "Alla veckodagar tillåts i utgångsläget; ändra här för att pröva helgfria scheman."
+"calendar.start_times" = "Två starttider per dag (förmiddag och eftermiddag) som utgångsläge."
+"cost.room_annual_per_seat_ore" = "Explorativ proxy 1 000 kr per plats och år; inte avtalskostnad."
+"cost.staff_annual_ore" = "Explorativ proxy 50 000 kr per dimensionerande anonym resurs och år."
+"staffing.ladder" = "Provisorisk regel som kan ersättas utan solverändring."
+"solver.time_limit_seconds" = "Fem minuters väggtid ger en första verifierad terminslösning (mätt i docs/OPTIMERINGSSTRATEGI.md)."

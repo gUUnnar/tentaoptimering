@@ -1,4 +1,4 @@
-"""Build and persist a bounded real-data case for the joint optimizer."""
+"""Build and persist a real-data case for the joint optimizer: named events or a whole selected term."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import shutil
 import time
 import tomllib
 from typing import Any
@@ -29,6 +30,7 @@ from .joint_contract import (
 )
 from .joint_optimizer import solve_joint_optimization
 from .joint_progress import EVENTS_FILE, ProgressSink, emit, phase
+from .joint_selection import select_ready_demands
 from .joint_strategy.resources import CancelToken, ExecutionBudget
 from .joint_strategy.warm_start import StartReport
 from .joint_validation import write_validation
@@ -37,13 +39,15 @@ from .optimizer_time import duration_minutes
 from .parameter_catalog import freeze_parameter_values, load_parameter_catalog
 from .provenance import sha256_file
 
+SCENARIO_COPY = "joint_scenario.toml"
+
 
 def build_real_subset_problem(
     config_path: Path,
     processed_dir: Path,
     catalog_path: Path,
 ) -> JointOptimizationInput:
-    """Adapt named real exam events without silently expanding or shrinking the subset.
+    """Adapt real exam events (named, or selected by a rule in `[subset]`) without silently expanding or shrinking them.
 
     Every behaviour below is driven by the frozen parameter values, never by raw scenario keys.
     """
@@ -53,14 +57,7 @@ def build_real_subset_problem(
     demands_frame = pd.read_csv(processed_dir / "optimization_demands.csv", encoding="utf-8-sig")
     rooms_frame = pd.read_csv(processed_dir / "optimization_rooms.csv", encoding="utf-8-sig")
     scope_frame = pd.read_csv(processed_dir / "demand_scope.csv", encoding="utf-8-sig")
-    selected_events = tuple(str(value) for value in config["subset"]["exam_event_ids"])
-    ready = demands_frame[
-        demands_frame["exam_event_id"].isin(selected_events)
-        & (demands_frame["demand_input_status"] == "ready_provisional_ladok_demand")
-    ].copy()
-    found = set(ready["exam_event_id"].astype(str))
-    if found != set(selected_events):
-        raise ValueError(f"Det verkliga delmängdsfallet saknar event: {sorted(set(selected_events) - found)}")
+    ready = select_ready_demands(demands_frame, config["subset"])
 
     catalog = load_parameter_catalog(catalog_path)
     parameters = freeze_parameter_values(catalog, _parameter_overrides(config), _rationales(config))
@@ -288,6 +285,7 @@ def run_real_subset(
     run_id = f"{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}-{problem.problem_id}"
     run_dir = runs_dir / run_id
     run_dir.mkdir(parents=True, exist_ok=False)
+    shutil.copyfile(config_path, run_dir / SCENARIO_COPY)  # the scenario file that this run actually used
     if progress is not None:
         progress.run_id = run_id
         progress.attach(run_dir / EVENTS_FILE)

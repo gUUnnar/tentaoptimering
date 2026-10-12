@@ -1,7 +1,8 @@
 """Progress reporting for a batch of exact day checks (observation only).
 
-A batch is reported when it starts, after each of its checks (a `day` event, then a `batch` event with
-the counts so far) and once more when it is complete. The counts are updated under a lock together with the
+A batch is reported when it starts, when each of its checks starts (a `day_started` event, in the order the
+checks begin, which for parallel checks is not the order they end), after each of its checks (a `day` event, then a
+`batch` event with the counts so far) and once more when it is complete. The counts are updated under a lock together with the
 events, so the `done` counter never runs backwards in the event order even though the checks finish on
 different threads. Nothing here influences the checks: with no sink every method returns at once.
 """
@@ -49,6 +50,12 @@ class BatchReporter:
         self._batch(0, Counter())
 
     @_harmless
+    def started(self, request: "Request") -> None:
+        """One check of the batch begins (called from the thread that runs it); lets an interface show what is in progress."""
+        if self._progress is not None:
+            emit(self._progress, "day_started", **self._day_fields(request))
+
+    @_harmless
     def checked(self, request: "Request", outcome: "Outcome", elapsed: float) -> None:
         """One check of the batch has finished (called from the thread that ran it)."""
         if self._progress is None:
@@ -73,10 +80,14 @@ class BatchReporter:
             with self._lock:
                 self._batch(len(statuses), Counter(statuses))
 
-    def _day(self, request: "Request", status: str, elapsed: float) -> None:
+    @staticmethod
+    def _day_fields(request: "Request") -> dict[str, Any]:
         extra = {"block": [day.isoformat() for day in sorted(request.block)]} if len(request.block) > 1 else {}
-        emit(self._progress, "day", date=min(request.block).isoformat(), kind=request.kind, status=status,
-             seconds=round(elapsed, 3), **extra)
+        return {"date": min(request.block).isoformat(), "kind": request.kind, **extra}
+
+    def _day(self, request: "Request", status: str, elapsed: float) -> None:
+        fields = self._day_fields(request)
+        emit(self._progress, "day", date=fields.pop("date"), kind=fields.pop("kind"), status=status, seconds=round(elapsed, 3), **fields)
 
     def _batch(self, done: int, statuses: Counter[str]) -> None:
         emit(self._progress, "batch", **self._fields, done=done, statuses=dict(statuses))
