@@ -36,11 +36,14 @@ class _Variables:
 
 def solve_joint_optimization(
     problem: JointOptimizationInput, start: dict[str, Any] | None = None,
+    budget: Any = None, cancel: Any = None, report: Any = None,
 ) -> JointOptimizationResult:
     """Solve the complete modeled demand; partial placement is never an objective option.
 
     `start` is an earlier saved result (joint_result.json). Its placement seeds the search; it is
     never trusted: the decomposed strategy re-checks it exactly, the monolithic one uses it as a hint.
+    `budget` (ExecutionBudget), `cancel` (CancelToken) and `report` (StartReport, filled in) belong to the
+    decomposed strategy, which runs its day checks in parallel within the budget.
     """
     validate_problem(problem)
     blocked = tuple(item.exam_demand_id for item in problem.demands if not item.candidate_slot_ids)
@@ -50,9 +53,12 @@ def solve_joint_optimization(
     if problem.solver.strategy == "decomposed":
         from .joint_strategy import solve_decomposed  # the strategy builds on this module
 
-        return solve_decomposed(problem, seed)
+        return solve_decomposed(problem, seed, budget, cancel, report)
     if problem.solver.strategy != "monolithic":
         raise ValueError(f"Okänd lösningsstrategi: {problem.solver.strategy}")
+    if report is not None and seed is not None:
+        report.status = "hint_only"
+        report.notes.append("Den monolitiska strategin kontrollerar inte en tidigare placering särskilt; den används bara som ledtråd.")
     model = cp_model.CpModel()
     slots = {slot.slot_id: slot for slot in problem.slots}
     variables = _build_variables_and_constraints(model, problem, slots)

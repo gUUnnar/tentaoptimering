@@ -266,14 +266,16 @@ class WarmStartAndTimeTests(unittest.TestCase):
             self.assertEqual([item["rule_id"] for item in payload["rules"] if item["status"] == "fail"], [])
 
     def test_a_placement_the_instance_no_longer_allows_is_ignored_not_trusted(self) -> None:
-        from tentaoptimering.joint_strategy.verification import Checker, warm_start
+        from tentaoptimering.joint_strategy.verification import Checker
+        from tentaoptimering.joint_strategy.warm_start import warm_start
         problem = _two_day_problem("decomposed")
         checker = Checker(problem, time.perf_counter() + 20)
         allowed = {"a": "d1-am", "b": "d1-pm", "c": "d2-am"}
-        self.assertIsNotNone(warm_start(checker, allowed, {"small-1"}))
-        self.assertIsNone(warm_start(checker, {**allowed, "c": "d1-am"}, {"small-1"}))  # c may not be on day 1
-        self.assertIsNone(warm_start(checker, {"a": "d1-am", "b": "d1-pm"}, {"small-1"}))  # c missing
-        self.assertIsNone(warm_start(checker, allowed, {"gone"}))  # room no longer exists
+        usable = lambda schedule, rooms: warm_start(checker, schedule, rooms)[0]  # noqa: E731
+        self.assertIsNotNone(usable(allowed, {"small-1"}))
+        self.assertIsNone(usable({**allowed, "c": "d1-am"}, {"small-1"}))  # c may not be on day 1
+        self.assertIsNone(usable({"a": "d1-am", "b": "d1-pm"}, {"small-1"}))  # c missing
+        self.assertIsNone(usable(allowed, {"gone"}))  # room no longer exists
 
     def test_the_time_limit_covers_builds_and_repairs(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

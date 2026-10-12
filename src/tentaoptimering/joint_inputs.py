@@ -28,7 +28,10 @@ from .joint_contract import (
     write_result,
 )
 from .joint_optimizer import solve_joint_optimization
+from .joint_strategy.resources import CancelToken, ExecutionBudget
+from .joint_strategy.warm_start import StartReport
 from .joint_validation import write_validation
+from .joint_warm_start import AUTO, decision_record, find_start, report_lines, write_decision
 from .optimizer_time import duration_minutes
 from .parameter_catalog import freeze_parameter_values, load_parameter_catalog
 from .provenance import sha256_file
@@ -262,9 +265,22 @@ def run_real_subset(
     processed_dir: Path,
     catalog_path: Path,
     runs_dir: Path,
+    warm_start: str | None = AUTO,
+    budget: ExecutionBudget | None = None,
+    cancel: CancelToken | None = None,
 ) -> dict[str, Any]:
+    """Build, solve, save and validate one run.
+
+    `warm_start` is "auto" (the newest usable earlier run of the same problem), "none", or the run id of an
+    earlier run. The earlier placement is only a starting point: the solver re-checks it against the new
+    instance, and the independent post-validation of the new run is made as for any run.
+    """
     problem = build_real_subset_problem(config_path, processed_dir, catalog_path)
-    result = solve_joint_optimization(problem)
+    choice = find_start(runs_dir, problem, warm_start)
+    budget = (budget or ExecutionBudget()).resolve(problem.solver)
+    report = StartReport()
+    result = solve_joint_optimization(problem, choice.start, budget, cancel, report)
+    decision = decision_record(choice, problem, report, budget)
     run_id = f"{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}-{problem.problem_id}"
     run_dir = runs_dir / run_id
     run_dir.mkdir(parents=True, exist_ok=False)
@@ -276,17 +292,21 @@ def run_real_subset(
         "result_sha256": sha256_file(run_dir / "joint_result.json"),
         "config_sha256": sha256_file(config_path),
         "catalog_sha256": sha256_file(catalog_path),
+        "warm_start_source_run_id": choice.source.run_id if choice.source else None,
+        "warm_start_source_result_sha256": choice.source.result_sha256 if choice.source else None,
     }
+    write_decision(run_dir, decision)
     (run_dir / "joint_manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     validation = write_validation(
         run_dir, processed_dir=processed_dir, config_path=config_path, catalog_path=catalog_path
     )
-    with (run_dir / "joint_report.md").open("a", encoding="utf-8") as report:
-        report.write(chr(10).join(_validation_lines(validation["summary"])))
+    with (run_dir / "joint_report.md").open("a", encoding="utf-8") as handle:
+        handle.write(chr(10).join(_validation_lines(validation["summary"]) + report_lines(decision)))
     return {
         "run_id": run_id,
+        "warm_start": decision,
         "result": json.loads((run_dir / "joint_result.json").read_text(encoding="utf-8")),
         "validation": validation["summary"],
         "artifacts": {path.name: str(path.resolve()) for path in run_dir.iterdir()},

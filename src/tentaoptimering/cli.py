@@ -5,13 +5,15 @@ from dataclasses import fields
 import json
 from pathlib import Path
 import sys
+import threading
 import tomllib
-from typing import Any
+from typing import Any, Callable
 
 from .optimization_runs import compare_runs, load_run_result, run_optimization
 from .integrated_runs import run_integrated_term
 from .integrated_validation import write_validation_report
 from .joint_inputs import run_real_subset
+from .joint_strategy.resources import CancelToken, ExecutionBudget
 from .joint_validation import write_validation
 from .optimizer_config import load_scenario_config
 from .parameter_catalog import load_parameter_catalog
@@ -55,6 +57,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--config", type=Path)
     parser.add_argument("--run-id")
     parser.add_argument("--run-ids", nargs="+")
+    parser.add_argument(
+        "--warm-start",
+        default="auto",
+        metavar="auto|none|RUN_ID",
+        help="optimize-joint: starta från en tidigare sparad körning. auto väljer den senaste användbara körningen av "
+        "samma problem; none stänger av; RUN_ID pekar ut en körning. Placeringen kontrolleras alltid mot de nya reglerna.",
+    )
+    parser.add_argument("--threads", type=int, default=0, help="optimize-joint: gemensam trådbudget för CP-SAT (0 = scenariots solver.workers).")
+    parser.add_argument("--memory-mb", type=int, default=None, help="optimize-joint: minnesbudget för parallella dagkontroller (standard: hälften av ledigt minne).")
+    parser.add_argument("--sequential-day-checks", action="store_true", help="optimize-joint: kör dagkontrollerna i tur och ordning.")
     parser.add_argument(
         "--format",
         choices=("json", "text"),
@@ -195,6 +207,35 @@ def _resources_payload(outputs: PipelineOutputs) -> dict[str, Any]:
     }
 
 
+def _interruptible(action: Callable[[CancelToken], Any]) -> Any:
+    """Run `action` so that the first Ctrl+C stops the solver and saves the best verified result so far.
+
+    A second Ctrl+C is not caught. The solve runs in a thread because a native CP-SAT call in the main
+    thread would postpone the interrupt until it returned.
+    """
+    cancel = CancelToken()
+    outcome: dict[str, Any] = {}
+
+    def work() -> None:
+        try:
+            outcome["value"] = action(cancel)
+        except BaseException as error:  # handed to the calling thread
+            outcome["error"] = error
+
+    worker = threading.Thread(target=work, name="optimize-joint")
+    worker.start()
+    try:
+        while worker.is_alive():
+            worker.join(0.2)
+    except KeyboardInterrupt:
+        cancel.cancel()
+        print("Avbryter: sparar bästa verifierade lösning hittills. Ctrl+C igen avbryter utan att spara.", file=sys.stderr)
+        worker.join()
+    if "error" in outcome:
+        raise outcome["error"]
+    return outcome["value"]
+
+
 def _require(value: Any, option: str, command: str) -> Any:
     if value is None:
         raise ValueError(f"Kommandot '{command}' kräver {option}.")
@@ -244,12 +285,15 @@ def _command_payload(args: argparse.Namespace, outputs: PipelineOutputs) -> dict
         }
     if args.command == "optimize-joint":
         config_path = _require(args.config, "--config", args.command)
-        run = run_real_subset(
+        run = _interruptible(lambda cancel: run_real_subset(
             config_path,
             args.processed_dir,
             REPO_ROOT / "config" / "joint_parameter_catalog.toml",
             args.runs_dir,
-        )
+            warm_start=args.warm_start,
+            budget=ExecutionBudget(args.threads, args.memory_mb, not args.sequential_day_checks),
+            cancel=cancel,
+        ))
         failed = run["validation"]["technical_validation"] == "fail"
         return {
             "schema_version": SCHEMA_VERSION,
@@ -322,6 +366,7 @@ def _emit(payload: dict[str, Any], output_format: str, stream: Any | None = None
         report_name = "joint_report.md" if payload["command"] == "optimize-joint" else "report.md"
         print(f"Rapport: {run['artifacts'][report_name]}", file=stream)
         if payload["command"] == "optimize-joint":
+            print(f"Varmstart: {run['warm_start']['decision']} – {run['warm_start']['explanation']}", file=stream)
             _emit_joint_validation(run["validation"], stream)
         return
     if payload["command"] == "validate-joint-run":

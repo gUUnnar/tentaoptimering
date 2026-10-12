@@ -11,8 +11,13 @@
 4. Once a plan is verified, a history-preferring plan with the same portfolio and pool is swapped in
    wherever its days verify, so exams stay on their historical slot when that costs nothing.
 
-An earlier verified placement can seed the search (`start`): when the current instance still allows
-every earlier placement, it is re-checked and becomes the first upper bound.
+An earlier saved placement can seed the search (`start`, see warm_start.py): it is never trusted, only
+re-checked day by day in the current instance. If it passes, it becomes the first upper bound; if not, the
+earlier slots that are still allowed are given to the relaxation as a hint. What happened is recorded in
+a `StartReport`.
+
+The exact day checks run in parallel within one thread and memory budget (resources.py, verification.py);
+`cancel` stops the run, which then returns the best complete verified solution it has, if any.
 
 The economic value is decided by the dimensioning days: once the portfolio and pool are fixed, any
 feasible placement of the other days costs the same, so those days are only checked for
@@ -29,8 +34,10 @@ from ..joint_contract import (
 )
 from ..joint_optimizer import _is_changed, _limitations, _verification
 from .aggregate import Cut, solve_master
+from .resources import CancelToken, ExecutionBudget
 from .subproblems import Part
-from .verification import Checker, Parts, cost, prefer_history, verify, warm_start
+from .verification import Checker, Parts, cost, prefer_history, verify
+from .warm_start import ACCEPTED, StartReport, warm_start
 
 LOG = logging.getLogger(__name__)
 
@@ -40,41 +47,47 @@ MAX_ROUNDS = 25
 
 def solve_decomposed(
     problem: JointOptimizationInput, start: tuple[dict[str, str], set[str]] | None = None,
+    budget: ExecutionBudget | None = None, cancel: CancelToken | None = None, report: StartReport | None = None,
 ) -> JointOptimizationResult:
-    """`start` is an earlier verified placement: exam -> slot, and the rooms it used."""
+    """`start` is an earlier saved placement: exam -> slot, and the rooms it used. It is re-checked, not trusted."""
     started = time.perf_counter()
-    settings = problem.solver
-    deadline = started + settings.time_limit_seconds
-    checker = Checker(problem, deadline)
+    report = report if report is not None else StartReport()
+    deadline = started + problem.solver.time_limit_seconds
+    checker = Checker(problem, deadline, budget, cancel)
+    settings = checker.budget.settings(problem.solver)  # one thread budget for the relaxation and the day checks
     cuts: list[Cut] = []
     best: tuple[int, int, Parts] | None = None  # cost, changed exams, parts
+    best_source = ""
     first_at: float | None = None
     lower = 0
     proven = False
     rounds = 0
 
-    def consider(parts: Parts | None, source: str) -> None:
-        nonlocal best, first_at
+    def consider(parts: Parts | None, source: str) -> int | None:
+        nonlocal best, best_source, first_at
         if parts is None:
-            return
+            return None
         total, changed = cost(problem, list(parts.values()))[-1], _changed(problem, list(parts.values()))
         if best is None or (total, changed) < best[:2]:
-            best = (total, changed, parts)
+            best, best_source = (total, changed, parts), source
         if first_at is None:
             first_at = time.perf_counter() - started
+            report.first_solution_seconds, report.first_solution_source = first_at, source
             LOG.debug("first complete solution after %.1f s (%s): %s öre", first_at, source, total)
+        return total
 
     hint = None
     if start is not None:
-        consider(warm_start(checker, *start), "warm start")
-        hint = start[0]
+        parts, hint = warm_start(checker, *start, report)
+        report.verified_cost_ore = consider(parts, "warm start")
+        if parts is not None:
+            report.status = ACCEPTED
     for rounds in range(1, MAX_ROUNDS + 1):
         remaining = deadline - time.perf_counter()
-        if remaining <= 1.0:
+        if remaining <= 1.0 or checker.cancel.cancelled:
             break
-        budget = remaining * (MASTER_SHARE if rounds == 1 else 0.25)
-        master = solve_master(problem, budget, settings, tuple(cuts), hint,
-                              prefer_history_seconds=min(10.0, 0.1 * remaining))
+        master = solve_master(problem, remaining * (MASTER_SHARE if rounds == 1 else 0.25), settings, tuple(cuts), hint,
+                              prefer_history_seconds=min(10.0, 0.1 * remaining), cancel=checker.cancel)
         LOG.debug("master %s: %s cost %s bound %s plans %d (%.1f s)", rounds, master.status, master.objective,
                   master.bound, len(master.plans), master.wall_seconds)
         if master.status == "infeasible":
@@ -100,10 +113,13 @@ def solve_decomposed(
         if not new_cuts:
             break
     LOG.debug("time by step: %s", {kind: f"{seconds:.1f} s / {checker.calls[kind]}" for kind, seconds in checker.seconds.items()})
+    report.interrupted = checker.cancel.cancelled
     if best is None:
-        return _no_solution(problem, "no_feasibility_conclusion", "decomposed_no_verified_solution", started, rounds,
-                            "Ingen dag-för-dag-verifierad lösning hittades inom tidsgränsen.")
-    return _result(problem, list(best[2].values()), lower, proven, started, rounds, len(cuts), first_at)
+        return _no_solution(problem, "no_feasibility_conclusion", "decomposed_cancelled" if report.interrupted else "decomposed_no_verified_solution",
+                            started, rounds, "Körningen avbröts innan någon dag-för-dag-verifierad lösning fanns." if report.interrupted
+                            else "Ingen dag-för-dag-verifierad lösning hittades inom tidsgränsen.")
+    report.final_cost_ore, report.final_source = best[0], best_source
+    return _result(problem, list(best[2].values()), lower, proven, started, rounds, len(cuts), first_at, report.interrupted)
 
 
 def _changed(problem: JointOptimizationInput, parts: list[Part]) -> int:
@@ -112,7 +128,7 @@ def _changed(problem: JointOptimizationInput, parts: list[Part]) -> int:
     return sum(1 for part in parts for row in part.schedule if _is_changed(demands[row["exam_demand_id"]], row["slot_id"], slots))
 
 
-def _result(problem, parts, lower, proven, started, rounds, cut_count, first_at) -> JointOptimizationResult:
+def _result(problem, parts, lower, proven, started, rounds, cut_count, first_at, interrupted=False) -> JointOptimizationResult:
     order = lambda row: tuple(str(row[name]) for name in sorted(row))  # noqa: E731
     assignments = tuple(sorted((row for part in parts for row in part.assignments), key=order))
     sessions = tuple(sorted((row for part in parts for row in part.sessions), key=order))
@@ -129,7 +145,7 @@ def _result(problem, parts, lower, proven, started, rounds, cut_count, first_at)
         problem_id=problem.problem_id,
         solver=SolverSummary(
             outcome="optimal" if proven and bound == total else "feasible_not_proven",
-            raw_status=f"decomposed_rounds_{rounds}_cuts_{cut_count}_first_solution_{first_at:.0f}s",
+            raw_status=f"decomposed_rounds_{rounds}_cuts_{cut_count}_first_solution_{first_at:.0f}s" + ("_cancelled" if interrupted else ""),
             objective_value_ore=total,
             best_objective_bound_ore=bound,
             relative_gap=0.0 if bound == total else (total - bound) / max(1, total),

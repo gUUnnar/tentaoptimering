@@ -1,18 +1,24 @@
-"""Exact verification of relaxation plans, history polish and warm starts.
+"""Exact verification of relaxation plans and history polish.
 
-All checks go through `Checker`, which caches results, keeps every step inside the run's deadline
-and records how much time each kind of step used.
+All checks go through `Checker`, which caches results, keeps every step inside the run's deadline,
+shares one thread and memory budget between the checks and records how much time each kind of step used.
+Independent checks (one per day) are run as an ordered parallel batch; checks that depend on each other
+(diagnosis and repair of failed days) stay sequential.
 """
 
 from __future__ import annotations
 
 from collections import defaultdict
+from contextlib import contextmanager
 from datetime import date
+from functools import partial
 import logging
 import time
+from typing import Iterator, NamedTuple
 
 from ..joint_contract import JointOptimizationInput
 from .aggregate import Cut, Plan
+from .resources import CancelToken, ExecutionBudget, plan_batch, run_ordered, task_memory_mb
 from .subproblems import Part, infeasible_core, restrict, solve_part
 
 LOG = logging.getLogger(__name__)
@@ -22,38 +28,128 @@ BLOCK_SECONDS = 20.0    # per repair of failed days with their neighbours
 CORE_SECONDS = 10.0     # to shrink a failed day to the exams that cause it
 
 Parts = dict[frozenset[date], Part]
+Outcome = tuple[str, Part | None, int | None]
+
+
+class Request(NamedTuple):
+    """One exact check of a block of days."""
+
+    kind: str
+    block: frozenset[date]
+    exams: frozenset[str]
+    cap: int | None
+    rooms: tuple
+    extra: frozenset[str] = frozenset()
+    seconds: float = DAY_SECONDS
+    fixed: dict[str, str] | None = None
 
 
 class Checker:
     """Cached, deadline-bounded exact checks of day blocks."""
 
-    def __init__(self, problem: JointOptimizationInput, deadline: float) -> None:
+    def __init__(
+        self, problem: JointOptimizationInput, deadline: float, budget: ExecutionBudget | None = None,
+        cancel: CancelToken | None = None,
+    ) -> None:
         self.problem = problem
         self.deadline = deadline
-        self.cache: dict[tuple, tuple[str, Part | None, int | None]] = {}
-        self.seconds: dict[str, float] = defaultdict(float)
+        self.budget = (budget or ExecutionBudget()).resolve(problem.solver)
+        self.cancel = cancel or CancelToken()
+        self.cache: dict[tuple, Outcome] = {}
+        self.seconds: dict[str, float] = defaultdict(float)       # wall time per kind of step
+        self.task_seconds: dict[str, float] = defaultdict(float)  # summed time of the individual checks
         self.calls: dict[str, int] = defaultdict(int)
+        self._slot_day = {slot.slot_id: slot.scheduled_date for slot in problem.slots}
+        self._candidates = {item.exam_demand_id: item.candidate_slot_ids for item in problem.demands}
+
+    @property
+    def expired(self) -> bool:
+        """The run's time is used up or the run was cancelled: nothing more may start."""
+        return time.perf_counter() >= self.deadline or self.cancel.cancelled
+
+    @contextmanager
+    def until(self, seconds: float) -> Iterator[None]:
+        """Limit the checks inside the block to `seconds` from now (never beyond the run's deadline)."""
+        original = self.deadline
+        self.deadline = min(original, time.perf_counter() + seconds)
+        try:
+            yield
+        finally:
+            self.deadline = original
 
     def check(self, kind: str, block: frozenset[date], exams: frozenset[str], cap: int | None, rooms: tuple,
-              extra: frozenset[str] = frozenset(), seconds: float = DAY_SECONDS, fixed: dict[str, str] | None = None):
-        key = (block, exams, frozenset(room.room_id for room in rooms), cap, extra, fixed is not None)
-        if key not in self.cache:
-            started = time.perf_counter()
-            result = solve_part(restrict(self.problem, block, set(exams), rooms, fixed), block, cap, extra,
-                                seconds, self.deadline, self.problem.solver)
-            self.seconds[kind] += time.perf_counter() - started
-            self.calls[kind] += 1
-            if result[0] == "unknown" and time.perf_counter() >= self.deadline:
-                return result  # a deadline miss is not cached: it says nothing about the block
+              extra: frozenset[str] = frozenset(), seconds: float = DAY_SECONDS, fixed: dict[str, str] | None = None) -> Outcome:
+        return self.check_many([Request(kind, block, exams, cap, rooms, extra, seconds, fixed)])[0]
+
+    def check_many(self, requests: list[Request]) -> list[Outcome]:
+        """Check independent blocks, in parallel within the thread and memory budget.
+
+        The results come back in request order and a check gets the same worker count however the others
+        finish, so the outcome does not depend on completion order. A check that stops at its time limit
+        with the reduced worker count is repeated alone with all threads before it counts as failed.
+        """
+        keys = [_key(request) for request in requests]
+        results = {key: self.cache[key] for key in keys if key in self.cache}
+        pending = {key: request for key, request in zip(keys, requests) if key not in results}
+        if pending:
+            results.update(self._solve_batch(pending))
+        return [results[key] for key in keys]
+
+    def _solve_batch(self, pending: dict[tuple, Request]) -> dict[tuple, Outcome]:
+        items = list(pending.items())
+        started = time.perf_counter()
+        biggest = max(self._pairs(request) for _, request in items)
+        parallel, workers = plan_batch(len(items), task_memory_mb(biggest), self.budget)
+        settings = self.budget.settings(self.problem.solver, workers)
+        outcomes = run_ordered([partial(self._solve_one, request, settings) for _, request in items], parallel, self.cancel)
+        repeated = 0
+        if workers < self.budget.threads:
+            full = self.budget.settings(self.problem.solver)
+            for index, ((result, _), (_, request)) in enumerate(zip(outcomes, items)):
+                if result[0] == "unknown" and not self.expired:
+                    outcomes[index] = self._solve_one(request, full)
+                    repeated += 1
+        fresh: dict[tuple, Outcome] = {}
+        for (key, request), (result, elapsed) in zip(items, outcomes):
+            self.calls[request.kind] += 1
+            self.task_seconds[request.kind] += elapsed
+            fresh[key] = result
+            if result[0] == "unknown" and self.expired:
+                continue  # a deadline miss or an interrupt is not cached: it says nothing about the block
             self.cache[key] = result
-        return self.cache[key]
+        self.seconds[items[0][1].kind] += time.perf_counter() - started
+        if len(items) > 1:
+            LOG.debug("batch of %d %s checks: %d in parallel x %d workers, %.1f s wall, %.1f s summed, %d repeated with all threads",
+                      len(items), items[0][1].kind, parallel, workers, time.perf_counter() - started,
+                      sum(elapsed for _, elapsed in outcomes), repeated)
+        return fresh
+
+    def _solve_one(self, request: Request, settings) -> tuple[Outcome, float]:
+        started = time.perf_counter()
+        result = solve_part(restrict(self.problem, request.block, set(request.exams), request.rooms, request.fixed),
+                            request.block, request.cap, request.extra, request.seconds, self.deadline, settings, self.cancel)
+        return result, time.perf_counter() - started
+
+    def _pairs(self, request: Request) -> int:
+        """Exam x candidate slot x room triples of a check: the size that drives its memory."""
+        slots = sum(
+            1 if request.fixed is not None else sum(1 for slot in self._candidates[exam] if self._slot_day[slot] in request.block)
+            for exam in request.exams
+        )
+        return slots * max(1, len(request.rooms))
 
     def core(self, block, exams, rooms, cap) -> frozenset[str]:
         started = time.perf_counter()
-        core = infeasible_core(self.problem, block, set(exams), rooms, cap, CORE_SECONDS, self.deadline, self.problem.solver)
+        core = infeasible_core(self.problem, block, set(exams), rooms, cap, CORE_SECONDS, self.deadline,
+                               self.budget.settings(self.problem.solver), self.cancel)
         self.seconds["core"] += time.perf_counter() - started
         self.calls["core"] += 1
         return core
+
+
+def _key(request: Request) -> tuple:
+    return (request.block, request.exams, frozenset(room.room_id for room in request.rooms), request.cap, request.extra,
+            request.fixed is not None)
 
 
 def by_day(problem: JointOptimizationInput, choice: dict[str, str]) -> dict[date, frozenset[str]]:
@@ -73,8 +169,9 @@ def verify(checker: Checker, plan: Plan) -> tuple[Parts | None, list[Cut]]:
     cap = plan.pool if problem.staffing.annual_cost_ore_per_staff > 0 else None
     parts: Parts = {}
     failed: list[date] = []
-    for day in sorted(exams_on):
-        status, part, _ = checker.check("day", frozenset({day}), exams_on[day], cap, portfolio)
+    ordered = sorted(exams_on)
+    outcomes = checker.check_many([Request("day", frozenset({day}), exams_on[day], cap, portfolio) for day in ordered])
+    for day, (status, part, _) in zip(ordered, outcomes):  # the days are independent: one parallel batch, in date order
         if part is None:
             LOG.debug("day %s failed: %s (%d exams)", day, status, len(exams_on[day]))
             failed.append(day)
@@ -91,7 +188,7 @@ def verify(checker: Checker, plan: Plan) -> tuple[Parts | None, list[Cut]]:
             parts[block] = part  # the capped check only timed out; this placement fits the plan's pool
             failed.remove(day)
             continue
-        if time.perf_counter() < checker.deadline:
+        if not checker.expired:
             if status == "infeasible":
                 cuts.append(("rooms", block, checker.core(block, exams, portfolio, None), plan.owned, 0))
             elif cap is not None:
@@ -138,10 +235,13 @@ def prefer_history(checker: Checker, parts: Parts, economic: Plan, history: Plan
     portfolio = tuple(room for room in problem.rooms if room.room_id in economic.owned)
     cap = economic.pool if problem.staffing.annual_cost_ore_per_staff > 0 else None
     swapped = 0
+    open_groups = [group for group in groups if not any(key & group and len(key) > 1 for key in parts)]  # repaired blocks stay
+    checker.check_many([Request("history", frozenset({day}), new[day], cap, portfolio)
+                        for group in open_groups for day in sorted(group) if new.get(day)])  # fills the cache in parallel
     for group in groups:
-        if time.perf_counter() >= checker.deadline:
+        if checker.expired:
             break
-        if any(key & group and len(key) > 1 for key in parts):
+        if group not in open_groups:
             continue  # a repaired multi-day block; leave it as verified
         trial = {key: part for key, part in parts.items() if not key & group}
         for day in sorted(group):
@@ -173,28 +273,6 @@ def _linked_days(edges: list[tuple[date, date]]) -> list[frozenset[date]]:
     for day in list(parent):
         groups[find(day)].add(day)
     return [frozenset(group) for group in groups.values()]
-
-
-def warm_start(checker: Checker, schedule: dict[str, str], rooms_used: set[str]) -> Parts | None:
-    """Re-check an earlier verified placement in the current instance; usable only if every exam's
-    earlier slot is still one of its candidates and its rooms still exist."""
-    problem = checker.problem
-    candidates = {item.exam_demand_id: set(item.candidate_slot_ids) for item in problem.demands}
-    if set(schedule) != set(candidates) or any(schedule[exam] not in candidates[exam] for exam in candidates):
-        LOG.debug("warm start not usable: the instance no longer allows every earlier placement")
-        return None
-    rooms = tuple(room for room in problem.rooms if room.room_id in rooms_used)
-    if len(rooms) != len(rooms_used):
-        LOG.debug("warm start not usable: rooms are missing")
-        return None
-    parts: Parts = {}
-    for day, exams in sorted(by_day(problem, schedule).items()):
-        part = checker.check("warm-start", frozenset({day}), exams, None, rooms, fixed=schedule)[1]
-        if part is None:
-            LOG.debug("warm start not usable: %s could not be re-checked", day)
-            return None
-        parts[frozenset({day})] = part
-    return parts
 
 
 def _blocks(failed: list[date], days: list[date], radius: int = 1) -> list[frozenset[date]]:
