@@ -268,7 +268,7 @@ class CompareTests(unittest.TestCase):
         # A changed price is a changed assumption: the difference is shown, but never called an efficiency gain.
         self.assertIs(result["interpretable"], False)
         self.assertEqual(result["assumption_changes"], {"cost": ["Årskostnad per vaktresurs"], "demand": []})
-        self.assertIn("Kostnadsantagandena har ändrats (Årskostnad per vaktresurs)", result["interpretation"])
+        self.assertIn("Kostnads- och bemanningsantagandena har ändrats (Årskostnad per vaktresurs)", result["interpretation"])
         self.assertIn("Ingen kostnadsskillnad redovisas", result["interpretation"])
         self.assertNotIn("Kostnaden ökade", result["interpretation"])
         self.assertIn("modellkostnad", result["interpretation"])

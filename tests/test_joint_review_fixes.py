@@ -158,7 +158,7 @@ class AssumptionComparisonTests(unittest.TestCase):
         self.assertTrue(result["comparable"])
         self.assertEqual(result["assumption_changes"]["cost"], ["Årlig lokalkostnad per plats"])
         self.assertIs(result["interpretable"], False)
-        self.assertIn("Kostnadsantagandena har ändrats (Årlig lokalkostnad per plats)", result["interpretation"])
+        self.assertIn("Kostnads- och bemanningsantagandena har ändrats (Årlig lokalkostnad per plats)", result["interpretation"])
         self.assertTrue(all(result["metrics"][name]["delta"] is None for name in ("cost_ore", "lower_bound_ore", "gap_ore")))  # N-5
         self.assertIn("effektivare schemaläggning", result["interpretation"])
         self.assertIn("modellkostnad", result["interpretation"])
@@ -173,7 +173,7 @@ class AssumptionComparisonTests(unittest.TestCase):
 
     def test_both_kinds_at_once_are_named_together(self) -> None:
         result = self._compare(**{"demand.variation_pct": 10, "cost.staff_annual_ore": 3000})
-        self.assertIn("Kostnadsantagandena har ändrats", result["interpretation"])
+        self.assertIn("Kostnads- och bemanningsantagandena har ändrats", result["interpretation"])
         self.assertIn("och efterfrågan har ändrats", result["interpretation"])
 
     def test_a_change_of_a_rule_is_not_called_an_assumption(self) -> None:
