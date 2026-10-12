@@ -124,26 +124,31 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 
 | Fil | Ansvar |
 |---|---|
-| `frontend/src/lib/jointTypes.ts` | TypeScript-typer för API-kontraktet `/api/joint-runs`, händelser, varmstartsbeslut och sammanfattning. |
-| `frontend/src/lib/jointApi.ts` | Tunn typad API-klient, gemensamt `JointApi`-gränssnitt och växling till mockläge med `?mock=1`. |
+| `frontend/src/App.tsx` | Tunn skal med sidorna Optimering (startsida) och Underlag. Båda hålls monterade så att en pågående körning eller förberedelse inte tappas vid sidbyte. |
+| `frontend/src/lib/jointTypes.ts` | TypeScript-typer för API-kontraktet `/api/joint-runs`: scenarier, parametrar, händelser, varmstartsbeslut, sammanfattning och jämförelse. |
+| `frontend/src/lib/jointApi.ts` | Tunn typad API-klient med översättning av backendens sammanfattning (saknade domar blir `not_evaluated`, aldrig godkända). |
 | `frontend/src/lib/jointState.ts` | Ren avledning av fasband, kostnadsserier, dagrutnät och gap ur händelselistan (samma kod för live och uppspelning). |
 | `frontend/src/lib/jointFormat.ts` | Svenska etiketter och formatering; ärlig kostnadsredovisning (intervall utan bevisat optimum) och tolkning av domar. |
-| `frontend/src/lib/jointFixture.ts` | Syntetiska inspelade exempelhändelser, kandidater, varmstartsbeslut och sammanfattning för mockläget. |
-| `frontend/src/lib/jointMock.ts` | Mockad datakälla som spelar upp fixturen i verklig tid (stopp, polling med `after`). |
+| `frontend/src/lib/jointCompare.ts` | Vymodell för jämförelsen mot föregående körning, utan beräknade skillnader när körningarna inte är jämförbara. |
+| `frontend/src/lib/jointScenarioInfo.ts` | Urval i klartext och uppgift om körtid för scenariot. |
+| `frontend/src/lib/jointJobMemory.ts` | Minne för pågående körning så att den återupptas efter omladdning. |
 | `frontend/src/lib/useJointJob.ts` | React-hook för start, polling var sekund, stopp och återupptagning av pågående jobb. |
-| `frontend/src/lib/joint.test.ts` | Tester för kontraktsform, tillståndsavledning, ärliga texter och mockad datakälla (`npm test`, endast Node). |
-| `frontend/src/components/joint/joint-page.tsx` | Sidan "Gemensam körning" med flikarna Starta, Pågående körning och Resultat och uppspelning. |
-| `frontend/src/components/joint/start-panel.tsx` | Startpanel: scenario, varmstartsväljare med kandidatlista och avancerade resurser. |
-| `frontend/src/components/joint/live-view.tsx` | Livevy med status, förbrukad tid, stoppknapp och anslutningsvarning. |
-| `frontend/src/components/joint/run-panels.tsx` | Gemensam sammansättning av paneler för live och uppspelning. |
-| `frontend/src/components/joint/phase-band.tsx` | Fasband med steg, status och förbrukad tid. |
-| `frontend/src/components/joint/cost-panel.tsx` | Kostnadsgraf (verifierad kostnad, undre gräns, första lösning), gap och ärlig intervalltext. |
-| `frontend/src/components/joint/day-grid.tsx` | Dagrutnät per kontrolltyp, antal samtidiga kontroller och trådar per kontroll. |
-| `frontend/src/components/joint/resource-box.tsx` | Resursruta: tid, trådar, minne och parallellitet. |
-| `frontend/src/components/joint/result-view.tsx` | Resultatvy: sammanfattning och de tre domarna isär, med varning mot sammanblandning. |
-| `frontend/src/components/joint/warm-start-card.tsx` | Varmstartsbeslut med skäl, källa, omkontroll och ändrade parametrar. |
-| `frontend/src/components/joint/replay.tsx` | Uppspelning av en avslutad körnings händelser med tidsmarkör. |
-| `frontend/src/components/joint/status-chip.tsx` | Statusbrickor med ikon och text för dagar, domar och jobb. |
+| `frontend/src/lib/paramUnits.ts` | Enheter och omräkning mellan kronor i vyn och öre i API:et. |
+| `frontend/src/lib/paramValues.ts` | Utkast, tolkning och lokal validering av parametervärden, inklusive bemanningstrappan. |
+| `frontend/src/lib/paramFormat.ts` | Parametervärden i klartext. |
+| `frontend/src/lib/paramDiff.ts` | Ändringar jämfört med scenariot, grupper, filter och serverfel per parameter. |
+| `frontend/src/lib/useParameterEditor.ts` | Hook för parameterredigering: utkast, ändringslista, återställning och serverfel. |
+| `frontend/src/lib/runOptions.ts` | Val av start från förra körningen och datorresurser. |
+| `frontend/src/lib/underlay.ts`, `underlayApi.ts`, `useUnderlay.ts` | Underlag: avgör om underlaget saknas, anrop mot `/api/settings`, `/api/preparation` och `/api/jobs/{id}`, samt hook med jobbpollning. |
+| `frontend/src/lib/testing/jointFixture.ts`, `paramFixture.ts` | Syntetiska händelser och parametrar som bara används av testerna. Appkod får aldrig importera dem. |
+| `frontend/src/lib/*.test.ts` | Tester (`npm test`, endast Node): kontraktsform, tillståndsavledning, ärliga texter, parametervalidering och enhetsomräkning, ändringsberäkning, jämförelse, körval, underlag och en gränskontroll som fäller bygget om appkod importerar testdata eller anropar borttagna rutter. |
+| `frontend/src/components/joint/joint-page.tsx` | Sidan Optimering med flikarna Ställ in och kör, Körning och Resultat och jämförelse. |
+| `frontend/src/components/joint/scenario-picker.tsx`, `start-panel.tsx`, `run-options.tsx`, `save-scenario.tsx` | Val av scenario med urval i klartext, startpanel med Kör, start från förra körningen med datorresurser, och sparande av ändringarna som nytt scenario. |
+| `frontend/src/components/joint/params/` | Parameterredigeringen: lista per grupp, rad med enhet, hjälptext och återställning, inmatning per typ, listor, bemanningstrappa och fältet med antalet ändringar. |
+| `frontend/src/components/joint/live-view.tsx`, `run-panels.tsx`, `phase-band.tsx`, `cost-panel.tsx`, `day-grid.tsx`, `resource-box.tsx` | Livevy: status och stopp, fasband, kostnadsgraf, dagrutnät med verkligt "pågår" och resursruta. |
+| `frontend/src/components/joint/result-view.tsx`, `summary-card.tsx`, `compare-section.tsx`, `verdict-cards.tsx`, `warm-start-card.tsx`, `how-to-read.tsx`, `replay.tsx`, `status-chip.tsx` | Resultatvy: sammanfattning, jämförelse mot föregående körning, de tre domarna isär, beslut om start från förra körningen, förklaring av hur resultatet läses och uppspelning av en avslutad körning. |
+| `frontend/src/components/joint/underlay-notice.tsx` | Ruta när underlaget saknas, med knapp till sidan Underlag. |
+| `frontend/src/components/underlay/` | Sidan Underlag: val av källdatakatalog och förberedelse av underlaget. |
 
 ## Rapporter och genererade filer
 
