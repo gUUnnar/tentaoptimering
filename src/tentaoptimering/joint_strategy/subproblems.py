@@ -23,7 +23,7 @@ from ortools.sat.python import cp_model
 from ..joint_contract import JointOptimizationInput, Room, SolverSettings
 from ..joint_optimizer import _build_variables_and_constraints, _extract
 from .aggregate import cp_solver
-from .resources import CancelToken, solve_cancellable
+from .resources import CancelToken, solve_cancellable, wall_time
 
 LOG = logging.getLogger(__name__)
 MIN_STEP = 0.5  # seconds; a step that cannot get this much time before the deadline is not started
@@ -129,10 +129,7 @@ def log_step(kind: str, days, size: int, started: float, built: float, solver: c
     """Record build and solve time separately; flag a solve that ran past its limit."""
     done = time.perf_counter()
     first, last = (min(days), max(days)) if days else ("-", "-")
-    try:
-        solved = solver.WallTime()
-    except RuntimeError:  # the run was cancelled before this solver was started
-        solved = 0.0
+    solved = wall_time(solver)
     LOG.debug("%s %s..%s (%d): build %.2f s, solve %.2f s of %.2f s, total %.2f s",
               kind, first, last, size, built - started, solved, limit, done - started)
     if solved > limit + 1.0:

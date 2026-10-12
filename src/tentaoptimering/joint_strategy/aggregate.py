@@ -26,7 +26,7 @@ from ortools.sat.python import cp_model
 
 from ..joint_contract import ExamDemand, JointOptimizationInput, Room, SolverSettings, StaffingStep
 from ..joint_optimizer import _conflicts, _overlap, staffing_cut_edges
-from .resources import CancelToken, solve_cancellable
+from .resources import CancelToken, solve_cancellable, wall_time
 
 # A cut excludes, or prices, master solutions where every listed exam lies on the listed days and no
 # room outside `rooms` is owned. kind "rooms": that combination is infeasible; kind "pool": it needs
@@ -72,7 +72,7 @@ def solve_master(
     built = time.perf_counter()
     solver = cp_solver(max(0.1, time_limit - (built - started)), settings)
     status = solve_cancellable(solver, model, cancel)
-    LOG.debug("master build %.2f s, solve %.2f s of %.2f s", built - started, solver.WallTime(), time_limit - (built - started))
+    LOG.debug("master build %.2f s, solve %.2f s of %.2f s", built - started, wall_time(solver), time_limit - (built - started))
     wall = time.perf_counter() - started
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
         name = "infeasible" if status == cp_model.INFEASIBLE else "unknown"

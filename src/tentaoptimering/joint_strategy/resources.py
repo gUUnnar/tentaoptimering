@@ -154,6 +154,14 @@ class CancelToken:
                 self._solvers.discard(solver)
 
 
+def wall_time(solver: cp_model.CpSolver) -> float:
+    """CP-SAT's solve time; 0 for a solver that was never started (a cancelled run does not start it)."""
+    try:
+        return solver.WallTime()
+    except RuntimeError:
+        return 0.0
+
+
 def solve_cancellable(solver: cp_model.CpSolver, model: cp_model.CpModel, cancel: CancelToken | None) -> int:
     """`solver.Solve(model)` that returns UNKNOWN at once if the run is cancelled, and stops when it is."""
     if cancel is None:

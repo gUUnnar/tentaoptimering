@@ -56,6 +56,8 @@ def solve_joint_optimization(
         return solve_decomposed(problem, seed, budget, cancel, report)
     if problem.solver.strategy != "monolithic":
         raise ValueError(f"Okänd lösningsstrategi: {problem.solver.strategy}")
+    from .joint_strategy.resources import solve_cancellable  # imported here: the strategy package builds on this module
+
     if report is not None and seed is not None:
         report.status = "hint_only"
         report.notes.append("Den monolitiska strategin kontrollerar inte en tidigare placering särskilt; den används bara som ledtråd.")
@@ -83,7 +85,7 @@ def solve_joint_optimization(
     started = time.perf_counter()
     solver = _solver(problem)
     solver.parameters.relative_gap_limit = problem.solver.relative_gap_limit
-    status = solver.Solve(model)
+    status = solve_cancellable(solver, model, cancel)
     phase_one_seconds = time.perf_counter() - started
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
         return _empty_result(problem, solver, status, phase_one_seconds)
@@ -100,7 +102,7 @@ def solve_joint_optimization(
             model.Add(total_cost == optimum)
             model.Minimize(sum(changed_terms))
             preference_solver = _solver(problem, remaining)
-            preference_status = preference_solver.Solve(model)
+            preference_status = solve_cancellable(preference_solver, model, cancel)
             if preference_status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
                 solver = preference_solver
                 change_status = (

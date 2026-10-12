@@ -451,7 +451,7 @@ Detta steg handlar om genomförandets effektivitet. Parametrar, kostnadsdefiniti
 
 - **Kostnadsfunktion och tillåtna lösningar är oförändrade.** Dagmodellen, relaxationen och kostnadsberäkningen är samma kod. Parallelliseringen och varmstarten ändrar bara när och i vilken ordning kontroller körs, och vad som är första sökpunkt.
 - **En sparad lösning godkänns aldrig av tidigare status.** Se kandidatkraven och omkontrollen ovan. Den nya körningen eftervalideras dessutom oberoende som alla körningar.
-- **Tester** (`tests/test_joint_parallel_checks.py`, `tests/test_joint_warm_start.py`; hela sviten: 211 tester gröna):
+- **Tester** (`tests/test_joint_parallel_checks.py`, `tests/test_joint_warm_start.py`; hela sviten: 219 tester gröna):
   - trådbudgeten överskrids aldrig (invariant över batchstorlekar och trådantal), och minnesgränsen begränsar samtidigheten;
   - resultatet är identiskt när kontrollerna fördröjs slumpmässigt, så att färdigordningen blandas (deterministisk CP-SAT);
   - parallell och sekventiell körning når samma optimum som den monolitiska modellen på 10 slumpade fall med extern hyra och på snittvägen, och alla resultat passerar eftervalideringen;
@@ -460,7 +460,9 @@ Detta steg handlar om genomförandets effektivitet. Parametrar, kostnadsdefiniti
   - en kontroll som missat deadline eller avbrutits cachas inte;
   - varmstart: accepterad (kostnad omräknad med nya priser: 1 900 öre för den gamla placeringen, 1 800 öre optimum), avvisad p.g.a. otillåtet pass, tentor utan tidigare placering, dag som inte längre ryms (bevisat) och påhittad placering. En saknad sal noteras, och kontrollen görs med återstående salar. Kostnaden är i alla fall lika med den kalla körningens;
   - körningsval: fel hash, ändrat resultat med uppdaterat manifest (ny validering underkänner trots sparad pass), sparad underkänd status, körning utan placering, ogiltiga id:n, körningar av annat problem, och CLI-flöden med `--warm-start`, `--threads`, `--memory-mb` och `--sequential-day-checks`.
-  - Testerna hittade ett fel i avbrottsvägen: loggningen läste en lösares tid när lösaren aldrig startats. Det är rättat.
+  - Testerna och granskningen hittade två fel i avbrottsvägen, nu rättade med riktade regressionstester (`tests/test_joint_cancel_regressions.py`):
+    - `WallTime()` lästes på en lösare som aldrig startats, i loggningen av dagkontrollerna och av relaxationen. Ett avbrott mellan varvskontrollen och relaxationens lösning kraschade därför körningen. Nu används en gemensam `wall_time()` som ger 0 för en ostartad lösare.
+    - Den monolitiska strategin ignorerade avbrottstoken i båda faserna. Båda använder nu samma `solve_cancellable`. Ett avbrott före första fasen ger `no_feasibility_conclusion` utan placering, och aldrig `infeasible`. Ett avbrott mellan faserna eller under den andra fasen behåller det verifierade ekonomiska optimumet. Ett avbrott mitt i första fasen ger en fullständig validerad lösning eller ingen.
 
 ### 9.3 Samma dagkontroller, sekventiellt och parallellt
 
