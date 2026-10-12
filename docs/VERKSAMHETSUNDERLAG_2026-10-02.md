@@ -35,7 +35,7 @@ Presentationens månadsvis angivna *planerade platser* januari–juni 2026:
 
 Kurvorna jämför **närvaro**, **anmälda i Ladok** och **justerat totalt antal skrivplatser** dag för dag. De är olika mått och får inte blandas i efterfrågevariabeln. Kurvorna visar tydliga toppar i **januari, mars och början av juni**. Bilden anger ungefär **35 % papperstentor** och **65 % e-tentor**, utan tillräckligt definierad beräkningsmetod för att använda talen som verifierad digitalandel i modellen.
 
-**Konsekvens för nuvarande testfall:** `config/scenarios/joint_full_term.toml` i PR #11 avser endast **2026-01-12–2026-03-31**, trots etiketten ”Hela terminen VT 2026”. Det täcker inte topparna i april–juni, särskilt inte juni. Ändra inte tidsgränserna tyst: välj antingen en rättvisande etikett för kvartalsurvalet eller definiera och prestandatesta ett verkligt helterminsurval. Redovisa även exkluderad/oklar efterfrågan.
+**Konsekvens för nuvarande testfall:** Vid den första genomgången av PR #11 kallades intervallet **2026-01-12–2026-03-31** felaktigt ”Hela terminen”. I senare commit är testscenariot omdöpt till `config/scenarios/joint_underlay_period.toml` med rättvisande periodetikett. Den nuvarande datapopulationen täcker inte april–juni, särskilt inte junis toppar. Med en ny dataleverans ska användaren kunna välja valfri stödd period; inga datum eller saknade tentor får fyllas i tyst. Redovisa exkluderad/oklar efterfrågan.
 
 ## 3. Lokalrelaterade ekonomiska uppgifter (bilden ”Pengar i sjön” för VT-26)
 
@@ -74,7 +74,7 @@ Vid fullt utnyttjande av samtliga salar förmiddag och eftermiddag anges **64 ar
 
 **Bemanningsrelaterad tid/kostnad för hela 2025:** **1 228,5 timmar ”Bom”**, **191,5 timmar ”Övt”** samt **17 124 timmar totalt**; presentationen anger cirka **7 % bomtid**. De redovisade ungefärliga kostnaderna är **250 000 kr för bomtid** och **44 000 kr för ”mertid”** (samtidigt som kolumnrubriken säger ”Övt”), sammanlagt **294 000 kr**, avrundat till ”nästan 300 000 kr”. Mertid/övertid bör definieras och stämmas av före kostnadsmodellering.
 
-**Skillnad mot befintligt exempel:** `joint_full_term.toml` använder trappan **1/2/3 vakter upp till 50/150/300**, vilket inte motsvarar verksamhetsuppgiften ovan. Ändra inte en giltig PoC-testkonfiguration till påstått verifierad verklighet utan beslut; gör avvikelsen tydlig, pröva gärna en separat sensitivitet med den nya trappan och säkerställ testad täckning även över 300.
+**Skillnad mot befintligt exempel:** `joint_underlay_period.toml` använder trappan **1/2/3 vakter upp till 50/150/300**, vilket inte motsvarar verksamhetsuppgiften ovan. Ändra inte en giltig PoC-testkonfiguration till påstått verifierad verklighet utan beslut; gör avvikelsen tydlig, pröva gärna en separat sensitivitet med den nya trappan och säkerställ testad täckning även över 300.
 
 ## 5. Frågor till verksamhets- och dataägare
 
