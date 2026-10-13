@@ -69,23 +69,25 @@ Tre lager med tydliga gränser.
 
 ### 4.1 Datakvalitetslager (inläsning)
 
-Varje bokningsrad klassificeras av **regler i versionsspårad konfiguration** till ett resurstillstånd. Tillståndet härleds ur fälten, det antas inte.
+**Uppdaterad efter genomförande (se avsnitt 9).** Den första skissen i det här avsnittet förde samman allt i ett uteslutande resurstillstånd. Det är ersatt av **fyra oberoende dimensioner**: en bokningsrad har ett värde på var och en, och dimensionerna blandas inte.
 
-| Tillstånd | Betydelse | Hur det kan härledas |
+| Dimension | Frågan | Värden |
 |---|---|---|
-| `room_known` | Sal namngiven och matchad mot salsregistret | Salnamn finns och matchar `room_inventory` |
-| `room_named_unregistered` | Sal namngiven men saknas i registret (kapacitet okänd) | Salnamn finns, ingen matchning |
-| `address_level_declared` | Bokningen avser avsiktligt hela adressen eller en icke-specificerad plats | **Kräver deklaration** i konfigurationen (adress eller bokningstyp), t.ex. efter bekräftelse om Klostergatan 3. Härleds inte ur frånvaro av sal. |
-| `room_pending` | Sal ännu inte tilldelad | Härleds av status (t.ex. "Under behandling") eller av ett uttryckligt fält när sådant finns |
-| `not_physical` | Ingen fysisk lokal (hemtenta, extern) | Deklarerad tabell över pseudo-lokaler ("Hemma", "Hemtenta") |
-| `room_unknown` | Sal saknas utan känd förklaring | **Standard** när sal saknas och inget annat tillstånd kan visas |
-| `invalid` | Motsägelsefullt eller fält med fel innehåll | Regler (t.ex. adressfält som inte är en adress; salnamn som inte finns i någon adress) |
+| **Resursidentifiering** | Vad identifierar datat? (Inte varför något saknas.) | `room_matched`, `room_named_not_in_register`, `address_only`, `no_address`, `declared_non_physical` |
+| **Datakvalitet** | Vilka fynd finns på raden? (Flera kan gälla samtidigt.) | Lista av flaggor: `room_missing`, `room_not_in_register`, `capacity_missing_in_register`, `places_exceed_capacity`, `places_missing_or_zero`, `date_missing`, `time_unparseable`, `status_unclassified`, `address_field_not_an_address` |
+| **Källtäckning** | Ligger bokningen inom den period en annan källa täcker? | `ladok_coverage`: `within`, `outside`, `unknown`. Fönstret härleds ur källans datum (eller sätts uttryckligen i konfigurationen). |
+| **Kopplingssäkerhet** | Hur säker är kopplingen bokning till Ladok-aktivitet? | `unique`, `ambiguous`, `none_within_coverage`, `none_outside_coverage`, `none_coverage_unknown`, `not_assessed` |
 
-Därtill ett oberoende tillstånd för **täckning** per källa (`outside_source_coverage`) som härleds ur källans första och sista datum, och ett för **matchning** mellan datakällor (`link_unique`, `link_ambiguous`, `link_none_within_coverage`, `outside_source_coverage`).
+Därtill bokningsstatus som klass (`cancelled`, `active`, `unclassified`) enligt konfigurationen.
 
-Reglerna ligger i en konfigurationsfil, till exempel `config/booking_data_states.toml`, med en källa och ett skäl per regel. **Förinställningen är försiktig:** bara det som kan härledas ur data klassificeras automatiskt; allt annat blir `room_unknown`.
+Några konsekvenser:
 
-Nya uttag får sina tillstånd automatiskt: en bokning med korrekt sal blir `room_known` utan kodändring (princip 3).
+- "Sal saknas" är ett **fynd** (`room_missing`) på en rad som identifieras till en adress (`address_only`). Det säger inte *varför* sal saknas. Fyra möjliga orsaker (adresskonvention, ännu ej tilldelad, icke-fysisk lokal, felaktig data) skiljs inte åt i datat och får inte skiljas åt av lagret. De kan bara skiljas åt av en uppgift från dataägaren, som läggs in som en **verifierad regel**.
+- En deklaration att en adress avser adressnivå (`address_level_rule`) ändrar inte vad datat identifierar. Den sätter en separat egenskap (`declared_address_level`) som senare steg får läsa.
+- En bokning kan vara `address_only`, `outside` Ladok-täckning, ha `ambiguous` koppling och oklassad status samtidigt. Det är oberoende fakta.
+- "Under behandling" och "Andring begard" har ingen regel och är `unclassified`. De antas inte betyda att sal tilldelas senare.
+
+Reglerna ligger i `config/booking_data_quality.toml`. **Varje regel har `verified` och `source`; en overifierad regel klassificerar ingenting** och ger bara en kandidatnotering. Ett nytt uttag med korrekta salar får `room_matched` utan kodändring, och nya verifierade uppgifter eller andra kolumnnamn läggs till i konfigurationen.
 
 ### 4.2 Domänmodell (oberoende av datakvalitet)
 
@@ -96,6 +98,8 @@ En bokning är en **reservation** av en resurs i en tidsrymd:
 Modellen och dess regler talar om reservationer och resurstyper, inte om "bokningsrader utan sal". En fullständig uppsättning blir reservationer av typ `rum`. En adressreservation är en riktig modelleringsmöjlighet (hela adressen eller en pool av platser) som aktiveras av `address_level_declared`, inte av att data saknas.
 
 ### 4.3 Policylager (undantagshantering)
+
+> Utkast för ett senare steg. Tabellen använder resurstillstånd som förkortning för kombinationer av de fyra dimensionerna ovan. Inget i den är genomfört, och klassificeringen styr ingenting förrän policyn är beslutad.
 
 För varje tillstånd anges hur det behandlas, **per planeringsläge**. Policyn är en parameter i katalogen (`bookings.state_policy.*`) som övriga parametrar, med grund och spårbarhet.
 
@@ -161,3 +165,16 @@ Tester i PR #14/#15 täcker i dag S-A och en blandad uppsättning av enklare sla
 3. A1–A5 på PR #14/#15, med testmatrisen i avsnitt 6.
 4. A6 och A8 separat, eftersom de rör körningens redovisning och motorns indata.
 5. Steg 3 (hänsyn till redan lagda bokningar i optimeringen) påbörjas först när resurstillstånden finns och policyn är beslutad.
+
+## 9. Status efter genomförande
+
+| Åtgärd | Status |
+|---|---|
+| A7 Ny design för steg 3 | **Genomförd** i PR #13: avsaknad av salnamn leder aldrig automatiskt till spärrning eller adressbaserad kapacitetsreduktion. |
+| A6 Härledd `planning_basis` | **Genomförd** i PR #13: läget härleds ur motorns förmåga och datat (operativt godkända salar, provisorisk efterfrågan) och skälen visas. |
+| A1 Datakvalitets- och klassificeringslager | **Genomfört som fristående lager** (`src/tentaoptimering/booking_quality/`, PR #14). Påverkar inte optimeringsmotorn och styr ingen spärrning, kapacitetsreduktion eller godkännande. |
+| A2–A5 Vyerna följer lagret | **Genomförda** i PR #15: "sal ej angiven" ersatt av resursidentifiering, Ladok-täckning skild från kopplingskvalitet, uttrycklig länkregel, kapacitetsmotsägelser flaggade. |
+| A8 `rooms.eligibility_basis` | Ej genomförd (rör motorns indata; kräver beslut). |
+| Steg 3 i motorn | Ej påbörjad. Väntar på bättre bokningsuttag, svar på `docs/FRAGOR_TILL_DATAAGARE.md` och beslutad policy. |
+
+Dimensionernas oberoende och konfigurationsstyrningen prövas av `tests/test_booking_quality.py` (S-A–S-F på syntetiska uttag).
