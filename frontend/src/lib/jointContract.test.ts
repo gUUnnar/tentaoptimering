@@ -34,6 +34,8 @@ const SUMMARY_FIELDS: Record<string, [(out: JointSummary) => unknown, (raw: Raw)
   parameters_changed_count: [out => out.parameters_changed_count, raw => raw.parameters_changed_count],
   parameters_changed_from_default: [out => ids(out), raw => raw.parameters_changed_from_default],
   problem_id: [out => out.problem_id, raw => raw.problem_id],
+  period: [out => out.period, raw => raw.period],
+  planning_basis: [out => out.planning_basis, raw => raw.planning_basis],
   run_id: [out => out.run_id, raw => raw.run_id],
   scenario_id: [out => out.scenario_id, raw => raw.scenario_id],
   solver_outcome: [out => out.outcome, raw => raw.solver_outcome],
@@ -217,7 +219,7 @@ describe("jämförelse: riktiga svar genom adaptern", () => {
     assert.deepEqual(box.groups.map(group => group.items), [["Årskostnad per vaktresurs"]])
     const view = interpretationView(result)
     assert.equal(view.tone, "not_interpretable")
-    assert.match(view.text, /^Kostnadsantagandena har ändrats/)
+    assert.match(view.text, /^Kostnads- och bemanningsantagandena har ändrats/)
     assert.match(view.text, /Ingen kostnadsskillnad redovisas/)
 
     const rows = metricRows(result)

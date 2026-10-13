@@ -7,6 +7,7 @@ they can be used (and tested) without an HTTP server. Observation never changes 
 
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,7 @@ from .job_manager import LocalJobManager
 from .joint_compare import compare_runs
 from .joint_inputs import run_real_subset
 from .joint_options import options_payload, room_selection_errors
+from .joint_period import PeriodRequest, coverage_payload, period_report, with_period
 from .joint_parameters import describe_parameters
 from .joint_progress import EVENTS_FILE, ProgressSink, read_events
 from .joint_scenarios import (
@@ -30,7 +32,7 @@ from .parameter_catalog import load_parameter_catalog
 
 __all__ = [
     "JOINT_SCENARIO_SCHEMA", "JointRunRequest", "ParameterValidationError", "ScenarioConflictError", "ScenarioCreate",
-    "cancel_job", "compare_runs", "create_scenario", "job_events", "list_scenarios", "options_payload_for",
+    "cancel_job", "compare_runs", "create_scenario", "job_events", "list_scenarios", "options_payload_for", "period_payload_for",
     "parameters_payload", "run_events", "run_summary", "scenario_path", "start_joint_run",
 ]
 RUNNING, COMPLETED, FAILED, CANCELLED = "running", "completed", "failed", "cancelled"
@@ -43,6 +45,7 @@ class JointRunRequest(BaseModel):
     memory_mb: int | None = Field(None, ge=1)
     parallel_day_checks: bool = True
     parameters: dict[str, Any] = Field(default_factory=dict)  # changes relative to the scenario: {parameter id: value}
+    period: PeriodRequest | None = None  # planning period chosen in the interface; None = the scenario's own
 
 
 def list_scenarios(
@@ -64,6 +67,24 @@ def parameters_payload(
     path, _ = resolve_scenario(storage, scenario_id, scenarios_dir)
     content = read_scenario(path) or {}
     return describe_parameters(load_parameter_catalog(catalog_path or bundled_joint_catalog_path()), scenario_id, scenario_values(content))
+
+
+def period_payload_for(
+    storage: AppStorage, scenario_id: str, date_from: str | None = None, date_to: str | None = None, scenarios_dir: Path | None = None
+) -> dict[str, Any]:
+    """Data coverage for the period picker; with both dates also the check of that period (`GET /api/joint-runs/period`)."""
+    path, _ = resolve_scenario(storage, scenario_id, scenarios_dir)
+    area = str((read_scenario(path) or {}).get("subset", {}).get("plan_area", ""))
+    payload = coverage_payload(storage.processed_dir, area)
+    payload["scenario_id"] = scenario_id
+    payload["check"] = None
+    if date_from and date_to:
+        try:
+            first, last = date.fromisoformat(date_from), date.fromisoformat(date_to)
+        except ValueError as error:
+            raise ValueError("Datum måste anges som ÅÅÅÅ-MM-DD.") from error
+        payload["check"] = period_report(storage.processed_dir, area, first, last)
+    return payload
 
 
 def options_payload_for(storage: AppStorage, scenario_id: str, scenarios_dir: Path | None = None) -> dict[str, Any]:
@@ -106,12 +127,18 @@ def start_joint_run(
     original, _ = resolve_scenario(storage, request.scenario, scenarios_dir)
     catalog_file = catalog_path or bundled_joint_catalog_path()
     config, snapshot = original, None
-    if request.parameters:
+    if request.parameters or request.period:
         content = read_scenario(original) or {}
         changes = effective_changes(load_parameter_catalog(catalog_file), content, request.parameters)
         _check_rooms(storage.processed_dir, content, request.parameters)
-        if changes:
-            config = snapshot = write_run_snapshot(storage, merge_changes(content, changes))
+        merged = merge_changes(content, changes)
+        if request.period:
+            clash = sorted({"calendar.start_date", "calendar.end_date"} & set(request.parameters))
+            if clash:
+                raise ValueError(f"Perioden sätter {', '.join(clash)}; ändra inte samma datum som parameter.")
+            merged = with_period(merged, storage.processed_dir, request.period)
+        if changes or request.period:
+            config = snapshot = write_run_snapshot(storage, merged)
     cancel, progress = CancelToken(), ProgressSink()
     budget = ExecutionBudget(request.threads, request.memory_mb, request.parallel_day_checks)
 

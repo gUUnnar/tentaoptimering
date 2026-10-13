@@ -51,7 +51,7 @@ def _write_pair_dataset(path: Path) -> Path:
     pd.DataFrame([row("X"), row("Y")]).to_csv(path / "optimization_demands.csv", index=False, encoding="utf-8-sig")
     pd.DataFrame([
         {"room_id": room, "reference_address": address, "reference_city": "Uppsala", "capacity_seats": 60,
-         "digital_capability_status": "all_places_support_e_exam", "eligible_for_exploratory_capacity_poc": True,
+         "digital_capability_status": "all_places_support_e_exam", "eligible_for_exploratory_capacity_poc": True, "eligible_for_operational_scheduling": False,
          "available_from": None, "available_to": None}
         for room, address in (("uu-r1", "Adress 1"), ("uu-r2", "Adress 2"))
     ]).to_csv(path / "optimization_rooms.csv", index=False, encoding="utf-8-sig")

@@ -1,6 +1,6 @@
 import { CircleX } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { describeVerdict } from "@/lib/jointFormat"
+import { COST_NAME, COST_SCOPE, describeVerdict } from "@/lib/jointFormat"
 import { changedParameters, changedParametersHeading, summaryView, type StatView } from "@/lib/jointSummaryView"
 import type { JointSummary } from "@/lib/jointTypes"
 import { VerdictChip } from "./status-chip"
@@ -18,7 +18,7 @@ export function SummaryCard({ summary, labels }: { summary: JointSummary; labels
       <CardContent className="space-y-3">
         {view.verified ? <>
           <div className={view.statement.proven ? "rounded-md bg-emerald-50 p-3 text-emerald-900" : "rounded-md bg-amber-50 p-3 text-amber-900"}>
-            <div className="text-xs">{view.statement.proven ? "Verifierad kostnad (lägsta möjliga i modellen är bevisad)" : "Kostnadsintervall: undre gräns–verifierad kostnad"}</div>
+            <div className="text-xs">{view.statement.proven ? `${COST_NAME} ${COST_SCOPE} (verifierad; lägsta möjliga i modellen är bevisad)` : `${COST_NAME} ${COST_SCOPE}: intervall från undre gräns till verifierad kostnad`}</div>
             <div className="mt-0.5 text-2xl font-semibold tabular-nums">{view.statement.headline}</div>
             <div className="mt-1 text-xs">{view.statement.note}</div>
             <div className="mt-1 text-xs">Det är en modellkostnad. Faktisk kostnad, teoretisk årlig potential och verifierad realiserbar besparing redovisas separat och framgår inte av denna siffra.</div>
@@ -37,6 +37,7 @@ export function SummaryCard({ summary, labels }: { summary: JointSummary; labels
           </div>
           <Stats stats={view.stats}/>
         </>}
+        <PlanningNote summary={summary}/>
         <div className="text-xs text-slate-900">
           <p className="font-semibold">{changedParametersHeading(summary)}</p>
           {changed.length > 0 && <ul className="mt-1 flex flex-wrap gap-1.5" aria-label="Parametrar som avviker från standardvärdet">
@@ -53,4 +54,18 @@ function Stats({ stats }: { stats: StatView[] }) {
   return <dl className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
     {stats.map(stat => <div key={stat.label} className="rounded-md border p-2.5"><dt className="text-xs text-slate-900">{stat.label}</dt><dd className="mt-0.5 text-base font-semibold tabular-nums">{stat.value}</dd>{stat.hint && <p className="mt-0.5 text-[11px] text-slate-800">{stat.hint}</p>}</div>)}
   </dl>
+}
+
+/** Perioden körningen planerades för och hur resultatet ska läsas: explorativt, utan kännedom om bokningar utanför de valda tentorna. */
+function PlanningNote({ summary }: { summary: JointSummary }) {
+  const { date_from: from, date_to: to } = summary.period
+  const basis = summary.planning_basis
+  if (!from && !to && !basis) return null
+  return <div className="rounded-md bg-slate-100 p-2.5 text-xs text-slate-900">
+    {(from || to) && <p><strong>Planeringsperiod:</strong> {from ?? "början"} – {to ?? "slutet"}</p>}
+    {summary.period.partial && <p className="mt-0.5 rounded bg-amber-100 p-1.5 font-medium text-amber-950">Delvis planerad period: du valde {summary.period.requested_from} – {summary.period.requested_to}, men underlaget täcker bara {from} – {to} (godkänd kortare period). Resultatet gäller inte hela den valda perioden.</p>}
+    {basis && <p className="mt-0.5"><strong>{basis.label}.</strong> {basis.reasons.length > 0 ? "Skäl:" : basis.note}</p>}
+    {basis && basis.reasons.length > 0 && <ul className="ml-4 list-disc">{basis.reasons.map(reason => <li key={reason.code}>{reason.text}</li>)}</ul>}
+    {basis && <p className="mt-0.5"><strong>{basis.cost_name}.</strong> {basis.cost_note}</p>}
+  </div>
 }

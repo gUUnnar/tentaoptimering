@@ -42,7 +42,10 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `docs/GEMENSAM_CP_SAT_FORSTA_LEVERANS.md` | Levererad modell, solverstatus, handräknade facit, verklig delmängdskörning och kvarstående begränsningar. |
 | `docs/OBEROENDE_EFTERVALIDERING.md` | Valideringens design, regelkatalog, verkliga statusar för 12-tentakörningen, kvarstående datagap och hur den körs. |
 | `docs/OPTIMERINGSSTRATEGI.md` | Analys av den monolitiska modellens beräkningskostnad, den rekommenderade strategin (aggregerad relaxation och daglig kontroll), mätningar på frysta verkliga instanser och kvarstående risker. |
+| `docs/PERIODVAL_OCH_SNABBA_KORNINGAR.md` | Valbar planeringsperiod i gränssnittet och dess regler, mätning av snabba körningar och teknisk design (ej implementerad) för hänsyn till redan lagda bokningar vid korttidsplanering. |
 | `docs/VERKSAMHETSPAVERKAN_2026-10-12.md` | Hur verksamhetsunderlaget 2 oktober påverkar modellen: period (Ladok slutar 31 mars), bemanningstrappa, tre pass, lokalbestånd och RPS, kostnadsbegrepp och Nuläge, med körda experiment. Inget preliminärt värde görs till verifierad regel. |
+| `docs/ARKITEKTURPRINCIPER_DATAKVALITET.md` | Principer för att hålla verksamhetsmodell och datakvalitet isär: vad saknad sal är i dagens uttag (mätt), granskning av PR #13–15 mot principerna, föreslagen arkitektur med resurstillstånd och policy per planeringsläge, begränsade korrigeringar, testmatris och frågor till verksamhetsägaren. |
+| `docs/FRAGOR_TILL_DATAAGARE.md` | Frågor till dataägaren om bokningsuttaget (sal, status, icke-fysiska lokaler, salsregister, Ladok-täckning) och om tentavakter, med siffror ur datakvalitetsrapporten och hur svaren läggs in som verifierade regler. |
 | `docs/KOSTNADSMODELL.md` | Avgränsning mellan resursbehov, intern kostnadsfördelning och realiserbar besparing. |
 | `docs/OPTIMERINGSUNDERLAG.md` | Korn, relationsregler och tillåten användning av det maskinläsbara underlaget före motorbygge. |
 | `docs/MALARKITEKTUR_ANALYS_2026-10-09.md` | Beslutsunderlag och leveransplan för omtaget (arkitektur, Nuläge, CP-SAT-restriktioner, steg, rensningsverifiering). Tillfälligt tills omtaget är genomfört. |
@@ -66,6 +69,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `joint_optimizer.py` | Ny CP-SAT-kärna som gemensamt optimerar kalenderpass, faktiska salar, bemanningspool och jämförbar kostnad utan partiell placering. |
 | `joint_inputs.py` | Adapter (inklusive tolkning av tidsintervallet `HH:MM-HH:MM` till minuter) och körningslagring för det verkliga urvalet (namngivna tentor eller hela terminen enligt regel). Sparar den använda scenariofilen som `joint_scenario.toml` i körningsmappen. |
 | `joint_selection.py` | Urval av tentor ur `[subset]`: antingen `exam_event_ids` eller regeln `selection = "all_ready"` med valfritt `date_from`/`date_to`; exakt ett av sätten, annars svenskt fel. |
+| `joint_period.py` | Valbar planeringsperiod: datatäckning per källa och dag (`GET /api/joint-runs/period`), kontroll av vald period (tentor som kan planeras, saknat deltagarantal, period utanför underlaget), det scenario en period ger (urval och kalender skärs till perioden) och `PLANNING_BASIS` som märker varje resultat som explorativt (känner inte bokningar utanför de valda tentorna). |
 | `joint_options.py` | Valmöjligheter för ett scenario (`GET /api/joint-runs/options`): salarna motorn kan överväga i planeringsområdet (samma urval som motorn bygger sina salar av) med läsbar etikett, byggnad, kapacitet och digitalt stöd, samt de observerade tentamenstyperna med antal tentor. Innehåller också kontrollen av `rooms.selection` (okänt sal-id är ett svenskt fel, aldrig tyst ignorerat). Saknas underlaget blir listorna tomma. |
 | `booking_views.py` | Skrivskyddade vyer över historiska bokningar utan optimeringskörning: platser med bokningar, en lokal över ett datumintervall (bokningar, bokad tid utan dubbelräkning av överlapp, bokade platser, högsta samtidiga bokning mot salens kapacitet), sökning av bokade tentamina och en tentamen med alla sina placeringar och Ladok-kopplingens säkerhet. Kapacitet används bara för namngiven sal; verklig närvaro redovisas som okänd. |
 | `booking_api.py` | Rutterna `/api/bookings/locations`, `/location`, `/exams` och `/exams/{id}`; fel som 404 (saknat underlag) eller 422 (ogiltig begäran) med svensk text. |
@@ -121,6 +125,8 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `tests/test_joint_warm_start.py` | Varmstart: accepteras och avvisas med redovisade skäl, kostnaden räknas om med de nya priserna, sparad verifieringsstatus godtas aldrig, körningsval via sparade artefakter och CLI. |
 | `tests/test_joint_progress.py` | Händelseström: trådsäker ordning, fil per rad, svalda fel, identiskt lösarresultat med och utan sink, händelser för faser/dagkontroller/lösningar/gränser/varmstart, samt samma artefakter plus `joint_events.jsonl`. |
 | `tests/test_joint_api.py` | Gemensamma körningar via API-lagret: start, händelser med `after`, avbrott (fullständigt verifierat resultat eller inget), uppspelning, sammanfattning, id-validering och rutter över HTTP. |
+| `tests/test_joint_period.py` | Periodval på syntetiskt underlag: täckning, dag och vecka, period utanför eller delvis utanför underlaget, tomma och omvända perioder, scenario med namngivna tentor, oförändrat originalscenario och unika körnings-id inom samma sekund. |
+| `tests/test_joint_period_run.py` | Körning för en dag och en vecka mot det riktiga underlaget genom ordinarie API, motor och eftervalidering (kräver `data/processed`): antal tentor mot oberoende räkning, märkning som explorativ, ojämförbara perioder, avvisad period utanför underlaget. |
 | `tests/test_joint_options.py` | Val av salar och tentamenstyper: salar och typer med rätt antal på syntetiskt underlag, tomt underlag, okänd sal (422 på båda rutterna och `ValueError` i dataadaptern), oförändrat beteende för giltiga val, id-validering och, om data finns, antal mot pandas för hela terminen. |
 | `tests/test_booking_views.py` | Bokningsvyerna på syntetiska rader med exakta förväntningar (överlapp, avbokade, bara adress, saknad kapacitet, period utanför underlaget, tvetydig Ladok-koppling), HTTP-rutterna och, om data finns, antal mot oberoende pandas-räkning. |
 | `tests/test_booking_overview_compare.py` | Översikt och jämförelse på syntetiska bokningar och en handgjord körning: dubbelräkning av tentamina över flera salar, bokningar utan sal och utan adress, avbokade, adresslistan, `no_link`/`not_in_run`/`compared`, plus oberoende pandas-räkning mot riktiga data. |
@@ -136,6 +142,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `tests/test_normalize.py` | Säkrar central textnormalisering och synliggör blandat bokningskorn. |
 | `tools/inventory.py` | Utvecklingsverktyg: importgraf, nåbarhet, oreferererade symboler, API-rutter, CLI-kommandon och frontendfiler. |
 | `tools/check_code_file_lengths.py` | Fristående kontroll: mål 500 rader, stark varning vid 800 och fel vid 1 000 rader. |
+| `tools/measure_period_runs.py` | Mäter dag, vecka, månad och hela underlaget genom samma API och motor som gränssnittet (tid till första verifierade lösning och total körtid) i en tillfällig lagringsmapp. |
 
 ## Frontend: vyer för gemensam körning
 
@@ -172,6 +179,9 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `frontend/src/components/rooms/findings.tsx` | Visar fynd i datat (räkningar från datakvalitetslagret) och rader som liknar overifierade mönster, utan att förklara varför uppgifter saknas. |
 | `frontend/src/components/rooms/compare-panel.tsx` | Jämförelse mellan den ursprungliga bokningen och placeringen i en vald körning, med märkning av provisorisk koppling. |
 | `frontend/src/lib/bookingView.test.ts` | Test av datum, tidslinje, intervall och mått (verklig närvaro okänd, aldrig noll). |
+| `frontend/src/lib/period.ts` | Planeringsperiod: genvägar (dag, vecka, månad, hela underlaget), kontroll av valet och texter om täckning och kontroll. |
+| `frontend/src/lib/usePeriod.ts` | Hämtar underlagets täckning och serverns kontroll av vald period. |
+| `frontend/src/components/joint/period-picker.tsx` | Periodval i gränssnittet: datum, genvägar, täckning, kontrollresultat och märkningen som explorativ planering. |
 | `frontend/src/lib/underlay.ts`, `underlayApi.ts`, `useUnderlay.ts` | Underlag: avgör om underlaget saknas, anrop mot `/api/settings`, `/api/preparation` och `/api/jobs/{id}`, samt hook med jobbpollning. |
 | `frontend/src/lib/testing/jointFixture.ts`, `paramFixture.ts` | Syntetiska händelser och parametrar som bara används av testerna. Appkod får aldrig importera dem. |
 | `frontend/src/lib/testing/contract/*.json` | Riktiga API-svar (sammanfattning, jämförelse, händelser, valmöjligheter) som ögonblicksbilder av kontraktet. `tests/test_joint_contract_snapshots.py` jämför deras form mot backend och `jointContract.test.ts` matar dem genom klientens adaptrar. |

@@ -1,5 +1,5 @@
 import type { JointSummary } from "./jointTypes.ts"
-import { costStatement, formatCount, formatDuration, formatGap, formatKr, firstSolutionBasisText, outcomeLabel, sourceLabel, type CostStatement } from "./jointFormat.ts"
+import { COST_NAME, COST_SCOPE, costStatement, formatCount, formatDuration, formatGap, formatKr, firstSolutionBasisText, outcomeLabel, sourceLabel, type CostStatement } from "./jointFormat.ts"
 import { gapFraction } from "./jointState.ts"
 
 export type ChangedParameter = { id: string; label: string | null }
@@ -38,7 +38,7 @@ export function summaryView(summary: JointSummary): SummaryView {
     verified: true, reason: null, outcomeText: outcomeLabel(summary.outcome),
     statement: costStatement(summary.cost_ore, summary.bound_ore, summary.proven_optimum),
     stats: [
-      { label: "Verifierad kostnad", hint: "Lägsta kostnad hittills som är kontrollerad", value: formatKr(summary.cost_ore) },
+      { label: "Verifierad kostnad", hint: `Lägsta kontrollerade ${COST_NAME.toLowerCase()} ${COST_SCOPE}`, value: formatKr(summary.cost_ore) },
       { label: "Undre gräns", hint: "Lägsta kostnad som bevisats möjlig", value: formatKr(summary.bound_ore) },
       { label: "Gap", hint: summary.gap_ore !== null ? `${formatKr(summary.gap_ore)} över undre gräns` : "Avstånd mellan de två", value: formatGap(gap) },
       { label: "Flyttade tentor", hint: summary.exams_total !== null ? `av ${formatCount(summary.exams_total)}` : undefined, value: formatCount(summary.changed_exams) },

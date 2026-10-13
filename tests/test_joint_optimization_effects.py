@@ -74,7 +74,7 @@ def _solve(directory: Path, events: list[dict[str, object]], rooms: list[tuple],
     pd.DataFrame(events).to_csv(directory / "optimization_demands.csv", index=False, encoding="utf-8-sig")
     pd.DataFrame([
         {"room_id": room, "reference_address": address, "reference_city": "Uppsala", "capacity_seats": cap,
-         "digital_capability_status": status, "eligible_for_exploratory_capacity_poc": True,
+         "digital_capability_status": status, "eligible_for_exploratory_capacity_poc": True, "eligible_for_operational_scheduling": False,
          "available_from": None, "available_to": None}
         for room, address, cap, status in rooms
     ]).to_csv(directory / "optimization_rooms.csv", index=False, encoding="utf-8-sig")

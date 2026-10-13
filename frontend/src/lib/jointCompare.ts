@@ -49,7 +49,7 @@ export function toCompareResult(raw: unknown): CompareResult {
 
 type MetricKind = "money" | "count" | "seconds"
 export const METRIC_DEFS: { key: MetricKey; label: string; kind: MetricKind; hint?: string }[] = [
-  { key: "cost_ore", label: "Verifierad kostnad", kind: "money", hint: "Lägsta kostnad hittills som är kontrollerad (modellkostnad)." },
+  { key: "cost_ore", label: "Verifierad kostnad", kind: "money", hint: "Lägsta kontrollerade modellerade årliga kapacitetskostnad för valt urval." },
   { key: "lower_bound_ore", label: "Undre gräns", kind: "money", hint: "Lägsta kostnad som bevisats möjlig." },
   { key: "gap_ore", label: "Avstånd mellan dem", kind: "money", hint: "Verifierad kostnad minus undre gräns. Optimum ligger någonstans däremellan." },
   { key: "changed_exams", label: "Flyttade tentor", kind: "count" },
