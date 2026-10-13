@@ -4,7 +4,7 @@ import type { PeriodCheck, PeriodCoverage } from "./jointTypes.ts"
 import { addDays, checkText, coverageText, isIsoDate, partialText, periodInputError, periodPresets, periodRunnable } from "./period.ts"
 import { DEFAULT_RUN_OPTIONS, toStartBody } from "./runOptions.ts"
 
-const BASIS = { mode: "exploratory", fixed_bookings_considered: false, label: "Explorativ planering", note: "n", cost_name: "k", cost_note: "c" }
+const BASIS = { mode: "exploratory", fixed_bookings_considered: false, label: "Explorativ planering", note: "n", cost_name: "k", cost_note: "c", reasons: [] }
 const COVERAGE: PeriodCoverage = {
   data_available: true, planning_basis: BASIS, bookings: null,
   demand: { first: "2026-01-12", last: "2026-03-31", source: "Ladok", ready_events: 10, not_ready_events: 1 },

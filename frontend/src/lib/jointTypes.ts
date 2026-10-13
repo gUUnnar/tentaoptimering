@@ -86,7 +86,11 @@ export type StartJointRunBody = {
 // ---- Planeringsperiod ----------------------------------------------------------------------------------------------
 
 /** Hur en körning ska läsas: explorativ planering känner inte till bokningar utanför de valda tentorna. */
-export type PlanningBasis = { mode: string; fixed_bookings_considered: boolean; label: string; note: string; cost_name: string; cost_note: string }
+export type PlanningBasis = {
+  mode: string; fixed_bookings_considered: boolean; label: string; note: string; cost_name: string; cost_note: string
+  /** Skälen till att resultatet är explorativt, härledda ur motorn och datat. Tom lista = tillförlitlig planering. */
+  reasons: { code: string; text: string }[]
+}
 
 export type PeriodCoverage = {
   data_available: boolean

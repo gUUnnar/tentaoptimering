@@ -13,7 +13,8 @@ import unittest
 
 import pandas as pd
 
-from tentaoptimering.joint_period import PLANNING_BASIS, PeriodError, PeriodRequest, coverage_payload, period_report, with_period
+from tentaoptimering import joint_period
+from tentaoptimering.joint_period import PeriodError, PeriodRequest, coverage_payload, period_report, with_period
 
 READY, MISSING = "ready_provisional_ladok_demand", "missing_configured_demand_value"
 # (event, date, status, city)
@@ -44,7 +45,7 @@ class PeriodTests(unittest.TestCase):
         self.assertEqual({row["date"]: (row["ready"], row["not_ready"]) for row in payload["days"]},
                          {"2026-01-12": (2, 0), "2026-01-13": (0, 1), "2026-01-20": (1, 0), "2026-03-31": (1, 0)})
         self.assertEqual(payload["bookings"]["last"], "2026-08-29")  # shown, but no demand there
-        self.assertEqual(payload["planning_basis"], PLANNING_BASIS)
+        self.assertEqual(payload["planning_basis"], joint_period.planning_basis(self.dir))
 
     def test_without_data_nothing_is_claimed(self) -> None:
         payload = coverage_payload(self.dir / "missing", "Uppsala")
@@ -104,6 +105,44 @@ class PeriodTests(unittest.TestCase):
         named = {**SCENARIO, "subset": {"plan_area": "Uppsala", "exam_event_ids": ["e1"]}}
         with self.assertRaises(PeriodError):
             with_period(named, self.dir, PeriodRequest(date_from=date(2026, 1, 12), date_to=date(2026, 1, 12)))
+
+
+class PlanningBasisTests(unittest.TestCase):
+    """The reading of a result is derived from what the engine can do and what the data says, so it can change without code."""
+
+    def _dir(self, operational: str = "False", demand: bool = True) -> Path:
+        folder = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(folder, ignore_errors=True))
+        pd.DataFrame({"room_id": ["r1", "r2"], "eligible_for_exploratory_capacity_poc": ["True", "True"],
+                      "eligible_for_operational_scheduling": [operational, "True"]}).to_csv(folder / "optimization_rooms.csv", index=False)
+        if demand:
+            pd.DataFrame({"exam_event_id": ["e"], "scheduled_date": ["2026-01-12"], "demand_input_status": [READY], "observed_cities": ["Uppsala"]}).to_csv(
+                folder / "optimization_demands.csv", index=False)
+        return folder
+
+    def test_today_it_is_exploratory_with_each_reason_stated(self) -> None:
+        basis = joint_period.planning_basis(self._dir())
+        codes = [item["code"] for item in basis["reasons"]]
+        self.assertEqual((basis["mode"], basis["fixed_bookings_considered"]), ("exploratory", False))
+        self.assertEqual(codes, ["external_bookings_not_modelled", "rooms_not_operationally_approved", "demand_provisional"])
+        self.assertIn("1 av 2 salar", basis["reasons"][1]["text"])
+
+    def test_approved_rooms_remove_that_reason_and_the_room_check_follows_the_rooms_used(self) -> None:
+        self.assertNotIn("rooms_not_operationally_approved", [item["code"] for item in joint_period.planning_basis(self._dir("True"))["reasons"]])
+        only_r2 = joint_period.planning_basis(self._dir("False"), {"r2"})  # r1 is the unapproved one; the run did not use it
+        self.assertNotIn("rooms_not_operationally_approved", [item["code"] for item in only_r2["reasons"]])
+
+    def test_it_becomes_reliable_only_when_no_reason_holds(self) -> None:
+        folder = self._dir("True")
+        saved = joint_period.ENGINE_MODELS_EXTERNAL_BOOKINGS, joint_period.READY_STATUS
+        self.addCleanup(lambda: (setattr(joint_period, "ENGINE_MODELS_EXTERNAL_BOOKINGS", saved[0]), setattr(joint_period, "READY_STATUS", saved[1])))
+        joint_period.ENGINE_MODELS_EXTERNAL_BOOKINGS, joint_period.READY_STATUS = True, "ready_confirmed"
+        basis = joint_period.planning_basis(folder)
+        self.assertEqual((basis["mode"], basis["reasons"], basis["label"]), ("reliable", [], "Tillförlitlig planering"))
+
+    def test_without_a_room_register_nothing_is_approved(self) -> None:
+        basis = joint_period.planning_basis(Path(tempfile.mkdtemp()))
+        self.assertIn("room_register_missing", [item["code"] for item in basis["reasons"]])
 
 
 class RunDirectoryTests(unittest.TestCase):

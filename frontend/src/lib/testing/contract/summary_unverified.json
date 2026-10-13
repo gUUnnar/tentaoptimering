@@ -3,7 +3,7 @@
   "changed_exams": null,
   "cost_is_proven_optimum": false,
   "cost_ore": null,
-  "created_at": "2026-10-13T06:36:54Z",
+  "created_at": "2026-10-13T09:41:35Z",
   "exams_total": 2,
   "first_solution_basis": "solver_start",
   "first_solution_seconds": 0.0,
@@ -34,10 +34,24 @@
     "fixed_bookings_considered": false,
     "label": "Explorativ planering",
     "mode": "exploratory",
-    "note": "Modellen känner inte till bokningar som ligger utanför de valda tentorna. Ett resultat visar därför inte att en sal är ledig i verkligheten: salens verkliga tillgänglighet måste kontrolleras mot bokningssystemet."
+    "note": "Modellen känner inte till bokningar som ligger utanför de valda tentorna. Ett resultat visar därför inte att en sal är ledig i verkligheten: salens verkliga tillgänglighet måste kontrolleras mot bokningssystemet.",
+    "reasons": [
+      {
+        "code": "external_bookings_not_modelled",
+        "text": "Modellen känner inte till bokningar som ligger utanför de valda tentorna. Ett resultat visar därför inte att en sal är ledig i verkligheten: salens verkliga tillgänglighet måste kontrolleras mot bokningssystemet."
+      },
+      {
+        "code": "rooms_not_operationally_approved",
+        "text": "2 av 2 salar är inte godkända för operativ planering i salsregistret."
+      },
+      {
+        "code": "demand_provisional",
+        "text": "Efterfrågan är provisorisk: den bygger på Ladok-uppgifter som ännu inte bekräftats som tentamensunderlag."
+      }
+    ]
   },
   "problem_id": "pair",
-  "run_id": "20261013T063654Z-pair",
+  "run_id": "20261013T094135Z-pair",
   "scenario_id": "pair",
   "solver_outcome": "optimal",
   "staff_pool_size": null,
@@ -50,6 +64,6 @@
     "technical_validation": "fail",
     "technically_validated": false
   },
-  "wall_time_seconds": 0.014908300014212728,
+  "wall_time_seconds": 0.034331000002566725,
   "warm_start_decision": "not_used"
 }

@@ -64,7 +64,8 @@ function PlanningNote({ summary }: { summary: JointSummary }) {
   return <div className="rounded-md bg-slate-100 p-2.5 text-xs text-slate-900">
     {(from || to) && <p><strong>Planeringsperiod:</strong> {from ?? "början"} – {to ?? "slutet"}</p>}
     {summary.period.partial && <p className="mt-0.5 rounded bg-amber-100 p-1.5 font-medium text-amber-950">Delvis planerad period: du valde {summary.period.requested_from} – {summary.period.requested_to}, men underlaget täcker bara {from} – {to} (godkänd kortare period). Resultatet gäller inte hela den valda perioden.</p>}
-    {basis && <p className="mt-0.5"><strong>{basis.label}.</strong> {basis.note}</p>}
+    {basis && <p className="mt-0.5"><strong>{basis.label}.</strong> {basis.reasons.length > 0 ? "Skäl:" : basis.note}</p>}
+    {basis && basis.reasons.length > 0 && <ul className="ml-4 list-disc">{basis.reasons.map(reason => <li key={reason.code}>{reason.text}</li>)}</ul>}
     {basis && <p className="mt-0.5"><strong>{basis.cost_name}.</strong> {basis.cost_note}</p>}
   </div>
 }

@@ -11,8 +11,15 @@ An exam belongs to the period when its historical date lies in `date_from`..`dat
 run is cut to the same dates, so an exam never moves out of the period: a boundary exam has less room to move, which
 the report states. Exams that are not ready for modelling (missing demand) are counted and never silently dropped.
 
-Every period run is *exploratory*: the model does not know about bookings that are outside the chosen exams, so a
-room that is free in the result may in reality be taken. `PLANNING_BASIS` says so in words the interface repeats.
+How a result may be read (`planning_basis`) is *derived*, not fixed: it is exploratory while any reason below holds, and
+reliable only when none does. The reasons come from what the engine can do and from the data itself:
+
+* the engine does not model bookings outside the chosen exams (`ENGINE_MODELS_EXTERNAL_BOOKINGS`), so a room that is free in the
+  result may in reality be taken;
+* a room that is not approved for operational scheduling in the room register (`eligible_for_operational_scheduling`);
+* demand that is provisional (the data's own demand status says so).
+
+When the engine learns to model bookings, or the register approves rooms, the basis changes without any change here.
 """
 
 from __future__ import annotations
@@ -29,17 +36,48 @@ from .joint_selection import READY_STATUS, RULE_ALL_READY, subset_kind
 
 DEMANDS_FILE, BOOKINGS_FILE = "optimization_demands.csv", "bookings.csv"
 
-PLANNING_BASIS: dict[str, Any] = {
-    "mode": "exploratory",
-    "fixed_bookings_considered": False,
-    "label": "Explorativ planering",
-    "note": ("Modellen känner inte till bokningar som ligger utanför de valda tentorna. Ett resultat visar därför inte att en sal "
-             "är ledig i verkligheten: salens verkliga tillgänglighet måste kontrolleras mot bokningssystemet."),
+# What the engine can do today. The one place to change when bookings outside the chosen exams become part of the model.
+ENGINE_MODELS_EXTERNAL_BOOKINGS = False
+ROOMS_FILE = "optimization_rooms.csv"
+
+EXTERNAL_BOOKINGS_NOTE = ("Modellen känner inte till bokningar som ligger utanför de valda tentorna. Ett resultat visar därför inte att en sal "
+                          "är ledig i verkligheten: salens verkliga tillgänglighet måste kontrolleras mot bokningssystemet.")
+
+_COST_TEXT: dict[str, str] = {
     "cost_name": "Modellerad årlig kapacitetskostnad för valt urval",
     "cost_note": ("Kostnaden är modellens årliga kapacitetskostnad för det valda urvalet: lokalerna som behövs (platser gånger årspris) och "
                   "vaktpoolen, som dimensioneras efter toppbelastningen. Den är inte kostnaden för perioden och inte faktisk kostnad. "
                   "Kostnader för olika urval är inte jämförbara och får inte skalas upp till en årlig besparing."),
 }
+
+
+def planning_basis(processed_dir: Path, room_ids: set[str] | None = None) -> dict[str, Any]:
+    """How results may be read: `exploratory` while any reason holds, `reliable` only when none does.
+
+    `room_ids` limits the room check to the rooms a run used; without it every room that is eligible for the exploratory model counts.
+    """
+    reasons: list[dict[str, str]] = []
+    if not ENGINE_MODELS_EXTERNAL_BOOKINGS:
+        reasons.append({"code": "external_bookings_not_modelled", "text": EXTERNAL_BOOKINGS_NOTE})
+    rooms = _read(processed_dir, ROOMS_FILE)
+    if rooms is None:
+        reasons.append({"code": "room_register_missing", "text": "Salsregistret finns inte, så ingen sal kan vara operativt godkänd."})
+    else:
+        used = rooms[rooms["eligible_for_exploratory_capacity_poc"].astype(str).str.lower() == "true"]
+        if room_ids is not None:
+            used = used[used["room_id"].astype(str).isin(room_ids)]
+        unapproved = used[used["eligible_for_operational_scheduling"].astype(str).str.lower() != "true"]
+        if len(unapproved):
+            reasons.append({"code": "rooms_not_operationally_approved",
+                            "text": f"{len(unapproved)} av {len(used)} salar är inte godkända för operativ planering i salsregistret."})
+    demands = _read(processed_dir, DEMANDS_FILE)
+    if demands is not None and "provisional" in READY_STATUS:
+        reasons.append({"code": "demand_provisional", "text": "Efterfrågan är provisorisk: den bygger på Ladok-uppgifter som ännu inte bekräftats som tentamensunderlag."})
+    reliable = not reasons
+    return {"mode": "reliable" if reliable else "exploratory", "fixed_bookings_considered": ENGINE_MODELS_EXTERNAL_BOOKINGS,
+            "label": "Tillförlitlig planering" if reliable else "Explorativ planering",
+            "note": "Inga kända skäl till att läsa resultatet som explorativt." if reliable else reasons[0]["text"],
+            "reasons": reasons, **_COST_TEXT}
 
 
 class PeriodRequest(BaseModel):
@@ -70,7 +108,7 @@ def _area(demands: pd.DataFrame, plan_area: str) -> pd.DataFrame:
 def coverage_payload(processed_dir: Path, plan_area: str) -> dict[str, Any]:
     """What the data allows: the demand window, the days with exams and the (informational) booking window."""
     demands, bookings = _read(processed_dir, DEMANDS_FILE), _read(processed_dir, BOOKINGS_FILE)
-    payload: dict[str, Any] = {"data_available": demands is not None, "plan_area": plan_area, "planning_basis": PLANNING_BASIS,
+    payload: dict[str, Any] = {"data_available": demands is not None, "plan_area": plan_area, "planning_basis": planning_basis(processed_dir),
                                "demand": None, "days": [], "bookings": None}
     if demands is not None:
         rows = _area(demands, plan_area)
@@ -97,7 +135,7 @@ def period_report(processed_dir: Path, plan_area: str, first: date, last: date) 
     """The check of one period: counted exams, what is outside the data, and the reason when it cannot be planned."""
     coverage = coverage_payload(processed_dir, plan_area)
     report: dict[str, Any] = {"date_from": first.isoformat(), "date_to": last.isoformat(), "plan_area": plan_area, "coverage": coverage["demand"],
-                              "planning_basis": PLANNING_BASIS, "ready_events": 0, "not_ready_events": 0, "planned_from": None,
+                              "planning_basis": planning_basis(processed_dir), "ready_events": 0, "not_ready_events": 0, "planned_from": None,
                               "planned_to": None, "partial": False, "warnings": [], "error": None, "can_plan": False}
     if first > last:
         report["error"] = "Startdatum får inte vara senare än slutdatum."

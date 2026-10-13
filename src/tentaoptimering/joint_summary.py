@@ -11,7 +11,7 @@ from typing import Any
 
 from .app_storage import AppStorage
 from .joint_progress import EVENTS_FILE, read_events
-from .joint_period import PLANNING_BASIS
+from .joint_period import planning_basis
 from .joint_scenarios import scenario_id_for_problem
 from .joint_validation import validate_run
 
@@ -90,7 +90,7 @@ def run_summary(storage: AppStorage, run_id: str, bundled_dir: Path | None = Non
         "scenario_id": scenario_id_for_problem(storage, result.get("problem_id"), bundled_dir),
         "created_at": created_at(run_id),
         "period": _period(directory),
-        "planning_basis": PLANNING_BASIS,
+        "planning_basis": planning_basis(storage.processed_dir, _run_room_ids(directory)),
         "parameters_changed_from_default": changed_ids,
         "parameters_changed_count": len(changed_ids),
         "solver_outcome": solver.get("outcome"),
@@ -124,6 +124,13 @@ def run_summary(storage: AppStorage, run_id: str, bundled_dir: Path | None = Non
             "source": "validated_now",
         },
     }
+
+
+def _run_room_ids(directory: Path) -> set[str] | None:
+    """The rooms a run used, from its frozen input; None when the input cannot be read (every eligible room is then counted)."""
+    rooms = (read_json(directory / "joint_input.json") or {}).get("rooms")
+    ids = {str(item["room_id"]) for item in rooms if isinstance(item, dict) and "room_id" in item} if isinstance(rooms, list) else set()
+    return ids or None
 
 
 def _period(directory: Path) -> dict[str, Any]:

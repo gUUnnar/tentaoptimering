@@ -83,7 +83,7 @@ def _write_dataset(path: Path, extra: list[dict[str, object]] | None = None) -> 
     ]
     pd.DataFrame([
         {"room_id": room, "reference_address": address, "reference_city": city, "capacity_seats": cap,
-         "digital_capability_status": status, "eligible_for_exploratory_capacity_poc": True,
+         "digital_capability_status": status, "eligible_for_exploratory_capacity_poc": True, "eligible_for_operational_scheduling": False,
          "available_from": "2027-01-01" if city == "Visby" else None, "available_to": None}
         for room, address, city, cap, status in rooms
     ]).to_csv(path / "optimization_rooms.csv", index=False, encoding="utf-8-sig")

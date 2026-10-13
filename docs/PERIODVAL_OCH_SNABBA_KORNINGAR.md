@@ -29,7 +29,7 @@ Kravunderlag: `docs/OVERLAMNING_CLAUDE_2026-10-12.md` och `docs/KONCEPTUELL_KRAV
 
 ### Explorativ planering, märkt i varje resultat
 
-Modellen känner inte till bokningar som ligger utanför de valda tentorna. `planning_basis` i sammanfattningen (`mode = "exploratory"`, `fixed_bookings_considered = false`) och en text i resultatvyn säger att ett resultat **inte visar att en sal är ledig i verkligheten**. Detta gäller alla körningar i nuvarande motor, inte bara perioder.
+Hur ett resultat får läsas (`planning_basis`) **härleds** i stället för att vara en konstant: resultatet är explorativt så länge något skäl gäller och tillförlitligt först när inget gör det. Skälen (`reasons`) kommer från motorn och datat: (1) motorn modellerar inte bokningar utanför de valda tentorna (`ENGINE_MODELS_EXTERNAL_BOOKINGS`), så ett resultat **inte visar att en sal är ledig i verkligheten**; (2) salar som inte är godkända för operativ planering i salsregistret (`eligible_for_operational_scheduling`), räknat på de salar körningen använde; (3) provisorisk efterfrågan. Idag gäller alla tre, så alla körningar är explorativa; ändras motorn eller registret ändras läget utan kodändring här. Skälen visas i resultatvyn.
 
 
 ### Kostnadsbegreppet: modellerad årlig kapacitetskostnad för valt urval
@@ -63,50 +63,60 @@ Inga tidsmål har fastställts; målen ska sättas efter dessa mätningar (kravs
 
 ## 3. Steg 3 – design: hänsyn till redan lagda bokningar (inte implementerat)
 
-> **Ersätts delvis.** Den här utkast-designen utgår från dagens datauttag och föreslår "kapacitetsreduktion per adress och pass" som modell när sal saknas. Det gör en datalucka till ett modellantagande och strider mot principerna i `docs/ARKITEKTURPRINCIPER_DATAKVALITET.md` (modell och datakvalitet hålls isär, saknade uppgifter hanteras explicit, inga tysta antaganden). Gällande riktning är den arkitekturen: bokningsrader klassificeras till resurstillstånd i datainläsningen och undantagspolicy väljs per planeringsläge. Avsnittet nedan ska skrivas om innan steg 3 påbörjas; läs det som en beskrivning av dagens data, inte som modell.
+Detta avsnitt ersätter ett tidigare utkast som föreslog kapacitetsreduktion per adress när salnamn saknas. Det utkastet gjorde en datalucka till ett modellantagande och är struket. Utgångspunkten är `docs/ARKITEKTURPRINCIPER_DATAKVALITET.md`: modell och datakvalitet hålls isär, saknade uppgifter hanteras explicit, och inget antas tyst.
 
 ### Problemet
 
-Vid planering av en kort period väljs en delmängd tentor ut för optimering. Andra bokningar i samma period (andra tentor, tentor som inte ingår i populationen, eventuellt annan verksamhet) tar plats i salarna. Idag modelleras varje sal som fri alla pass där den är öppen (`Room.available_slot_ids`, byggd av `_rooms` i `joint_inputs.py` ur `available_from/available_to`). Därför kan ett resultat visa en lokal som ledig fast den är bokad. Det är acceptabelt för **explorativa snabbtester** men inte för **verklig korttidsplanering**.
+Vid planering av en kort period väljs en delmängd tentor ut för optimering. Andra bokningar i samma period tar plats i salarna. Idag modelleras varje sal som fri alla pass där den är öppen (`Room.available_slot_ids`, byggd av `_rooms` i `joint_inputs.py`). Därför kan ett resultat visa en lokal som ledig fast den är bokad. Det är acceptabelt för **explorativa snabbtester** (och märks som sådant, se avsnitt 1) men inte för **verklig korttidsplanering**.
 
-### Vad underlaget tillåter (kontrollerat mot `data/processed/bookings.csv`)
+### Grundregel
 
-- 8 466 bokningsrader (1 sep 2025–29 aug 2026), av dem 2 442 inom Ladokperioden. Kolumner: datum, tid (`scheduled_time` som intervall), längd, adress, sal, `booked_places`, status (`Klar`, `Avbokad`, `Under behandling`, `Andring begard`).
-- **Salkolumnen är i många rader tom**: bokningen gäller en adress och ett antal platser, inte alltid en namngiven sal. Spärrning per sal är därför bara möjlig där sal är angiven; i övrigt går det bara att reducera **platskapaciteten per adress och pass**.
-- Avbokade rader (364) ska inte spärra. Status "Under behandling" och "Andring begard" är tvetydiga och behöver ett beslut.
-- Bokningar saknar kopplingen till optimeringspopulationen utom via länkningen mot Ladok (`linkage.py`), som är provisorisk och ibland tvetydig.
+**Avsaknad av salnamn är en uppgift om datat, inte om verksamheten.** Den leder aldrig automatiskt till att en sal, flera salar eller en adress spärras eller får reducerad kapacitet, och den leder aldrig automatiskt till att en sal räknas som ledig. En bokning får bara påverka planeringen på den detaljnivå som data eller en verifierad uppgift faktiskt styrker.
 
-### Föreslagen modell
+### Vad modellen ska ta emot: reservationer
 
-1. **Fasta bokningar** = bokningsrader i den valda perioden som inte tillhör de tentor som optimeras. Tillhörighet avgörs av länkningen (`candidate_linkage.csv`). Rader med oklar koppling hanteras enligt läget nedan, aldrig tyst.
-2. **Tidsöverlapp**: en bokning upptar `[start, slut + efterarbete]` på sin dag. Ett kandidatpass (`CandidateSlot`) påverkas om dess intervall inkl. för- och efterarbete överlappar.
-3. **Kapacitetsreduktion per pass**: för pass som påverkas minskas tillgänglig kapacitet med bokade platser. I modellen blir det antingen
-   - `Room.slot_capacity[slot_id]` (reducerad kapacitet för just det passet), när sal är angiven i bokningen, eller
-   - en adressgemensam kapacitetsrestriktion `sum(platser i byggnaden och passet) ≤ byggnadens kapacitet − fast bokade platser`, när bara adress är känd.
-   Sal- och formatvillkor (digital kompatibilitet, delning mellan byggnader) gäller som förut för resten.
-4. **Tre lägen som användaren väljer och som står i resultatet** (`planning_basis`):
-   - `exploratory` (nuvarande): inga externa bokningar. Märkt som explorativt.
-   - `bookings_respected`: fasta bokningar spärrar enligt ovan. Bokningar med oklar koppling behandlas som fasta (försiktigt: de tar plats), och antalet redovisas.
-   - `bookings_unavailable`: bokningsdata saknas för perioden eller adressen. Körningen är tillåten bara som explorativ, och **ingen sal kallas tillgänglig**.
-5. **Täckning**: bokningar finns till augusti men deltagarantal bara till mars. Bokningsläget kräver bokningsdata för hela perioden; saknas den är läget `bookings_unavailable`. Saknad bokning betyder okänd, inte tom.
-6. **Eftervalideringen** (`joint_validation/`) får en regel som kontrollerar att ingen placering överskrider den reducerade kapaciteten, med samma indata som motorn och oberoende kontroll av överlappet. Utan fasta bokningar i indata blir regeln `not_applicable` med skälet, inte `pass`.
-7. **Jämförbarhetsnyckel**: läge, bokningsdatas hash och periodens datum ingår, så att körningar med olika förutsättningar inte jämförs.
-8. **Resultatvisning**: resultatet visar fasta bokningar per sal/pass som skild kategori från optimerade tentor och ett uttryckligt "Verifierad mot bokningar: ja/nej/delvis".
+Optimeringen får inte läsa bokningsrader. Den tar emot **reservationer** som ett fristående lager (datakvalitets- och klassificeringslagret) byggt ur bokningarna:
 
-### Begränsningar och öppna beslut (för verksamhetsägaren)
+`Reservation { resurs, tid, platser, grund }`
 
-- Status "Under behandling" och "Andring begard": spärra eller inte?
-- Vad som är tillgängligt utöver tentamensbokningar (undervisning, andra bokningar) finns inte i underlaget; då kan inte en sal kallas ledig. Kravet är därför "inte i konflikt med kända bokningar", aldrig "ledig".
-- Bokningar utan sal: acceptabelt med adressnivå?
-- Hur ändrade eller flyttade bokningar efter dataexporten hanteras (aktualitet på bokningsdata).
-- Reservdatum (`reserve_date_1/2`) är önskemål, inte bokning, och ska inte spärra.
+- `resurs` är `rum` (en identifierad sal), `adress` (endast när en **verifierad deklaration** säger att bokningen avser adressen eller en pool av platser där) eller `oidentifierad`.
+- `grund` anger vad som styrker identifieringen: matchad sal i salsregistret, eller en namngiven verifierad regel i konfigurationen. En regel utan verifiering räknas inte som grund.
 
-### Föreslagen ordning vid implementation
+Lagret bedömer fyra **oberoende** dimensioner per bokning (de är inte ömsesidigt uteslutande tillstånd): resursidentifiering, datakvalitet, källtäckning och kopplingssäkerhet. Se arkitekturdokumentet och `src/tentaoptimering/booking_quality/`.
 
-1. Bygga fasta bokningar ur `bookings.csv` med länkning och status, med enhetstester på syntetiska rader (överlapp, avbokad, ingen sal, oklar koppling).
-2. Kapacitetsreduktion i indata och motor; differentialtest mot eftervalideringen.
-3. Läge i gränssnittet och i `planning_basis`; ändra texten "Explorativ planering" till det faktiska läget.
-4. Mätning om körtiden påverkas (kapacitetsrestriktioner per adress och pass).
+### Hur reservationer får påverka planeringen
+
+| Reservation | Påverkan på planeringen |
+|---|---|
+| `rum`, identifierad sal | Salens kapacitet reduceras (eller salen spärras) under de pass som bokningen överlappar, inklusive för- och efterarbete. |
+| `adress` med verifierad deklaration | Endast enligt deklarationens egen regel (till exempel en pool av platser på adressen). Regeln kommer från verksamhetsägaren, inte från att salnamn saknas. |
+| `oidentifierad` (adress men ingen identifierad sal, namngiven sal som saknas i registret, adress saknas) | **Ingen spärr och ingen reduktion.** Upptagenheten är okänd och redovisas: antal bokningar, platser och tid. Resultatet märks med att okänd upptagenhet finns. |
+| Bokningar som inte avser en fysisk lokal enligt en verifierad regel | Ingen spärr. |
+
+### Okänd upptagenhet: policy, inte antagande
+
+Hur okänd upptagenhet hanteras är en **policyparameter** per planeringsläge, inte en inbyggd modellregel (`bookings.unidentified_policy`):
+
+- `ignore_flagged` (standard, explorativt läge): ingen spärr; resultatet bär en redovisning av vad som är okänt.
+- `sensitivity_bounds` (explorativt läge, valfritt): resultatet beräknas även mot ett *känslighetsfall* där de oidentifierade bokningarna spärrar alla salar på sin adress under sin tid. Det är en redovisad gräns för hur mycket okänd data kan betyda, inte en tolkning av verksamheten och aldrig det resultat som kallas planeringen.
+- `refuse` (tillförlitligt läge): körningen nekas över en tröskel som verksamhetsägaren fastställer.
+
+Planeringsläget (`planning_basis`, härlett i avsnitt 1) bestämmer vilken policy som får användas. Ett resultat kallas tillförlitligt först när alla villkor för det läget är uppfyllda.
+
+### Vad som inte antas
+
+- Att bokningar utan salnamn på en viss adress är adressbokningar. Det kräver en verifierad deklaration från dataägaren.
+- Att en viss bokningsstatus (till exempel "Under behandling") betyder att sal tilldelas senare. Statusar klassas bara enligt verifierad konfiguration.
+- Att lokala registreringsmönster i dagens uttag är generella verksamhetsregler.
+
+### Förutsättningar innan implementation
+
+1. Klassificeringslagret är på plats och granskat mot ett bättre bokningsuttag.
+2. Verksamhetsägaren har besvarat frågorna i `docs/FRAGOR_TILL_DATAAGARE.md`.
+3. Policyparametrarna är beslutade (trösklar, vilket läge som krävs för vilken användning).
+4. Testmatrisen i arkitekturdokumentet (S-A–S-F) körs mot lagret, och sedan mot motorn när den börjar läsa reservationer.
+
+Motorn ändras inte förrän dessa punkter är uppfyllda.
 
 ## 4. Verifiering
 
