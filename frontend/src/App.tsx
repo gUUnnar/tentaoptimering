@@ -1,12 +1,13 @@
 import { useCallback, useState } from "react"
 import type { ReactNode } from "react"
-import { Activity, Database } from "lucide-react"
+import { Activity, Building2, Database } from "lucide-react"
 import JointPage from "@/components/joint/joint-page"
+import RoomsPage from "@/components/rooms/rooms-page"
 import UnderlayPage from "@/components/underlay/underlay-page"
 
-type Page = "joint" | "underlay"
+type Page = "joint" | "rooms" | "underlay"
 
-const TITLES: Record<Page, string> = { joint: "Optimering", underlay: "Underlag" }
+const TITLES: Record<Page, string> = { joint: "Optimering", rooms: "Lokaler och bokningar", underlay: "Underlag" }
 
 function Nav({ icon, active, onClick, children }: { icon: ReactNode; active: boolean; onClick: () => void; children: ReactNode }) {
   return <button className={`nav-item ${active ? "nav-item-active" : ""}`} aria-current={active ? "page" : undefined} onClick={onClick}>{icon}{children}</button>
@@ -23,6 +24,7 @@ export default function App() {
       <div className="mb-6 px-2"><div className="text-lg font-semibold text-sky-950">Tentaoptimering</div><div className="text-xs text-slate-500">Lokal terminsanalys</div></div>
       <nav className="space-y-1" aria-label="Huvudmeny">
         <Nav icon={<Activity size={17}/>} active={page === "joint"} onClick={() => setPage("joint")}>Optimering</Nav>
+        <Nav icon={<Building2 size={17}/>} active={page === "rooms"} onClick={() => setPage("rooms")}>Lokaler</Nav>
         <Nav icon={<Database size={17}/>} active={page === "underlay"} onClick={() => setPage("underlay")}>Underlag</Nav>
       </nav>
       <div className="mt-auto rounded-md bg-slate-50 p-3 text-xs text-slate-500">Servern lyssnar endast på <code>127.0.0.1</code>.</div>
@@ -31,6 +33,7 @@ export default function App() {
       <h1 className="mb-5 text-xl font-semibold">{TITLES[page]}</h1>
       {/* Båda sidorna hålls monterade när man byter sida, så att ändringar, en pågående körning och en pågående förberedelse inte tappas. */}
       <div hidden={page !== "joint"}><JointPage onOpenUnderlay={() => setPage("underlay")} reloadKey={underlayVersion}/></div>
+      <div hidden={page !== "rooms"}><RoomsPage reloadKey={underlayVersion}/></div>
       <div hidden={page !== "underlay"}><UnderlayPage active={page === "underlay"} onPrepared={onPrepared}/></div>
     </main>
   </div>

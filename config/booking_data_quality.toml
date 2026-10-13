@@ -1,0 +1,98 @@
+# Konfiguration för datakvalitets- och klassificeringslagret för bokningar (src/tentaoptimering/booking_quality).
+#
+# Principer:
+#  * Lagret beskriver vad datat identifierar och hur säkert det är. Det avgör inte hur verksamheten fungerar.
+#  * Varje tolkning är en regel med `verified`. En regel som inte är verifierad av dataägaren klassificerar ingenting;
+#    den ger bara en notering om att fältet liknar något som dataägaren bör bekräfta (`candidate_rule_ids`).
+#  * Inget här styr spärrning, kapacitetsreduktion, operativt godkännande eller optimeringsresultat.
+#  * Nya verifierade uppgifter läggs till här (eller byter kolumnnamn i [columns]) utan kodändring.
+
+schema_version = "booking-data-quality-v1"
+
+[meta]
+version = "2026-10-14"
+note = "Första versionen. Inga regler om adress- eller salmönster är verifierade."
+
+# Kolumnnamn i bokningsuttaget och i övriga källor. Byts om ett nytt uttag heter något annat.
+[columns]
+placement_id = "placement_id"
+exam_order_id = "exam_order_id"
+address = "address"
+room = "room"
+location_key = "location_key"
+status = "status"
+date = "scheduled_date"
+time = "scheduled_time"
+places = "booked_places"
+
+[register]
+file = "room_inventory.csv"
+room_id = "room_id"
+location_key = "location_key"
+capacity = "capacity_seats"
+address = "reference_address"
+room_name = "reference_room_name"
+
+[linkage]
+file = "candidate_linkage.csv"
+placement_id = "placement_id"
+activity_id = "activity_id"
+status = "candidate_status"
+# Källans statusvärden på kopplingens säkerhet.
+unique_values = ["single_candidate"]
+ambiguous_values = ["ambiguous_candidates"]
+none_values = ["no_candidate"]
+
+# Källtäckning: Ladok-fönstret härleds ur datat (första och sista datum). `override` sätter det uttryckligen.
+[coverage.ladok]
+file = "ladok_activities.csv"
+date_column = "start_date"
+# override_first = "2026-01-12"
+# override_last = "2026-03-31"
+
+# Bokningsstatus. Klassen avgör bara om raden är avbokad eller inte. Statusar utan regel är `unclassified`
+# och antas inte betyda något. "Under behandling" och "Andring begard" har med avsikt ingen regel.
+[[status_rule]]
+id = "status-avbokad"
+value = "Avbokad"
+class = "cancelled"
+verified = true
+source = "Statusvärdets klartext; samma tolkning som i vyerna sedan tidigare. Dataägaren har inte uttryckligen bekräftat."
+
+[[status_rule]]
+id = "status-klar"
+value = "Klar"
+class = "active"
+verified = true
+source = "Statusvärdets klartext. Dataägaren har inte uttryckligen bekräftat."
+
+# Lokaler som inte är en fysisk sal. Verifierad regel: raden får identifieringen `declared_non_physical`.
+# Overifierad regel: raden noteras bara som kandidat. Båda matchar mot adress- och/eller salfältet.
+[[non_physical_rule]]
+id = "candidate-hemma"
+address = "Hemma"
+verified = false
+source = "Observation i bokningsuttaget. Behöver bekräftas av dataägaren."
+
+[[non_physical_rule]]
+id = "candidate-hemtenta"
+room = "Hemtenta"
+verified = false
+source = "Observation i bokningsuttaget. Behöver bekräftas av dataägaren."
+
+# Adressfältets innehåll är inte en adress. Verifierad regel: raden får identifieringen `no_address` och flaggan
+# `address_field_not_an_address`. Overifierad regel: bara en notering.
+[[not_an_address_rule]]
+id = "candidate-sal-utan-anpassningar"
+address = "Ordinarie sal utan anpassningar"
+verified = false
+source = "Observation i bokningsuttaget. Behöver bekräftas av dataägaren."
+
+# Verifierad deklaration att bokningar på en adress avser adressen eller en pool av platser där.
+# Saknas med avsikt: att salnamn saknas är inte en deklaration. Exempel (kommenterat):
+#
+# [[address_level_rule]]
+# id = "address-level-exempel"
+# address = "Exempelgatan 1"
+# verified = true
+# source = "Bekräftat av <dataägare> <datum>: <vad som bekräftats>"

@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from .app_paths import bundled_joint_catalog_path, frontend_dist_dir
 from .app_storage import AppStorage
+from .booking_api import register_booking_routes
 from . import joint_api
 from .job_manager import LocalJobManager
 from .parameter_catalog import load_parameter_catalog
@@ -75,6 +76,8 @@ def create_app(storage_root: Path | None = None) -> FastAPI:
             return jobs.public(job_id)
         except KeyError as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
+
+    register_booking_routes(app, storage)
 
     @app.get("/api/joint-runs/warm-start-candidates")
     def warm_start_candidates(problem_id: str | None = None) -> dict[str, Any]:
