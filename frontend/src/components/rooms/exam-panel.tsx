@@ -3,6 +3,7 @@ import { CircleAlert, Search, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { linkIsUnclear, linkLabel } from "@/lib/bookingView"
 import { useExam, useExamSearch } from "@/lib/useBookings"
+import { ComparePanel } from "./compare-panel"
 
 type Props = { orderId: string; onSelect: (orderId: string) => void }
 
@@ -44,7 +45,8 @@ export function ExamPanel({ orderId, onSelect }: Props) {
       </table>
       {exam.data.ladok_link_unclear && <p className="flex items-start gap-1.5 rounded bg-amber-50 p-2 text-xs text-amber-950"><TriangleAlert size={14} className="mt-0.5 shrink-0" aria-hidden="true"/>
         Kopplingen till Ladok är inte säker: {[...new Set(exam.data.placements.filter(item => linkIsUnclear(item.ladok_link)).map(item => linkLabel(item.ladok_link)))].join(", ").toLowerCase()}. Den visas här i stället för att gissas.</p>}
-      <p className="text-xs text-slate-800">{exam.data.attendance.note} {exam.data.simulated_note}</p>
+      <p className="text-xs text-slate-800">{exam.data.attendance.note}</p>
+      <ComparePanel orderId={exam.data.exam_order_id}/>
     </div>}
   </section>
 }

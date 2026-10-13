@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { BookingItem } from "@/lib/bookingTypes"
 import { defaultRange, linkIsUnclear, linkLabel, rangeError, stepRange, summaryMeasures, type Range } from "@/lib/bookingView"
+import { addDays } from "@/lib/dates"
 import { useLocation, useLocations } from "@/lib/useBookings"
 import { DayTimeline } from "./day-timeline"
 import { ExamPanel } from "./exam-panel"
+import { OverviewView } from "./overview-view"
 
 /**
  * Lokaler och bokningar: välj en lokal och ett datumintervall och se vad som var bokat, och öppna en tentamen för att se
@@ -20,6 +22,9 @@ export default function RoomsPage({ reloadKey }: { reloadKey?: unknown }) {
   const [range, setRange] = useState<Range>({ from: "", to: "" })
   const [orderId, setOrderId] = useState("")
   const [placementId, setPlacementId] = useState("")
+  const [view, setView] = useState<"room" | "period">("room")
+  const [overviewRange, setOverviewRange] = useState<Range>({ from: "", to: "" })
+  const [address, setAddress] = useState<string | null>(null)
   const data = useLocation(locationKey, range)
 
   const list = locations.data?.locations ?? []
@@ -29,6 +34,8 @@ export default function RoomsPage({ reloadKey }: { reloadKey?: unknown }) {
     const first = list.find(item => item.room) ?? list[0]
     setLocationKey(first.location_key); setRange(defaultRange(first))
   }, [list, locationKey])
+  const coverageFirst = locations.data?.coverage.first
+  useEffect(() => { if (coverageFirst && !overviewRange.from) setOverviewRange({ from: coverageFirst, to: addDays(coverageFirst, 6) }) }, [coverageFirst, overviewRange.from])
 
   const choose = (key: string) => {
     const next = list.find(item => item.location_key === key)
@@ -42,6 +49,12 @@ export default function RoomsPage({ reloadKey }: { reloadKey?: unknown }) {
   if (locations.status === "error") return <p role="alert" className="flex items-start gap-1.5 text-sm text-red-900"><CircleAlert size={16} className="mt-0.5 shrink-0" aria-hidden="true"/>{locations.error}</p>
   return <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_26rem]">
     <div className="min-w-0 space-y-4">
+      <div className="flex gap-1.5" role="group" aria-label="Vy">
+        <Button type="button" size="sm" variant={view === "room" ? "default" : "outline"} aria-pressed={view === "room"} onClick={() => setView("room")}>En lokal</Button>
+        <Button type="button" size="sm" variant={view === "period" ? "default" : "outline"} aria-pressed={view === "period"} onClick={() => setView("period")}>Dag eller period, per adress</Button>
+      </div>
+      {view === "period" ? <OverviewView range={overviewRange} onRange={setOverviewRange} address={address} onAddress={setAddress} addresses={locations.data?.addresses ?? []}
+        selectedPlacement={placementId} onOpen={open} onOpenExam={id => { setOrderId(id); setPlacementId("") }}/> : <>
       <Card><CardContent className="space-y-3 pt-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[18rem] flex-1"><label className="label" htmlFor={selectId}>Lokal</label>
@@ -84,6 +97,7 @@ export default function RoomsPage({ reloadKey }: { reloadKey?: unknown }) {
                   {linkIsUnclear(item.ladok_link) && <span className={`ml-1.5 rounded px-1 text-[11px] ${item.ladok_link === "ambiguous_candidates" ? "bg-amber-100 text-amber-950" : "bg-slate-100 text-slate-800"}`} title={item.ladok_link_text}>{linkLabel(item.ladok_link)}</span>}</td>
                 <td className="pr-2 text-right tabular-nums">{item.booked_places}{item.capacity ? ` av ${item.capacity}` : ""}</td><td>{item.status}</td></tr>)}</tbody></table>}
         </CardContent></Card>
+      </>}
       </>}
     </div>
     <Card className="h-fit"><CardHeader><CardTitle>Tentamensbokning</CardTitle></CardHeader><CardContent><ExamPanel orderId={orderId} onSelect={id => { setOrderId(id); setPlacementId("") }}/></CardContent></Card>

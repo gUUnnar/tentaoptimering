@@ -25,6 +25,7 @@ import pandas as pd
 
 BOOKINGS_FILE, ROOMS_FILE, LINKAGE_FILE = "bookings.csv", "room_inventory.csv", "candidate_linkage.csv"
 CANCELLED = "Avbokad"
+NO_ADDRESS = "Adress saknas"
 LINK_TEXT = {
     "single_candidate": "En trolig koppling till Ladok-aktivitet (provisorisk).",
     "ambiguous_candidates": "Flera möjliga Ladok-aktiviteter: kopplingen är tvetydig.",
@@ -42,15 +43,15 @@ class BookingDataMissing(FileNotFoundError):
     """The prepared booking data is not there."""
 
 
-def _read(processed_dir: Path, name: str) -> pd.DataFrame | None:
+def read_csv(processed_dir: Path, name: str) -> pd.DataFrame | None:
     path = processed_dir / name
     if not path.is_file():
         return None
     return pd.read_csv(path, encoding="utf-8-sig", dtype=str, keep_default_na=False)
 
 
-def _bookings(processed_dir: Path) -> pd.DataFrame:
-    frame = _read(processed_dir, BOOKINGS_FILE)
+def load_bookings(processed_dir: Path) -> pd.DataFrame:
+    frame = read_csv(processed_dir, BOOKINGS_FILE)
     if frame is None:
         raise BookingDataMissing("Bokningsunderlaget är inte förberett. Förbered underlaget under Underlag först.")
     frame = frame.copy()
@@ -59,11 +60,11 @@ def _bookings(processed_dir: Path) -> pd.DataFrame:
     frame["end_min"] = times[2] * 60 + times[3]
     frame["places"] = pd.to_numeric(frame["booked_places"], errors="coerce").fillna(0).astype(int)
     frame["cancelled"] = frame["status"] == CANCELLED
-    links = _read(processed_dir, LINKAGE_FILE)
+    links = read_csv(processed_dir, LINKAGE_FILE)
     status = links.set_index("placement_id")["candidate_status"] if links is not None else pd.Series(dtype=str)
     status = status[~status.index.duplicated()]  # one row per candidate activity: the status is the placement's
     frame["link"] = frame["placement_id"].map(status).fillna("unknown")
-    rooms = _read(processed_dir, ROOMS_FILE)
+    rooms = read_csv(processed_dir, ROOMS_FILE)
     capacity = pd.Series(dtype=float)
     if rooms is not None:
         usable = rooms[(rooms["room_id"] != "") & (rooms["capacity_seats"] != "")]
@@ -74,16 +75,16 @@ def _bookings(processed_dir: Path) -> pd.DataFrame:
     return frame
 
 
-def _clock(minutes: Any) -> str | None:
+def clock(minutes: Any) -> str | None:
     return None if pd.isna(minutes) else f"{int(minutes) // 60:02d}:{int(minutes) % 60:02d}"
 
 
-def _item(row: pd.Series) -> dict[str, Any]:
+def booking_item(row: pd.Series) -> dict[str, Any]:
     capacity = None if pd.isna(row["capacity"]) else int(row["capacity"])
     return {
         "placement_id": row["placement_id"], "exam_order_id": row["exam_order_id"], "course_codes": row["course_codes"],
         "course_name": row["course_name"], "exam_type": row["exam_type"], "date": row["scheduled_date"] or None,
-        "start": _clock(row["start_min"]), "end": _clock(row["end_min"]),
+        "start": clock(row["start_min"]), "end": clock(row["end_min"]),
         "address": row["address"] or None, "room": row["room"] or None, "location_key": row["location_key"] or None,
         "booked_places": int(row["places"]), "capacity": capacity,
         "seat_share": round(int(row["places"]) / capacity, 3) if capacity else None,
@@ -94,7 +95,7 @@ def _item(row: pd.Series) -> dict[str, Any]:
 
 def coverage_payload(processed_dir: Path) -> dict[str, Any]:
     """What the booking data covers; missing dates and cancelled bookings are counted, not hidden."""
-    frame = _bookings(processed_dir)
+    frame = load_bookings(processed_dir)
     dated = frame[frame["scheduled_date"] != ""]
     return {"first": dated["scheduled_date"].min(), "last": dated["scheduled_date"].max(), "rows": int(len(frame)),
             "without_date": int(len(frame) - len(dated)), "cancelled": int(frame["cancelled"].sum()),
@@ -104,8 +105,8 @@ def coverage_payload(processed_dir: Path) -> dict[str, Any]:
 
 def locations_payload(processed_dir: Path) -> dict[str, Any]:
     """The places that have bookings: room level where a room is named, otherwise the address."""
-    frame = _bookings(processed_dir)
-    frame = frame[(frame["location_key"] != "") & ~frame["cancelled"] & (frame["scheduled_date"] != "")]
+    everything = load_bookings(processed_dir)
+    frame = everything[(everything["location_key"] != "") & ~everything["cancelled"] & (everything["scheduled_date"] != "")]
     rows = []
     for key, group in frame.groupby("location_key"):
         room = group["room"].iloc[0]
@@ -115,10 +116,22 @@ def locations_payload(processed_dir: Path) -> dict[str, Any]:
                      "capacity": int(capacity.iloc[0]) if len(capacity) else None, "bookings": int(len(group)),
                      "first": group["scheduled_date"].min(), "last": group["scheduled_date"].max()})
     rows.sort(key=lambda item: (item["address"], item["room"] or "~"))
-    return {"locations": rows, "coverage": coverage_payload(processed_dir)}
+    return {"locations": rows, "addresses": address_rows(everything), "coverage": coverage_payload(processed_dir)}
 
 
-def _union_minutes(intervals: list[tuple[int, int]]) -> int:
+def address_rows(frame: pd.DataFrame) -> list[dict[str, Any]]:
+    """Every address with bookings, whether or not a room is named. Rows without an address are one entry of their own, never dropped."""
+    live = frame[~frame["cancelled"] & (frame["scheduled_date"] != "")]
+    rows = []
+    for address, group in live.groupby("address"):
+        rows.append({"address": address, "label": address or NO_ADDRESS, "bookings": int(len(group)), "exam_orders": int(group["exam_order_id"].nunique()),
+                     "named_rooms": int(group.loc[group["room"] != "", "room"].nunique()), "unspecified_room_bookings": int((group["room"] == "").sum()),
+                     "first": group["scheduled_date"].min(), "last": group["scheduled_date"].max()})
+    rows.sort(key=lambda item: (item["address"] == "", item["address"]))
+    return rows
+
+
+def union_minutes(intervals: list[tuple[int, int]]) -> int:
     total, end = 0, -1
     for first, last in sorted(intervals):
         if first > end:
@@ -130,7 +143,7 @@ def _union_minutes(intervals: list[tuple[int, int]]) -> int:
     return total
 
 
-def _peak_places(rows: pd.DataFrame) -> int:
+def peak_places(rows: pd.DataFrame) -> int:
     """The highest number of booked places at one moment (all rows are of one place and one day, or one range)."""
     events = sorted([(int(r.start_min), int(r.places)) for r in rows.itertuples()] + [(int(r.end_min), -int(r.places)) for r in rows.itertuples()],
                     key=lambda pair: (pair[0], pair[1]))
@@ -145,7 +158,7 @@ def location_payload(processed_dir: Path, location_key: str, first: date, last: 
     """Bookings of one place in a date range, with measures that carry their definitions."""
     if first > last:
         raise ValueError("Startdatum får inte vara senare än slutdatum.")
-    frame = _bookings(processed_dir)
+    frame = load_bookings(processed_dir)
     coverage = coverage_payload(processed_dir)
     place = frame[frame["location_key"] == location_key]
     if place.empty:
@@ -161,8 +174,8 @@ def location_payload(processed_dir: Path, location_key: str, first: date, last: 
     days: dict[str, dict[str, Any]] = {}
     for day, group in live.groupby("scheduled_date"):
         timed = group.dropna(subset=["start_min", "end_min"])
-        days[day] = {"bookings": int(len(group)), "booked_minutes": _union_minutes(list(zip(timed["start_min"].astype(int), timed["end_min"].astype(int)))),
-                     "booked_places": int(group["places"].sum()), "peak_places": _peak_places(timed) if len(timed) else 0}
+        days[day] = {"bookings": int(len(group)), "booked_minutes": union_minutes(list(zip(timed["start_min"].astype(int), timed["end_min"].astype(int)))),
+                     "booked_places": int(group["places"].sum()), "peak_places": peak_places(timed) if len(timed) else 0}
     capacity = place["capacity"].dropna()
     capacity_value = int(capacity.iloc[0]) if len(capacity) else None
     peak = max((day["peak_places"] for day in days.values()), default=0)
@@ -175,13 +188,13 @@ def location_payload(processed_dir: Path, location_key: str, first: date, last: 
         notes.append("Salens kapacitet är okänd (bokningen gäller en adress eller en sal som saknas i salsregistret), så platser kan inte sättas mot kapacitet.")
     first_row = place.iloc[0]
     return {"location": {"location_key": location_key, "address": first_row["address"] or None, "room": first_row["room"] or None},
-            "date_from": first.isoformat(), "date_to": last.isoformat(), "bookings": [_item(row) for _, row in inside.iterrows()],
+            "date_from": first.isoformat(), "date_to": last.isoformat(), "bookings": [booking_item(row) for _, row in inside.iterrows()],
             "days": days, "summary": summary, "attendance": coverage["attendance"], "measures": MEASURES, "coverage": coverage, "notes": notes}
 
 
 def search_exams(processed_dir: Path, query: str, first: date | None = None, last: date | None = None, limit: int = 50) -> dict[str, Any]:
     """Booked exams (orders) whose id, course code or course name contains `query`, optionally within a date range."""
-    frame = _bookings(processed_dir)
+    frame = load_bookings(processed_dir)
     text = query.strip().lower()
     if not text and first is None and last is None:
         raise ValueError("Ange ett sökord (id, kurskod eller kursnamn) eller ett datumintervall.")
@@ -207,15 +220,14 @@ def search_exams(processed_dir: Path, query: str, first: date | None = None, las
 
 def exam_payload(processed_dir: Path, order_id: str) -> dict[str, Any]:
     """One booked exam: every placement (room, time, booked places), and how firm the link to Ladok is."""
-    frame = _bookings(processed_dir)
+    frame = load_bookings(processed_dir)
     rows = frame[frame["exam_order_id"] == order_id].sort_values(["scheduled_date", "start_min", "placement_id"])
     if rows.empty:
         raise ValueError(f"Okänd tentamensbokning: {order_id}.")
     live = rows[~rows["cancelled"]]
     links = sorted(set(rows["link"]))
     return {"exam_order_id": order_id, "course_codes": rows["course_codes"].iloc[0], "course_name": rows["course_name"].iloc[0],
-            "exam_type": rows["exam_type"].iloc[0], "placements": [_item(row) for _, row in rows.iterrows()],
+            "exam_type": rows["exam_type"].iloc[0], "placements": [booking_item(row) for _, row in rows.iterrows()],
             "booked_places": int(live["places"].sum()), "rooms": int(live["location_key"].nunique()),
             "ladok_links": links, "ladok_link_unclear": any(item != "single_candidate" for item in links),
-            "attendance": {"available": False, "note": MEASURES["attendance"]},
-            "simulated": None, "simulated_note": "Bokningen är historisk och orörd. Ett simulerat schema för tentamen visas inte i den här versionen."}
+            "attendance": {"available": False, "note": MEASURES["attendance"]}}

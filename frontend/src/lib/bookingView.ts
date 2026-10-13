@@ -1,4 +1,4 @@
-import type { BookingItem, BookingLocation, LocationSummary } from "./bookingTypes.ts"
+import type { BookingItem, BookingLocation, CompareDemand, LocationSummary, OverviewResponse } from "./bookingTypes.ts"
 import { addDays, daysBetween, isIsoDate } from "./dates.ts"
 
 // Rena hjälpfunktioner för lokalvyn: tidslinjens placering, mått i läsbar form och datumsteg.
@@ -88,3 +88,41 @@ export const linkLabel = (link: string): string =>
 
 /** Är kopplingen till Ladok något annat än en enda trolig kandidat? Sådana kopplingar märks, de gissas inte bort. */
 export const linkIsUnclear = (link: string): boolean => link !== "single_candidate"
+
+// ---- Översikt per period och adress ---------------------------------------------------------------------------------
+
+/** Måtten för hela perioden. Tentamina räknas en gång även när de använder flera lokaler; verklig närvaro är okänd. */
+export function overviewMeasures(totals: OverviewResponse["totals"], definitions: Record<string, string>): Measure[] {
+  return [
+    { label: "Tentamina", value: String(totals.exam_orders), hint: totals.exam_orders_in_several_places ? `Varje tentamen räknas en gång; ${totals.exam_orders_in_several_places} använder flera lokaler.` : "Varje tentamen räknas en gång." },
+    { label: "Bokningsrader", value: String(totals.placements), hint: `En rad = en tentamen i en lokal vid en tid${totals.cancelled_placements ? `; ${totals.cancelled_placements} avbokade ingår inte` : ""}.` },
+    { label: "Bokade platser", value: String(totals.booked_places), hint: definitions.booked_places ?? "" },
+    { label: "Bara adress angiven", value: String(totals.unspecified_room_placements), hint: "Bokningar utan salnamn. De ligger kvar under sin adress och hänförs inte till någon sal." },
+    { label: "Utan adress", value: String(totals.without_address_placements), hint: "Bokningar utan adress visas för sig som \"Adress saknas\"." },
+    { label: "Verklig närvaro", value: "okänd", hint: definitions.attendance ?? "" },
+  ]
+}
+
+/** Andel av raderna som saknar salnamn, i procent (heltal), eller null utan rader. */
+export const unnamedShare = (named: number, unnamed: number): number | null => named + unnamed === 0 ? null : Math.round((unnamed / (named + unnamed)) * 100)
+
+// ---- Jämförelse mot en körning ---------------------------------------------------------------------------------------
+
+/** Vad som hänt med datum och starttid: orörd, flyttad ett antal dagar och/eller ny starttid. */
+export function moveText(demand: CompareDemand): string {
+  const { original, simulated } = demand
+  if (!original || !simulated) return "Datum eller tid saknas i körningen."
+  if (!demand.moved) return `Oförändrad: ${original.date} kl. ${original.start}.`
+  const days = demand.date_shift_days ?? 0
+  const when = days === 0 ? "samma dag" : `${Math.abs(days)} ${Math.abs(days) === 1 ? "dag" : "dagar"} ${days > 0 ? "senare" : "tidigare"}`
+  return `Flyttad (${when}): ${original.date} kl. ${original.start} → ${simulated.date} kl. ${simulated.start}.`
+}
+
+/** Salar och adresser i bokningen mot körningen. Salar jämförs bara när alla bokade lokaler har salnamn. */
+export function placeText(demand: CompareDemand): string {
+  const booked = demand.booked_addresses.join(", ") || "okänd adress"
+  const simulated = demand.simulated_addresses.join(", ") || "ingen"
+  const address = demand.same_addresses ? `Samma adress (${booked}).` : `Adress: bokad ${booked}, simulerad ${simulated}.`
+  if (!demand.rooms_compared) return `${address} Salar jämförs inte: ${demand.booked_rooms_without_name === 1 ? "1 bokad lokal saknar salnamn" : demand.booked_rooms_without_name > 1 ? `${demand.booked_rooms_without_name} bokade lokaler saknar salnamn` : "bokningen anger ingen sal"}.`
+  return `${address} ${demand.same_rooms ? "Samma salar." : "Andra salar än bokningen."}`
+}

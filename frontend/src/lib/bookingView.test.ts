@@ -1,8 +1,8 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
-import type { BookingItem, LocationSummary } from "./bookingTypes.ts"
+import type { BookingItem, CompareDemand, LocationSummary } from "./bookingTypes.ts"
 import { addDays, daysBetween, isIsoDate, weekdayName } from "./dates.ts"
-import { defaultRange, formatMinutes, groupByDay, linkIsUnclear, placeBars, rangeDays, rangeError, stepRange, summaryMeasures, timelineScale, toMinutes } from "./bookingView.ts"
+import { defaultRange, formatMinutes, moveText, overviewMeasures, placeText, unnamedShare, groupByDay, linkIsUnclear, placeBars, rangeDays, rangeError, stepRange, summaryMeasures, timelineScale, toMinutes } from "./bookingView.ts"
 
 const item = (id: string, date: string, start: string | null, end: string | null, extra: Partial<BookingItem> = {}): BookingItem => ({
   placement_id: id, exam_order_id: `o-${id}`, course_codes: "1AA001", course_name: "Analys", exam_type: "Ordinarie tenta", date, start, end,
@@ -86,5 +86,46 @@ describe("mått", () => {
   it("tveksamma Ladok-kopplingar märks", () => {
     assert.equal(linkIsUnclear("single_candidate"), false)
     for (const link of ["ambiguous_candidates", "no_candidate", "unknown"]) assert.equal(linkIsUnclear(link), true)
+  })
+})
+
+describe("översikt per period och adress", () => {
+  const totals = { placements: 54, cancelled_placements: 2, exam_orders: 31, booked_places: 1585, addresses: 4, without_address_placements: 1, unspecified_room_placements: 22, exam_orders_in_several_places: 22 }
+  it("tentamina räknas en gång, bokningar utan sal och utan adress redovisas, närvaro är okänd", () => {
+    const rows = Object.fromEntries(overviewMeasures(totals, { booked_places: "platser", attendance: "okänd närvaro" }).map(row => [row.label, row]))
+    assert.equal(rows["Tentamina"].value, "31")
+    assert.match(rows["Tentamina"].hint, /22 använder flera lokaler/)
+    assert.match(rows["Bokningsrader"].hint, /2 avbokade ingår inte/)
+    assert.equal(rows["Bara adress angiven"].value, "22")
+    assert.match(rows["Bara adress angiven"].hint, /hänförs inte till någon sal/)
+    assert.equal(rows["Utan adress"].value, "1")
+    assert.equal(rows["Verklig närvaro"].value, "okänd")
+  })
+  it("andel utan salnamn", () => {
+    assert.equal(unnamedShare(59, 41), 41)
+    assert.equal(unnamedShare(0, 0), null)
+  })
+})
+
+describe("jämförelse mot körning", () => {
+  const demand = (extra: Partial<CompareDemand> = {}): CompareDemand => ({
+    exam_demand_id: "e", course_code: "1AA001", participants: 90, duration_minutes: 240, movable: true,
+    original: { date: "2026-02-09", start: "08:00", slot_id: "2026-02-09T08:00" }, simulated: { date: "2026-02-10", start: "14:00", slot_id: "2026-02-10T14:00" },
+    moved: true, date_shift_days: 1, start_changed: true, simulated_rooms: [], rooms_compared: true, same_rooms: false, booked_rooms_without_name: 0,
+    booked_addresses: ["Gata 1"], simulated_addresses: ["Gata 3"], same_addresses: false, ...extra,
+  })
+  it("flyttad, oförändrad och saknad tid", () => {
+    assert.equal(moveText(demand()), "Flyttad (1 dag senare): 2026-02-09 kl. 08:00 → 2026-02-10 kl. 14:00.")
+    assert.match(moveText(demand({ date_shift_days: -3 })), /3 dagar tidigare/)
+    assert.match(moveText(demand({ date_shift_days: 0 })), /samma dag/)
+    assert.equal(moveText(demand({ moved: false, simulated: { date: "2026-02-09", start: "08:00", slot_id: "x" } })), "Oförändrad: 2026-02-09 kl. 08:00.")
+    assert.match(moveText(demand({ simulated: null })), /saknas/)
+  })
+  it("salar jämförs bara när alla bokade lokaler har salnamn; adress går alltid", () => {
+    assert.equal(placeText(demand()), "Adress: bokad Gata 1, simulerad Gata 3. Andra salar än bokningen.")
+    assert.equal(placeText(demand({ same_addresses: true, same_rooms: true, simulated_addresses: ["Gata 1"] })), "Samma adress (Gata 1). Samma salar.")
+    assert.match(placeText(demand({ rooms_compared: false, same_rooms: null, booked_rooms_without_name: 2 })), /Salar jämförs inte: 2 bokade lokaler saknar salnamn/)
+    assert.match(placeText(demand({ rooms_compared: false, same_rooms: null, booked_rooms_without_name: 1 })), /1 bokad lokal saknar salnamn/)
+    assert.match(placeText(demand({ rooms_compared: false, same_rooms: null, booked_addresses: [] })), /okänd adress/)
   })
 })

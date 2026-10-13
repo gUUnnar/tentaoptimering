@@ -114,7 +114,6 @@ class ViewTests(unittest.TestCase):
         self.assertTrue(exam["ladok_link_unclear"])  # p4 has no candidate
         self.assertEqual(exam["ladok_links"], ["no_candidate", "single_candidate"])
         self.assertFalse(views.exam_payload(self.dir, "o2")["placements"][0]["ladok_link"] == "single_candidate")
-        self.assertIsNone(exam["simulated"])
 
     def test_search_finds_by_id_course_and_name_and_by_date(self) -> None:
         self.assertEqual([item["exam_order_id"] for item in views.search_exams(self.dir, "1bb")["exams"]], ["o2"])
@@ -177,6 +176,13 @@ class RouteTests(unittest.TestCase):
             self.assertEqual(get("/exams?q=Kemi")[1]["exams"][0]["exam_order_id"], "o4")
             self.assertEqual(get("/exams/o1")[1]["booked_places"], 140)
             self.assertEqual(get("/exams/nope")[0], 422)
+            status, body = get("/overview?date_from=2026-02-09&date_to=2026-02-15")
+            self.assertEqual((status, body["totals"]["exam_orders"]), (200, 3))
+            status, body = get("/overview?date_from=2026-02-09&date_to=2026-02-15&address=A%201")
+            self.assertEqual((status, len(body["bookings"])), (200, 5))
+            self.assertEqual(get("/overview?date_from=2026-02-09&date_to=2026-02-15&address=Nowhere")[0], 422)
+            self.assertEqual(get("/overview?date_from=2026-02-16&date_to=2026-02-15")[0], 422)
+            self.assertEqual(get("/exams/o1/compare?run=20260101T000000Z-none")[0], 404)
 
 
 @unittest.skipUnless((PROCESSED / "bookings.csv").is_file(), "kräver lokalt genererat underlag (data/processed)")

@@ -7,7 +7,7 @@ from typing import Any, Callable
 
 from fastapi import FastAPI, HTTPException, Query
 
-from . import booking_views
+from . import booking_compare, booking_overview, booking_views
 from .app_storage import AppStorage
 
 ISO = r"^\d{4}-\d{2}-\d{2}$"
@@ -48,3 +48,14 @@ def register_booking_routes(app: FastAPI, storage: AppStorage) -> None:
     def booking_exam(order_id: str) -> dict[str, Any]:
         """One booked exam with all its placements."""
         return _guard(lambda: booking_views.exam_payload(storage.processed_dir, order_id))
+
+    @app.get("/api/bookings/overview")
+    def booking_overview_route(date_from: str = Query(..., pattern=ISO), date_to: str = Query(..., pattern=ISO),
+                               address: str | None = Query(None, max_length=200)) -> dict[str, Any]:
+        """Bookings in a period per address and room; with `address` (empty = bookings without an address) all bookings there."""
+        return _guard(lambda: booking_overview.overview_payload(storage.processed_dir, date.fromisoformat(date_from), date.fromisoformat(date_to), address))
+
+    @app.get("/api/bookings/exams/{order_id}/compare")
+    def booking_compare_route(order_id: str, run: str = Query(..., pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,159}$")) -> dict[str, Any]:
+        """A booked exam next to its placement in a saved run (through the provisional Ladok link)."""
+        return _guard(lambda: booking_compare.compare_payload(storage, order_id, run))
