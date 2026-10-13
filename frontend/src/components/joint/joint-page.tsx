@@ -7,6 +7,7 @@ import { useJointJob } from "@/lib/useJointJob"
 import { LiveView } from "./live-view"
 import { ResultView } from "./result-view"
 import { StartPanel } from "./start-panel"
+import { InfoTip } from "@/components/ui/info-tip"
 
 type Tab = "start" | "live" | "result"
 const TRIGGER = "rounded-t-md border-b-2 border-transparent px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700 data-[state=active]:border-sky-800 data-[state=active]:text-sky-900"
@@ -35,7 +36,8 @@ export default function JointPage({ onOpenUnderlay, reloadKey }: { onOpenUnderla
   const busy = job.status === "running" || job.status === "starting"
 
   return <div className="max-w-6xl space-y-4">
-    <p className="max-w-3xl text-sm text-slate-900">Här ställer du frågan "vad händer med kostnaden om jag ändrar det här?". Välj ett scenario, ändra de parametrar du vill, kör och jämför med förra körningen. Allt som visas är modellens kostnad, inte faktisk kostnad.</p>
+    <p className="flex items-center gap-1.5 text-sm font-medium text-slate-900">Vad händer med kostnaden om jag ändrar det här?
+      <InfoTip label="Så använder du sidan"><span className="block">Välj ett scenario, ändra de parametrar du vill, kör och jämför med förra körningen.</span><span className="block">Allt som visas är modellens kostnad, inte faktisk kostnad.</span></InfoTip></p>
     <Tabs.Root value={tab} onValueChange={value => setTab(value as Tab)}>
       <Tabs.List className="mb-4 flex gap-1 border-b" aria-label="Optimering">
         <Tabs.Trigger className={TRIGGER} value="start">1. Ställ in och kör</Tabs.Trigger>

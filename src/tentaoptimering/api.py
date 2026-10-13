@@ -16,6 +16,7 @@ from .app_storage import AppStorage
 from .booking_api import register_booking_routes
 from . import joint_api
 from .job_manager import LocalJobManager
+from .joint_diagnosis_api import register_diagnosis_routes
 from .parameter_catalog import load_parameter_catalog
 from .pipeline import run_pipeline
 
@@ -78,6 +79,7 @@ def create_app(storage_root: Path | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail=str(error)) from error
 
     register_booking_routes(app, storage)
+    register_diagnosis_routes(app, storage, jobs)
 
     @app.get("/api/joint-runs/warm-start-candidates")
     def warm_start_candidates(problem_id: str | None = None) -> dict[str, Any]:

@@ -1,11 +1,11 @@
-import { useEffect, useId, useState } from "react"
+import { useEffect, useId, useState, type ReactNode } from "react"
 import { TriangleAlert } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { jointApi } from "@/lib/jointApi"
 import type { JointEvent, JointSummary, SavedRun, WarmStartRecord } from "@/lib/jointTypes"
 import { foldEvents } from "@/lib/jointState"
 import { CompareSection } from "./compare-section"
-import { HowToRead } from "./how-to-read"
+import { DiagnosisCard } from "./diagnosis-card"
 import { Replay } from "./replay"
 import { TimelineCard } from "./run-panels"
 import { SummaryCard } from "./summary-card"
@@ -54,15 +54,25 @@ export function ResultView({ runId, runs, onSelectRun }: { runId: string | null;
       {loading && <span className="text-xs text-slate-900" role="status">Hämtar resultat …</span>}
     </CardContent></Card>
 
-    <HowToRead/>
     {!runId && <Card><CardContent className="pt-4 text-sm text-slate-900">Välj en avslutad körning för sammanfattning, jämförelse och förlopp. En körning som stoppats utan kontrollerad lösning har inget resultat att visa.</CardContent></Card>}
     {data?.errors.map(error => <p key={error} className="flex items-start gap-1.5 rounded-md bg-red-50 p-2 text-xs text-red-900" role="alert"><TriangleAlert size={14} className="mt-0.5 shrink-0" aria-hidden="true"/>{error}</p>)}
 
     {data?.summary && <SummaryCard summary={data.summary} labels={data.labels}/>}
-    {runId && data && <CompareSection runId={runId} runs={runs}/>}
-    {data?.summary && <VerdictCards summary={data.summary}/>}
-    {data && runId && data.events.length > 0 && <TimelineCard state={foldEvents(data.events)} events={data.events} nowT={Math.max(...data.events.map(event => event.t))}/>}
-    {data && runId && <WarmStartCard record={data.warm}/>}
-    {data && runId && <Replay events={data.events} costVisible={data.summary?.has_verified_solution === true}/>}
+    {runId && data?.summary && !data.summary.has_verified_solution && !data.summary.cancelled && <DiagnosisCard runId={runId}/>}
+    {data && runId && <Fold title={data.summary?.has_verified_solution ? "Jämförelse, domar, förlopp och uppspelning" : "Fler detaljer: jämförelse, förlopp och uppspelning"} open={data.summary?.has_verified_solution === true}>
+      <CompareSection runId={runId} runs={runs}/>
+      {data.summary && <VerdictCards summary={data.summary}/>}
+      {data.events.length > 0 && <TimelineCard state={foldEvents(data.events)} events={data.events} nowT={Math.max(...data.events.map(event => event.t))}/>}
+      <WarmStartCard record={data.warm}/>
+      <Replay events={data.events} costVisible={data.summary?.has_verified_solution === true}/>
+    </Fold>}
   </div>
+}
+
+/** Det som inte behövs för att förstå utfallet ligger hopfällt; vid ett fel öppnas det inte av sig självt. */
+function Fold({ title, open, children }: { title: string; open: boolean; children: ReactNode }) {
+  return <details open={open} className="rounded-lg border bg-white">
+    <summary className="cursor-pointer p-3 text-sm font-semibold">{title}</summary>
+    <div className="space-y-4 p-3 pt-0">{children}</div>
+  </details>
 }

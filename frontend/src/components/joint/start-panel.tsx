@@ -17,6 +17,7 @@ import { RunOptionsPanel } from "./run-options"
 import { SaveScenario } from "./save-scenario"
 import { ScenarioInfo, ScenarioSelect } from "./scenario-picker"
 import { UnderlayNotice } from "./underlay-notice"
+import { InfoTip } from "@/components/ui/info-tip"
 
 type Props = {
   scenarios: JointScenario[]
@@ -105,8 +106,8 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
 
     <section aria-label="Parametrar" className="space-y-3">
       <div>
-        <h2 className="text-sm font-semibold">3. Ändra parametrar (valfritt)</h2>
-        <p className="mt-0.5 text-xs text-slate-800">Det du ändrar gäller bara den här körningen och ändrar aldrig originalscenariot. Du kan spara dina ändringar som ett nytt scenario längst ner.</p>
+        <h2 className="flex items-center gap-1.5 text-sm font-semibold">3. Ändra parametrar (valfritt)
+          <InfoTip label="Om ändringar">Det du ändrar gäller bara den här körningen och ändrar aldrig originalscenariot. Du kan spara dina ändringar som ett nytt scenario längst ner.</InfoTip></h2>
       </div>
       {editor.load.status === "loading" && <p className="text-sm text-slate-800" role="status">Hämtar parametrar …</p>}
       {editor.load.status === "error" && <div className="flex items-start gap-2 rounded-md border border-red-700 bg-red-50 p-3 text-sm text-red-900" role="alert">
@@ -117,13 +118,12 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
     </section>
 
     <Card>
-      <CardHeader><CardTitle>4. Inställningar för körningen och spara som scenario</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="flex items-center gap-1.5">4. Inställningar för körningen och spara som scenario<InfoTip label="Om resultatet">Resultatet är en modellkostnad, inte faktisk kostnad. Parametrar som är märkta "Antagande" saknar verifierat underlag.</InfoTip></CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <RunOptionsPanel problemId={scenario?.problem_id ?? ""} options={options} onChange={setOptions} hasChanges={editor.changes.length > 0}/>
         {estimate && <p className="flex items-start gap-2 rounded-md bg-slate-100 p-2.5 text-sm text-slate-900"><Clock size={16} className="mt-0.5 shrink-0" aria-hidden="true"/>{estimate.text}</p>}
         <SaveScenario baseId={scenarioId} baseName={scenario?.name ?? ""} parameters={editor.request} changeCount={editor.changes.length} disabledReason={saveDisabled}
           onSaved={async saved => { await onSaved(saved); setScenarioId(saved.id) }}/>
-        <p className="flex items-start gap-1.5 text-xs text-slate-800"><Info size={14} className="mt-0.5 shrink-0" aria-hidden="true"/>Resultatet är en modellkostnad, inte faktisk kostnad. Parametrar som är märkta "Antagande" saknar verifierat underlag.</p>
       </CardContent>
     </Card>
   </div>
