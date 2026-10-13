@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 
 /** Besked när underlaget saknas, med genväg till sidan Underlag. */
 export function UnderlayNotice({ onOpen, detail }: { onOpen: () => void; detail?: string }) {
-  return <div role="alert" className="flex flex-wrap items-start justify-between gap-3 rounded-md border-2 border-amber-700 bg-amber-50 p-3 text-sm text-amber-950">
+  return <div role="alert" className="flex flex-wrap items-start justify-between gap-3 rounded-md border border-amber-700 bg-amber-50 p-3 text-sm text-amber-950">
     <div className="flex max-w-3xl items-start gap-2">
       <Database size={18} className="mt-0.5 shrink-0" aria-hidden="true"/>
       <div>

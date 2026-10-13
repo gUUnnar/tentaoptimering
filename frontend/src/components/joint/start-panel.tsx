@@ -96,7 +96,7 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
       </CardContent>
     </Card>
     {scenario && <Card><CardContent className="pt-4"><ScenarioInfo scenario={scenario}/></CardContent></Card>}
-    {problems.length > 0 && <div role="alert" className="rounded-md border-2 border-red-700 bg-red-50 p-3 text-sm text-red-900">
+    {problems.length > 0 && <div role="alert" className="rounded-md border border-red-700 bg-red-50 p-3 text-sm text-red-900">
       <p className="font-semibold">{problems.length} {problems.length === 1 ? "parameter behöver rättas" : "parametrar behöver rättas"}:</p>
       <ul className="mt-1 list-disc pl-5">{problems.map(item => <li key={item.id}><strong>{item.label}:</strong> {item.message}</li>)}</ul>
     </div>}

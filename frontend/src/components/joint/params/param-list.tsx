@@ -30,7 +30,7 @@ export function ParamList({ editor, onOpenUnderlay }: { editor: ParameterEditor;
 
   return <div className="space-y-3">
     <div id="changes-bar"><ChangesBar changes={editor.changes} errors={editor.errors} onReset={editor.reset} onResetAll={editor.resetAll} onJump={jump}/></div>
-    {editor.generalErrors.length > 0 && <div role="alert" className="rounded-md border-2 border-red-700 bg-red-50 p-3 text-sm text-red-900">
+    {editor.generalErrors.length > 0 && <div role="alert" className="rounded-md border border-red-700 bg-red-50 p-3 text-sm text-red-900">
       <strong>Servern avvisade körningen:</strong>
       <ul className="mt-1 list-disc pl-5">{editor.generalErrors.map(message => <li key={message}>{message}</li>)}</ul>
     </div>}

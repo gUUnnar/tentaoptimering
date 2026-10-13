@@ -5,6 +5,7 @@ import { jointApi } from "@/lib/jointApi"
 import type { JointEvent, JointSummary, SavedRun, WarmStartRecord } from "@/lib/jointTypes"
 import { foldEvents } from "@/lib/jointState"
 import { CompareSection } from "./compare-section"
+import { SavingsCard } from "./savings-card"
 import { DiagnosisCard } from "./diagnosis-card"
 import { Replay } from "./replay"
 import { TimelineCard } from "./run-panels"
@@ -57,6 +58,7 @@ export function ResultView({ runId, runs, onSelectRun }: { runId: string | null;
     {!runId && <Card><CardContent className="pt-4 text-sm text-slate-900">Välj en avslutad körning för sammanfattning, jämförelse och förlopp. En körning som stoppats utan kontrollerad lösning har inget resultat att visa.</CardContent></Card>}
     {data?.errors.map(error => <p key={error} className="flex items-start gap-1.5 rounded-md bg-red-50 p-2 text-xs text-red-900" role="alert"><TriangleAlert size={14} className="mt-0.5 shrink-0" aria-hidden="true"/>{error}</p>)}
 
+    {runId && data?.summary?.has_verified_solution && <SavingsCard runId={runId}/>}
     {data?.summary && <SummaryCard summary={data.summary} labels={data.labels}/>}
     {runId && data?.summary && !data.summary.has_verified_solution && !data.summary.cancelled && <DiagnosisCard runId={runId}/>}
     {data && runId && <Fold title={data.summary?.has_verified_solution ? "Jämförelse, domar, förlopp och uppspelning" : "Fler detaljer: jämförelse, förlopp och uppspelning"} open={data.summary?.has_verified_solution === true}>

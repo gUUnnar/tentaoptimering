@@ -36,7 +36,7 @@ export function DiagnosisCard({ runId }: { runId: string }) {
   return <Card>
     <CardHeader><CardTitle className="flex items-center gap-1.5">Vad gick fel?<InfoTip label="Så fungerar utredningen">Utredningen löser scenariot om med bara en av dina ändringar i taget, högst {state?.saved?.probe_seconds ?? 30} sekunder per prov. "Omöjlig ensam" är bevisat. "Oklart" betyder att varken lösning eller bevis hann hittas.</InfoTip></CardTitle></CardHeader>
     <CardContent className="space-y-3 text-sm text-slate-900">
-      {result && !running && <p role="status" className={`rounded-md border-2 p-3 font-semibold ${result.tone === "cause" ? "border-red-700 bg-red-50 text-red-950" : "border-slate-500 bg-slate-50"}`}>{result.text}</p>}
+      {result && !running && <p role="status" className={`rounded-md border p-3 font-semibold ${result.tone === "cause" ? "border-red-700 bg-red-50 text-red-950" : "border-slate-500 bg-slate-50"}`}>{result.text}</p>}
       {state.changes.length === 0
         ? <p>Du ändrade inga parametrar. Scenariot "{state.scenario_name}" saknar lösning med de här tentorna och reglerna.</p>
         : <>

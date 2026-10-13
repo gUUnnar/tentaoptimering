@@ -37,7 +37,7 @@ export function SummaryCard({ summary, labels }: { summary: JointSummary; labels
           <Stats stats={view.stats}/>
           <p className="text-xs text-slate-900">Utfall: <strong>{view.outcomeText}</strong></p>
         </> : <>
-          <div role="alert" className="rounded-md border-2 border-red-700 bg-red-50 p-3 text-red-950">
+          <div role="alert" className="rounded-md border border-red-700 bg-red-50 p-3 text-red-950">
             <p className="flex items-center gap-2 text-base font-semibold"><CircleX size={20} className="shrink-0" aria-hidden="true"/>Körningen har ingen verifierad lösning{summary.cancelled ? " (den stoppades)" : ""}</p>
             <p className="mt-1 text-sm">{view.reason}</p>
             <p className="mt-1 text-xs">Därför redovisas ingen kostnad, inget kostnadsintervall och inga mått för en lösning.</p>
