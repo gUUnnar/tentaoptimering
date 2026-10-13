@@ -40,6 +40,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `docs/OBEROENDE_EFTERVALIDERING.md` | Valideringens design, regelkatalog, verkliga statusar för 12-tentakörningen, kvarstående datagap och hur den körs. |
 | `docs/OPTIMERINGSSTRATEGI.md` | Analys av den monolitiska modellens beräkningskostnad, den rekommenderade strategin (aggregerad relaxation och daglig kontroll), mätningar på frysta verkliga instanser och kvarstående risker. |
 | `docs/VERKSAMHETSPAVERKAN_2026-10-12.md` | Hur verksamhetsunderlaget 2 oktober påverkar modellen: period (Ladok slutar 31 mars), bemanningstrappa, tre pass, lokalbestånd och RPS, kostnadsbegrepp och Nuläge, med körda experiment. Inget preliminärt värde görs till verifierad regel. |
+| `docs/ARKITEKTURPRINCIPER_DATAKVALITET.md` | Principer för att hålla verksamhetsmodell och datakvalitet isär: vad saknad sal är i dagens uttag (mätt), granskning av PR #13–15 mot principerna, föreslagen arkitektur med resurstillstånd och policy per planeringsläge, begränsade korrigeringar, testmatris och frågor till verksamhetsägaren. |
 | `docs/KOSTNADSMODELL.md` | Avgränsning mellan resursbehov, intern kostnadsfördelning och realiserbar besparing. |
 | `docs/OPTIMERINGSUNDERLAG.md` | Korn, relationsregler och tillåten användning av det maskinläsbara underlaget före motorbygge. |
 | `docs/MALARKITEKTUR_ANALYS_2026-10-09.md` | Beslutsunderlag och leveransplan för omtaget (arkitektur, Nuläge, CP-SAT-restriktioner, steg, rensningsverifiering). Tillfälligt tills omtaget är genomfört. |

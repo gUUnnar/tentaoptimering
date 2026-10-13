@@ -38,7 +38,7 @@ Det är fyra olika mönster, inte ett:
 Dessutom två andra datatillstånd som lätt blandas ihop med bristande bokningsdata:
 
 - **Täckning, inte kvalitet.** Ladok-underlaget börjar 12 januari 2026 och slutar 31 mars 2026. Av bokningar utanför det fönstret saknar 5 596 av 5 659 kandidatkoppling. Det beror på att Ladok inte täcker perioden, inte på att kopplingen misslyckats. Inom fönstret saknar 496 rader kandidat och 123 är tvetydiga.
-- **Datat har redan två nivåer.** I salsregistret finns `eligible_for_exploratory_capacity_poc` och `eligible_for_operational_scheduling`. Alla åtta sådana salar är utforskande och ingen är operativt godkänd. Det är principen om explorativ respektive tillförlitlig planering i redan existerande data, och den innebär att tillförlitlig planering i dag inte är möjlig för någon sal.
+- **Datat har redan två nivåer.** I salsregistret finns `eligible_for_exploratory_capacity_poc` och `eligible_for_operational_scheduling`. Alla åtta salar i optimeringsunderlaget är utforskande och ingen är operativt godkänd. Det är principen om explorativ respektive tillförlitlig planering i redan existerande data, och den innebär att tillförlitlig planering i dag inte är möjlig för någon sal.
 
 ## 3. Granskning av PR #13–15
 
@@ -56,7 +56,7 @@ Dessutom två andra datatillstånd som lätt blandas ihop med bristande boknings
 |---|---|---|---|
 | F1 | PR #14/#15: `booking_views.load_bookings`, `booking_overview.place_label`, gränssnittets "sal ej angiven" | **Alla** rader utan salnamn får samma tolkning och samma etikett, oavsett om det är en adresskonvention, en registreringslucka, en icke-fysisk lokal eller ett felaktigt fält. Räkningar och summor är riktiga, men begreppet "sal ej angiven" döljer de fyra mönstren i avsnitt 2. | 2 |
 | F2 | PR #14/#15: `ladok_link`, `LINK_TEXT`, `linkIsUnclear` | `no_candidate` blandar "utanför Ladok-täckningen" (5 596 rader) med "ingen koppling trots täckning" (496). Täckningsfönstret härleds inte ur data utan syns bara indirekt. | 2, 3 |
-| F3 | PR #14/#15: `booking_views`, kapacitet | "Namngiven sal" är reglerna för när kapacitet gäller. Matchning mot registret saknar eget tillstånd: en sal som är namngiven men saknas i registret (Fyrishov D–F) får bara `capacity = null`. Högsta samtidiga bokning över kapacitet (t.ex. 105 %) visas utan att markeras som misstänkt data. | 2 |
+| F3 | PR #14/#15: `booking_views`, kapacitet | "Namngiven sal" är reglerna för när kapacitet gäller. Matchning mot registret saknar eget tillstånd: en sal som är namngiven men saknar kapacitet i registret (t.ex. Fyrishov D–F) får bara `capacity = null`; att den inte kunnat matchas och att kapaciteten saknas är samma tillstånd. Högsta samtidiga bokning över kapacitet (t.ex. 105 %) visas utan att markeras som misstänkt data. | 2 |
 | F4 | PR #15: `booking_compare._room_names`, jämförelse | Jämförelsen jämför salar bara om *alla* bokade lokaler har namn. Det är rätt, men skälet ("saknar salnamn") är ett enda skäl för olika orsaker. | 2 |
 | F5 | PR #14: `load_bookings` | Länkstatus per bokningsrad tas från första raden i `candidate_linkage` när flera finns. Det är i dag samma status på alla rader, men regeln är implicit. | 4 |
 | F6 | PR #13: `PLANNING_BASIS` | `mode = "exploratory"` och `fixed_bookings_considered = false` är konstanter. Det är sant i dag, men "explorativ" är en egenskap hos körningen som borde **härledas** av datatillstånd och vald policy, så att tillförlitlig planering kan uppstå utan kodändring. | 3, 5 |
