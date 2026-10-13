@@ -1,5 +1,7 @@
 # Kravmatris (S0-utkast)
 
+> Den äldre kapacitets- och termmotorn är borttagen (finns i Git-historiken före den här grenen). Hänvisningar nedan till dess moduler, scenarier, kommandon och rutter beskriver därför det tidigare läget.
+
 Varje krav i `KONCEPTUELL_KRAVSPECIFIKATION.md` och i acceptanskriterierna (`AGENTS.md`) redovisas med dagens status, status efter första leveransen och det som bevisar den. Statusord: **Uppfyllt**, **Delvis**, **Saknas**, **Kan inte verifieras** (data saknas). Matrisen uppdateras vid varje steg; ett krav får inte markeras *Uppfyllt* utan ett test eller en kontroll.
 
 Underlag klassas **A** (finns i tillgängliga data), **B** (kräver antagande), **C** (kräver nya verksamhetsuppgifter).
@@ -65,6 +67,20 @@ Underlag klassas **A** (finns i tillgängliga data), **B** (kräver antagande), 
 | P-1 Aktiv betyder verksam | Saknas | **Uppfyllt** | Katalogtest |
 | P-3 Härledd verifiering | Saknas | **Uppfyllt** | Regressionstest |
 | N-1 till N-10 (Nuläge, population, lokaler, fotnot, påverkansmått) | Saknas | **Uppfyllt** (N-7: brist som datagap) | Se plan |
+
+### Aktuell status efter PR #11 (gemensam motor och nytt gränssnitt)
+
+Tabellen ovan är S0-planen. Efter att den äldre motorn togs bort gäller detta för den gemensamma motorn och det nya gränssnittet. Det som inte är uppfyllt står som sådant.
+
+| Krav | Status | Kommentar |
+|---|---|---|
+| N-1 Nuläge med samma kod och data | **Ej uppfyllt** | Det finns ingen definierad nulägesberäkning. Gränssnittet jämför mot föregående körning av samma scenario, vilket är användbart för experiment men inte samma sak. |
+| N-3 Efterfrågeeffekt skild från planeringseffekt | **Ej uppfyllt** | När efterfrågan ändras redovisas ingen kostnadsskillnad alls, eftersom den inte går att tillskriva schemaläggningen. En uppdelning saknas. |
+| N-5 Kostnadsbelopp bara mellan körningar med samma antaganden | **Uppfyllt för jämförelsen** | Vid ändrade kostnads- eller efterfrågeparametrar visas ingen kostnadsskillnad, och texten säger att det beror på antagandena (`tests/test_joint_review_fixes.py`). |
+| UX-1 Start lokalt på Windows utan Python/Node | **Ej verifierat** | Paketeringen är inte provad efter ombyggnaden, och mappväljaren för källdatakatalog (PR #5) ingår inte. |
+| UX-5 Resultat med antaganden och jämförelse mot Nuläge | **Delvis** | Resultat, domar, ändrade parametrar och begränsningar visas. Jämförelse mot Nuläge saknas (se N-1). |
+| UX-7 Jämföra bara jämförbara körningar | **Delvis** | Körningar jämförs bara vid samma underlag, samma tentor, verifierad lösning, och kostnad bara vid samma antaganden. En fullständig jämbarhetsnyckel finns inte. |
+| UX-8 Namnge, organisera, kopiera, radera | **Delvis** | Egna scenarier kan sparas. Radering och organisering saknas. |
 
 ## 5. Datagap som begränsar bedömningen (nya uppgifter, klass C)
 

@@ -15,12 +15,14 @@ class LocalJobManager:
         self._jobs: dict[str, dict[str, Any]] = {}
         self._lock = threading.Lock()
 
-    def start(self, action: Callable[[], dict[str, Any]]) -> dict[str, Any]:
+    def start(self, action: Callable[[], dict[str, Any]], cancel: Any = None, progress: Any = None) -> dict[str, Any]:
+        """Queue `action`. An optional cancel token (`.cancel()`) and progress sink stay with the job, outside its public form."""
         with self._lock:
             if any(job["status"] in {"queued", "running"} for job in self._jobs.values()):
                 raise RuntimeError("En beräkning pågår redan. Vänta tills den är klar.")
             job_id = uuid4().hex
-            job = {"job_id": job_id, "status": "queued", "created_at": _now(), "result": None, "error": None}
+            job = {"job_id": job_id, "status": "queued", "created_at": _now(), "result": None, "error": None,
+                   "cancel": cancel, "progress": progress}
             self._jobs[job_id] = job
             future = self._executor.submit(self._execute, job_id, action)
             job["future"] = future
@@ -45,6 +47,28 @@ class LocalJobManager:
                 raise KeyError("Körningsjobbet finns inte.")
             return self._public_job(self._jobs[job_id])
 
+    def handle(self, job_id: str) -> tuple[dict[str, Any], Any, Any]:
+        """(public job, cancel token, progress sink) of a job; the last two are None for jobs without them."""
+        with self._lock:
+            if job_id not in self._jobs:
+                raise KeyError("Körningsjobbet finns inte.")
+            job = self._jobs[job_id]
+            return self._public_job(job), job.get("cancel"), job.get("progress")
+
+    def cancel(self, job_id: str) -> bool:
+        """Ask a queued or running job to stop. False if it is already over; an error if it cannot be cancelled."""
+        with self._lock:
+            if job_id not in self._jobs:
+                raise KeyError("Körningsjobbet finns inte.")
+            job = self._jobs[job_id]
+            token = job.get("cancel")
+            if token is None:
+                raise RuntimeError("Jobbet kan inte avbrytas.")
+            active = job["status"] in {"queued", "running"}
+        if active:
+            token.cancel()  # outside the lock: it stops solver threads
+        return active
+
     def has_active_job(self) -> bool:
         with self._lock:
             return any(job["status"] in {"queued", "running"} for job in self._jobs.values())
@@ -54,7 +78,7 @@ class LocalJobManager:
 
     @staticmethod
     def _public_job(job: dict[str, Any]) -> dict[str, Any]:
-        return {key: value for key, value in job.items() if key != "future"}
+        return {key: value for key, value in job.items() if key not in {"future", "cancel", "progress"}}
 
 
 def _now() -> str:

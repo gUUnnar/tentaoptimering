@@ -24,8 +24,8 @@ def bundled_scenarios_dir() -> Path:
     return application_root() / "config" / "scenarios"
 
 
-def bundled_parameters_path() -> Path:
-    return application_root() / "config" / "parameters.toml"
+def bundled_joint_catalog_path() -> Path:
+    return application_root() / "config" / "joint_parameter_catalog.toml"
 
 
 def frontend_dist_dir() -> Path:

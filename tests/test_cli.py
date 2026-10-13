@@ -8,7 +8,6 @@ from tempfile import TemporaryDirectory
 import unittest
 
 from tentaoptimering.cli import build_parser, main
-from tentaoptimering.paths import REPO_ROOT
 
 
 class CliTests(unittest.TestCase):
@@ -68,41 +67,6 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["status"], "error")
         self.assertEqual(payload["error"]["type"], "FileNotFoundError")
 
-    def test_validate_config_returns_normalized_json(self) -> None:
-        stdout = StringIO()
-        with redirect_stdout(stdout):
-            exit_code = main(
-                [
-                    "validate-config",
-                    "--config",
-                    str(REPO_ROOT / "config" / "scenarios" / "reference.toml"),
-                ]
-            )
-
-        payload = json.loads(stdout.getvalue())
-        self.assertEqual(exit_code, 0)
-        self.assertTrue(payload["valid"])
-        self.assertEqual(payload["config"]["scenario_id"], "reference_fixed_time")
-
-    def test_optimize_requires_explicit_config(self) -> None:
-        stderr = StringIO()
-        with redirect_stderr(stderr):
-            exit_code = main(["optimize"])
-
-        payload = json.loads(stderr.getvalue())
-        self.assertEqual(exit_code, 2)
-        self.assertEqual(payload["status"], "error")
-        self.assertIn("--config", payload["error"]["message"])
-
-    def test_optimize_term_requires_explicit_config(self) -> None:
-        stderr = StringIO()
-        with redirect_stderr(stderr):
-            exit_code = main(["optimize-term"])
-
-        payload = json.loads(stderr.getvalue())
-        self.assertEqual(exit_code, 2)
-        self.assertIn("--config", payload["error"]["message"])
-
     def test_optimize_joint_requires_explicit_config(self) -> None:
         stderr = StringIO()
         with redirect_stderr(stderr):
@@ -123,14 +87,27 @@ class CliTests(unittest.TestCase):
         self.assertEqual(support["rooms.max_rooms_per_exam"], "implemented")
         self.assertEqual(support["rules.student_conflicts"], "contract_only")
 
-    def test_validate_term_run_requires_run_id(self) -> None:
+    def test_validate_joint_run_requires_run_id(self) -> None:
         stderr = StringIO()
         with redirect_stderr(stderr):
-            exit_code = main(["validate-term-run"])
+            exit_code = main(["validate-joint-run"])
 
         payload = json.loads(stderr.getvalue())
         self.assertEqual(exit_code, 2)
         self.assertIn("--run-id", payload["error"]["message"])
+
+    def test_commands_of_the_removed_engines_are_rejected(self) -> None:
+        for command in ("optimize", "optimize-term", "validate-term-run", "validate-config", "parameters", "result", "compare"):
+            with self.subTest(command=command), redirect_stderr(StringIO()), self.assertRaises(SystemExit) as caught:
+                build_parser().parse_args([command])
+            self.assertEqual(caught.exception.code, 2)
+
+    def test_only_the_joint_engine_commands_remain(self) -> None:
+        action = next(item for item in build_parser()._actions if item.dest == "command")
+        self.assertEqual(
+            set(action.choices),
+            {"prepare", "status", "resources", "joint-parameters", "optimize-joint", "validate-joint-run"},
+        )
 
 
 if __name__ == "__main__":

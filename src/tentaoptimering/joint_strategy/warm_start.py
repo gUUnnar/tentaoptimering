@@ -20,6 +20,7 @@ import time
 from typing import Any
 
 from ..joint_contract import JointOptimizationInput
+from ..joint_progress import emit
 from .verification import Checker, Parts, Request, by_day
 
 LOG = logging.getLogger(__name__)
@@ -57,13 +58,16 @@ class StartReport:
     final_cost_ore: int | None = None
     final_source: str | None = None
     interrupted: bool = False
+    source_run_id: str | None = None  # for the progress event only; not part of the saved report
 
     def reject(self, reason: str) -> None:
         self.status = REJECTED
         self.reasons.append(reason)
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        data = asdict(self)
+        data.pop("source_run_id")  # the saved decision already names its source
+        return data
 
 
 @dataclass(frozen=True)
@@ -105,6 +109,20 @@ def warm_start(
     allowed, which are worth giving to the relaxation as a hint either way.
     """
     report = report if report is not None else StartReport()
+    parts, hint = _recheck(checker, schedule, rooms_used, report)
+    accepted = parts is not None
+    explanation = (
+        f"Den tidigare placeringen klarade den exakta kontrollen mot de nya reglerna ({report.days_checked} dagar)." if accepted
+        else f"{' '.join(report.reasons)} {report.hint_exams} tentors tidigare pass används som ledtråd.".strip()
+    )
+    emit(checker.progress, "warm_start", decision=ACCEPTED if accepted else REJECTED, explanation=explanation,
+         source_run_id=report.source_run_id)
+    return parts, hint
+
+
+def _recheck(
+    checker: Checker, schedule: dict[str, str], rooms_used: set[str], report: StartReport,
+) -> tuple[Parts | None, dict[str, str]]:
     problem = checker.problem
     found = fit(problem, schedule, rooms_used)
     report.exams_in_start, report.exams_reused = len(schedule), len(found.schedule)

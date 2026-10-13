@@ -27,32 +27,22 @@ Installera paketet i redigerbart läge så att körningar och tester använder `
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-`prepare` återskapar normaliserade underlag och rapporter, inklusive den aktivitetsspecifika `demand_scope.csv`. `status` läser senast genererade beredskapsstatus. CLI:t skriver JSON som standard.
+`prepare` återskapar normaliserade underlag och rapporter, inklusive den aktivitetsspecifika `demand_scope.csv`; dess konfiguration (efterfrågemått och explorativa PoC-antaganden om lokalbestånd) finns i `config/data_preparation.toml`. `status` och `resources` läser senast genererade beredskapsstatus och resurser, `joint-parameters` listar den gemensamma parameterkatalogen. CLI:t skriver JSON som standard.
 
-Den första integrerade terminskörningen använder en separat, versionshanterad scenariofil. Den placerar enbart de preliminärt inkluderade behoven och redovisar därför både täckning av modellens behov och täckning av hela källpopulationen:
-
-```powershell
-.\.venv\Scripts\python.exe -m tentaoptimering.cli optimize-term --config config\scenarios\integrated_term_exploratory.toml
-```
-
-Körningen sparar spårbarhets- och resultatfiler under `runs/`, som inte versionshanteras. Den är explorativ: rumstillgänglighet, digital kompatibilitet, kostnader och bemanningsregler är uttryckliga, ersättbara scenarioantaganden. Den skapar anonymiserade vaktuppgifter och kontrollerar arbetspass, raster, vila och byggnadsbyten. Resultatet är inte ett operativt schema och den konstruktiva heltermsmetoden redovisar inget optimalitetsgap.
-
-Eftervalideringen läser en sparad körnings egna modellindata, scenario och placeringsrader, och kan köras utan att placeringsmetoden körs igen:
-
-```powershell
-.\.venv\Scripts\python.exe -m tentaoptimering.cli validate-term-run --run-id <körnings-id>
-```
-
-Den skriver `validation.json` och `validation.md` i körningsmappen. Full teknisk placering innebär inte verksamhetsmässig genomförbarhet: regler som bara täcks av antaganden eller saknar data/modellstöd redovisas separat och ger status `not_verified`. Resultatets kostnadsjämförelse visar endast separata, ej jämförbara kostnadsprofiler och redovisar aldrig en differens eller verifierad besparing utan avtalskopplingar.
-
-Den nya gemensamma CP-SAT-kärnan kan köras reproducerbart på ett namngivet verkligt delurval. Den optimerar kalenderpass, faktiska salar och regelberäknad bemanningskostnad i samma modell:
+Den gemensamma CP-SAT-kärnan kan köras reproducerbart på ett namngivet verkligt delurval. Den optimerar kalenderpass, faktiska salar och regelberäknad bemanningskostnad i samma modell:
 
 ```powershell
 $env:PYTHONPATH = (Resolve-Path src).Path
 .\.venv\Scripts\python.exe -m tentaoptimering.cli optimize-joint --config config\scenarios\joint_real_subset.toml
 ```
 
-Körningen sparar versionsmärkt modellindata, resultat, manifest och rapport under `runs/`. Se [första gemensamma CP-SAT-leveransen](docs/GEMENSAM_CP_SAT_FORSTA_LEVERANS.md) för statussemantik, handräknade facit, uppmätt verklig körning och kända begränsningar.
+Körningen sparar versionsmärkt modellindata, resultat, manifest och rapport under `runs/` (som inte versionshanteras) och kör eftervalideringen direkt efter lösningen. Se [första gemensamma CP-SAT-leveransen](docs/GEMENSAM_CP_SAT_FORSTA_LEVERANS.md) för statussemantik, handräknade facit, uppmätt verklig körning och kända begränsningar.
+
+Den fristående eftervalideringen läser en sparad körnings egna modellindata och placeringsresultat och kan köras utan att optimeringen körs igen. Den redovisar regelvis `pass`, `fail`, `not_evaluated` eller `not_applicable` och skiljer teknisk placeringsfullständighet från verksamhetsmässig verifiering; avsaknad av data eller modellstöd blir aldrig ett godkänt krav. Se [oberoende eftervalidering](docs/OBEROENDE_EFTERVALIDERING.md).
+
+```powershell
+.\.venv\Scripts\python.exe -m tentaoptimering.cli validate-joint-run --run-id <körnings-id>
+```
 
 Standardstrategin är `solver.strategy = "decomposed"`. En aggregerad relaxation väljer datum, lokalportfölj och bemanningspool och ger en bevisad undre kostnadsgräns. Därefter kontrolleras varje dag exakt med samma hårda villkor. Den monolitiska modellen kan väljas med `"monolithic"`. Se [optimeringsstrategin](docs/OPTIMERINGSSTRATEGI.md) för analys och mätningar.
 
@@ -72,11 +62,11 @@ Den tidigare körningen måste ha oförändrade filer enligt sitt manifest och g
 
 ## Lokalt gränssnitt
 
-PoC:n har ett lokalt React- och FastAPI-gränssnitt för scenarier, parametrar, terminskörningar och eftervalidering. Se [lokalt gränssnitt](docs/LOKALT_GRANSSNITT.md) för utveckling, Windows-paketering och offlineverifiering.
+PoC:n har ett lokalt React- och FastAPI-gränssnitt för gemensamma körningar: scenarier, parametrar, körning, jämförelse och eftervalidering. Se [lokalt gränssnitt](docs/LOKALT_GRANSSNITT.md) för utveckling, Windows-paketering och offlineverifiering.
 
 ## Aktuell implementation
 
-Projektet innehåller ett reproducerbart inläsnings- och analyslager, ett kanoniskt scope-/efterfrågelager och en första gemensam CP-SAT-kärna med full efterfrågetäckning, faktiska salar och bemanningsrelaterad kostnad. Den avgränsade verkliga körningen är ett modellbevis och inte ett operativt schema eller en beräkning av realiserbar besparing. Den äldre kapacitetsoptimeraren finns tillfälligt kvar för den befintliga applikationsvägen tills dess funktioner har ersatts.
+Projektet innehåller ett reproducerbart inläsnings- och analyslager, ett kanoniskt scope-/efterfrågelager och en första gemensam CP-SAT-kärna med full efterfrågetäckning, faktiska salar och bemanningsrelaterad kostnad. Den avgränsade verkliga körningen är ett modellbevis och inte ett operativt schema eller en beräkning av realiserbar besparing. Den äldre kapacitets- och termmotorn är borttagen (finns i Git-historiken före den här grenen); den gemensamma motorn är den enda optimeringsvägen.
 
 Den aktuella scope-rapporten redovisar 1 259 tekniskt inkluderade aktiviteter och 266 oavgjorda. Resultat för den omfattningen får inte beskrivas som täckning av hela verksamheten förrän samtliga aktiviteter fått ett verksamhetsbeslut.
 

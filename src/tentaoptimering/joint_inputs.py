@@ -1,4 +1,4 @@
-"""Build and persist a bounded real-data case for the joint optimizer."""
+"""Build and persist a real-data case for the joint optimizer: named events or a whole selected term."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import shutil
 import time
 import tomllib
 from typing import Any
@@ -28,13 +29,17 @@ from .joint_contract import (
     write_result,
 )
 from .joint_optimizer import solve_joint_optimization
+from .joint_options import building_id, select_rooms
+from .joint_progress import EVENTS_FILE, ProgressSink, emit, phase
+from .joint_selection import select_ready_demands
 from .joint_strategy.resources import CancelToken, ExecutionBudget
 from .joint_strategy.warm_start import StartReport
 from .joint_validation import write_validation
-from .joint_warm_start import AUTO, decision_record, find_start, report_lines, write_decision
-from .optimizer_time import duration_minutes
+from .joint_warm_start import AUTO, decision_record, explain, find_start, report_lines, write_decision
 from .parameter_catalog import freeze_parameter_values, load_parameter_catalog
 from .provenance import sha256_file
+
+SCENARIO_COPY = "joint_scenario.toml"
 
 
 def build_real_subset_problem(
@@ -42,7 +47,7 @@ def build_real_subset_problem(
     processed_dir: Path,
     catalog_path: Path,
 ) -> JointOptimizationInput:
-    """Adapt named real exam events without silently expanding or shrinking the subset.
+    """Adapt real exam events (named, or selected by a rule in `[subset]`) without silently expanding or shrinking them.
 
     Every behaviour below is driven by the frozen parameter values, never by raw scenario keys.
     """
@@ -52,14 +57,7 @@ def build_real_subset_problem(
     demands_frame = pd.read_csv(processed_dir / "optimization_demands.csv", encoding="utf-8-sig")
     rooms_frame = pd.read_csv(processed_dir / "optimization_rooms.csv", encoding="utf-8-sig")
     scope_frame = pd.read_csv(processed_dir / "demand_scope.csv", encoding="utf-8-sig")
-    selected_events = tuple(str(value) for value in config["subset"]["exam_event_ids"])
-    ready = demands_frame[
-        demands_frame["exam_event_id"].isin(selected_events)
-        & (demands_frame["demand_input_status"] == "ready_provisional_ladok_demand")
-    ].copy()
-    found = set(ready["exam_event_id"].astype(str))
-    if found != set(selected_events):
-        raise ValueError(f"Det verkliga delmängdsfallet saknar event: {sorted(set(selected_events) - found)}")
+    ready = select_ready_demands(demands_frame, config["subset"])
 
     catalog = load_parameter_catalog(catalog_path)
     parameters = freeze_parameter_values(catalog, _parameter_overrides(config), _rationales(config))
@@ -117,7 +115,7 @@ def _prepare_events(ready: pd.DataFrame, values: dict[str, Any]) -> list[dict[st
         starts = set(str(value)[:5] for value in frame["booking_start_time"])
         if len(dates) != 1 or len(starts) != 1:
             raise ValueError(f"Samtentan {event_id} saknar gemensamt ursprungstillfälle.")
-        durations = {int(duration_minutes(str(value))) for value in frame["scheduled_time"]}
+        durations = {int(_duration_minutes(str(value))) for value in frame["scheduled_time"]}
         if len(durations) != 1:
             raise ValueError(f"Samtentan {event_id} har flera skrivtider: {sorted(durations)}")
         exam_types = sorted({str(value).lower() for value in frame["observed_exam_types"].fillna("")})
@@ -220,20 +218,14 @@ def _demand(
 def _rooms(
     rooms_frame: pd.DataFrame, plan_area: str, slots: tuple[CandidateSlot, ...], values: dict[str, Any]
 ) -> tuple[Room, ...]:
-    selected = set(str(value) for value in values["rooms.selection"])
-    rows = rooms_frame[
-        rooms_frame["eligible_for_exploratory_capacity_poc"].astype(bool)
-        & (rooms_frame["reference_city"] == plan_area)
-    ].copy()
-    if selected:
-        rows = rows[rows["room_id"].isin(selected)]
+    rows = select_rooms(rooms_frame, plan_area, values["rooms.selection"])  # an unknown room id is an error, not ignored
     result = []
     for row in rows.itertuples(index=False):
         capabilities, basis = _room_digital(str(row.digital_capability_status), values)
         result.append(
             Room(
                 room_id=str(row.room_id),
-                building_id=_building_id(str(row.reference_address)),
+                building_id=building_id(str(row.reference_address)),
                 plan_area=str(row.reference_city),
                 capacity=int(row.capacity_seats),
                 annual_fixed_cost_ore=int(row.capacity_seats) * int(values["cost.room_annual_per_seat_ore"]),
@@ -268,22 +260,61 @@ def run_real_subset(
     warm_start: str | None = AUTO,
     budget: ExecutionBudget | None = None,
     cancel: CancelToken | None = None,
+    progress: ProgressSink | None = None,
 ) -> dict[str, Any]:
     """Build, solve, save and validate one run.
 
     `warm_start` is "auto" (the newest usable earlier run of the same problem), "none", or the run id of an
     earlier run. The earlier placement is only a starting point: the solver re-checks it against the new
     instance, and the independent post-validation of the new run is made as for any run.
+
+    `progress` only observes the run. The run directory is created as soon as the problem is built (and before
+    the solve), so that the sink can write `joint_events.jsonl` there while the run is going on; the artifacts
+    that exist afterwards are the same as without a sink, plus that file.
     """
     problem = build_real_subset_problem(config_path, processed_dir, catalog_path)
     choice = find_start(runs_dir, problem, warm_start)
     budget = (budget or ExecutionBudget()).resolve(problem.solver)
     report = StartReport()
-    result = solve_joint_optimization(problem, choice.start, budget, cancel, report)
-    decision = decision_record(choice, problem, report, budget)
     run_id = f"{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}-{problem.problem_id}"
     run_dir = runs_dir / run_id
     run_dir.mkdir(parents=True, exist_ok=False)
+    shutil.copyfile(config_path, run_dir / SCENARIO_COPY)  # the scenario file that this run actually used
+    if progress is not None:
+        progress.run_id = run_id
+        progress.attach(run_dir / EVENTS_FILE)
+        progress.defer("finished")  # the last event comes after the artifacts are saved and validated
+        if choice.source is None:
+            emit(progress, "warm_start", decision="not_used", explanation=explain(choice, report), source_run_id=None)
+    report.source_run_id = choice.source.run_id if choice.source else None
+    try:
+        result = solve_joint_optimization(problem, choice.start, budget, cancel, report, progress)
+        decision = decision_record(choice, problem, report, budget)
+        with phase(progress, "finalize"):
+            saved = _save_and_validate(
+                problem, result, decision, choice, run_id, run_dir, config_path, processed_dir, catalog_path
+            )
+        if progress is not None:
+            progress.release()  # the solver's `finished` is the last event only once everything is saved and validated
+        return saved
+    except BaseException as error:
+        if progress is not None:
+            # The solver may have ended well, but the run did not: its held-back success event must not end the log.
+            progress.discard("finished")
+            if not progress.has("finished"):
+                emit(progress, "finished", outcome="failed", cost_ore=None, bound_ore=None,
+                     cancelled=bool(cancel and cancel.cancelled), error=f"{type(error).__name__}: {error}")
+        raise
+    finally:
+        if progress is not None:
+            progress.close()  # the log file is this run's; the events stay readable from memory
+
+
+def _save_and_validate(
+    problem: JointOptimizationInput, result: Any, decision: dict[str, Any], choice: Any, run_id: str, run_dir: Path,
+    config_path: Path, processed_dir: Path, catalog_path: Path,
+) -> dict[str, Any]:
+    """Write the artifacts of a solved run and validate them independently."""
     write_problem(problem, run_dir / "joint_input.json")
     write_result(result, run_dir / "joint_result.json")
     (run_dir / "joint_report.md").write_text(_report(problem, result), encoding="utf-8")
@@ -414,13 +445,16 @@ def _dataset_hash(processed_dir: Path) -> str:
     return digest.hexdigest()
 
 
-def _building_id(address: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "-", address.lower()).strip("-")
-
-
 def _clock_minutes(value: str) -> int:
     hour, minute = (int(part) for part in value.split(":"))
     return hour * 60 + minute
+
+
+def _duration_minutes(value: str) -> int:
+    """Minutes in a `HH:MM-HH:MM` interval; an end at or before the start means the next day."""
+    start_text, end_text = value.split("-", maxsplit=1)
+    start, end = _clock_minutes(start_text), _clock_minutes(end_text)
+    return (end if end > start else end + 24 * 60) - start
 
 
 def _clock_text(value: int) -> str:

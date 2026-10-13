@@ -1,4 +1,4 @@
-# Lokalt simuleringsgränssnitt
+# Lokalt gränssnitt för optimeringen
 
 React-klienten är en separat Vite-komponent under `frontend/`. FastAPI är ett tunt lokalt integrationslager: optimerings-, regel- och kostnadslogik ligger kvar i Pythonpaketet. I distribuerad version serverar FastAPI den byggda klienten och lyssnar endast på `127.0.0.1:8765`.
 
@@ -13,9 +13,9 @@ npm --prefix frontend run dev
 .\.venv\Scripts\python.exe -m uvicorn tentaoptimering.api:app --host 127.0.0.1 --port 8765
 ```
 
-Vite proxar `/api` till FastAPI. Välj källdatakatalog i gränssnittet och kör **Förbered underlag** före en terminsimulering. Användarscenarier, bearbetat underlag, rapporter och körresultat ligger under `%LOCALAPPDATA%\Uppsala universitet\Tentaoptimering`, aldrig i installationsmappen.
+Vite proxar `/api` till FastAPI. Välj källdatakatalog under **Underlag** och kör **Förbered underlag** före den första optimeringen. Användarscenarier, bearbetat underlag, rapporter och körresultat ligger under `%LOCALAPPDATA%\Uppsala universitet\Tentaoptimering`, aldrig i installationsmappen.
 
-Den inbyggda terminsmallen är explorativ. Eftervalideringen visar därför teknisk placeringsfullständighet separat från verksamhetsmässig genomförbarhet; regeldata som saknas eller endast är antaganden blir aldrig godkända.
+Resultatet är en modellkostnad, inte faktisk kostnad. Teknisk eftervalidering, verksamhetsmässig verifiering och ursprung redovisas som tre separata domar; regeldata som saknas eller endast är antaganden blir aldrig godkända.
 
 ## Paketerad Windowsversion
 
@@ -27,10 +27,71 @@ På byggdatorn körs:
 
 Skriptet låser frontendens npm-paket med `npm ci`, bygger Vite-resurserna och skapar `dist\Tentaoptimering\Tentaoptimering.exe` med PyInstaller. Slutanvändaren startar endast denna `.exe`: den startar lokal server, öppnar standardwebbläsaren och kräver varken Node.js, Python, Docker eller databasserver.
 
-Före leverans ska distributionen provas på en dator utan utvecklingsverktyg och utan nätverk: kopiera hela `dist\Tentaoptimering` till en skrivbar plats, koppla ur nätverket, starta `.exe`, välj en lokal källdatakatalog och genomför förberedelse, terminskörning och eftervalidering. Kontrollera särskilt att `127.0.0.1` är enda lyssnaradressen och att data skrivs under användarprofilen.
+Före leverans ska distributionen provas på en dator utan utvecklingsverktyg och utan nätverk: kopiera hela `dist\Tentaoptimering` till en skrivbar plats, koppla ur nätverket, starta `.exe`, välj en lokal källdatakatalog och genomför förberedelse, optimeringskörning och eftervalidering. Kontrollera särskilt att `127.0.0.1` är enda lyssnaradressen och att data skrivs under användarprofilen.
+
+## Sidor
+
+Menyn har två sidor: **Optimering** (startsida) och **Underlag**. Båda hålls monterade när man byter sida, så att ändringar, en pågående körning och en pågående förberedelse inte tappas.
+
+## Underlag
+
+Sidan **Underlag** gör det som krävs före en optimering och har två steg.
+
+**1. Källdatakatalog.** Mappen med Excel-källorna väljs och sparas i användarprofilen (`GET` och `PUT /api/settings`). Originalfilerna läses bara och ändras aldrig. Sökvägen kan inte ändras medan en förberedelse pågår.
+
+**2. Förbered underlaget.** `POST /api/preparation` startar ett jobb som läser källfilerna (tentaplaceringar, Ladok-uppgifter om tentander och lokalhyror), rensar och kopplar ihop dem och sparar det bearbetade underlag som optimeringen räknar på. Förberedelsen använder den *sparade* katalogen, så knappen är avstängd tills sökvägen är sparad. Jobbet följs via `GET /api/jobs/{id}` en gång i sekunden; misslyckas det visas serverns felmeddelande. Förberedelsen krävs före en optimering: scenarier som väljer sina tentor efter regler (till exempel "Alla tentor i underlaget (12 jan–31 mars 2026)") hämtar dem ur det förberedda underlaget. Den körs första gången och igen när källfilerna har bytts ut.
+
+Sidan visar också om underlaget verkar finnas. API:et har ingen särskild fråga för det, så det avgörs ur scenariolistan: ett regelbaserat urval får sitt antal tentor ur det förberedda underlaget, och saknas antalet saknas underlaget. När en förberedelse är klar hämtar Optimeringssidan scenarierna på nytt.
+
+## Optimering
+
+Sidan **Optimering** är den gemensamma optimeringen av datum, salar och bemanning. Den har tre flikar.
+
+**Saknat underlag.** Om det valda scenariot är ett regelbaserat urval utan känt antal tentor, eller om servern svarar att underlaget inte kan läsas (vid scenariolistan, vid start eller under körningen), visas en ruta "Underlaget är inte förberett" med knappen "Gå till Underlag". Start är avstängd så länge antalet tentor saknas. Gränssnittet gör inga särskilda anrop för detta; det tolkar svaren från de vanliga anropen.
+
+**1. Ställ in och kör.**
+- Överst ligger en fast rad (den följer med när man bläddrar bland parametrarna) med scenariovalet, antalet ändringar och knappen **Kör**, med hjälptexten "Körs med din ändring" eller "Körs med scenariots egna värden". Under raden visar gränssnittet vad scenariot omfattar: urval, **period** och beskrivning, allt ur scenariots egna uppgifter (perioden läses ur urvalets beskrivning; en upplysning om att underlaget saknar tentor efter perioden visas bara om scenariot själv anger den). Gränssnittet påstår aldrig "hela terminen" eller en viss termin.
+- Parametrarna visas grupperade med etikett, enhet och hjälptext. Inmatningen följer värdetypen: tal, ja/nej-knapp, val, datum, klockslag, veckodagar som markerbara knappar, listor med lägg till och ta bort, perioder och bemanningstrappan som tabell. Belopp ligger i öre i API:et men visas och matas in i kronor; omvandlingen finns i `frontend/src/lib/paramUnits.ts` och är testad. Typer utan redigerare (matriser, regeluppsättningar) visas skrivskyddat med en förklaring.
+- **Salar och tentamenstyper väljs med kryssrutor** över det som finns i underlaget (`GET /api/joint-runs/options?scenario=<id>`, hämtas när scenariot väljs och igen när underlaget har förberetts). `rooms.selection` visar salarna grupperade per byggnad med sal-id, antal platser och digitalstöd (alla platser, delvis, nej, okänt), "Markera alla" och "Ingen" per byggnad och en sammanfattning ("N av M salar valda, X platser"). Alla markerade är samma sak som en tom lista och står som "Alla salar"; annars skickas listan med de markerade. Ingen vald är ett fel ("Minst en sal måste vara vald") och borttagna salar kan göra körningen ogenomförbar, vilket körningens kontroll redovisar. Sal-id måste finnas bland alternativen. `flex.movable_types` visar typerna med antal ("Dugga (22)"); en typ är markerad om något ord i värdet är en delsträng av typens text (gemener), så "hybrid" träffar "Hybridtenta". Ändras markeringen inte behålls det ursprungliga värdet oförändrat; annars skrivs typernas text. Saknas underlaget (`data_available: false`) eller ger rutten fel visas de två parametrarna skrivskyddat med "Förbered underlaget för att kunna välja" och räknas som parametrar som inte kan ändras. Logiken finns i `lib/paramOptions.ts`, kryssrutorna i `components/joint/params/rooms-input.tsx` och `types-input.tsx`.
+- Parametrar som finns i modellen men inte går att sätta än (`editable: false`) är bortfiltrerade som standard. Rutan "Visa parametrar som inte kan ändras (N)" visar dem, och "X av Y parametrar visas" räknar det som faktiskt visas. Avancerade parametrar ligger bakom "Visa avancerade".
+- En ruta överst bland parametrarna listar alla ändringar jämfört med scenariot (gammalt värde till nytt värde), med "Återställ" per rad och "Återställ alla". Bara ändringarna skickas med körningen i `parameters`.
+- Lokal validering av uppenbara fel görs före start. Fel från servern (HTTP 422, `detail.errors`) visas vid rätt rad och i en sammanfattning.
+- "Startar från förra körningen" kan vara automatisk, av eller en vald körning. Förra körningens placering kontrolleras alltid på nytt mot de nya reglerna.
+- "Spara ändringarna som nytt scenario" (längst ner) skapar ett eget scenario. Originalscenariot ändras aldrig.
+
+**2. Körning.** Tidslinje över körningens steg, kostnadsgraf (verifierad kostnad, undre gräns och gap), dagrutnät, resurser, de parametrar körningen ändrat och stoppknapp. Rutan "pågår" bygger på händelsen `day_started`; för körningar utan den händelsen uppskattas den och sidan säger det.
+
+*Tidslinjen* (`run-timeline.tsx`, modellen i `lib/jointTimeline.ts`) byggs av `phase`-händelserna och visar det som faktiskt körs, i körordning: först ett eget block "Kontroll av förra körningen" (tid och utfall, eller "Hoppades över" med skälet), sedan ett block per varv ("Varv 1", "Varv 2" …) med grov plan, kontroll av varje dag, rättning och försök att behålla ursprungliga tider i den ordning de kördes, och sist "Slutkontroll och sparande". Ett nytt varv börjar varje gång den grova planen körs. Segmentens bredd är proportionell mot tiden med en lägsta synlig bredd, varje steg har egen färg, ikon och text, och det pågående segmentet pulserar (inte med `prefers-reduced-motion`) och har markören "Nu". Vid hovring, fokus eller klick visas tid, hur många dagar som är klara av totalt, hur många som misslyckades och vad det ledde till. En sammanfattningsrad härleds ur händelserna ("4 varv: den grova planen ändrades 3 gånger eftersom 6 dagar inte gick att genomföra"); det som inte är känt utelämnas. Samma tidslinje används i livevyn, i resultatvyn och i "Förlopp i efterhand".
+
+*Förklaringar per kontrolltyp* finns i `lib/jointKinds.ts`: varje typ (kontroll av förra körningen, dagkontroll, utredning, rättning, reservplan, ursprungliga tider, orsakssökning) har egen rubrik, egen förklaring och egen text för "Går inte". Lösarens engelska namn visas aldrig.
+
+*Tiden.* Serverns `elapsed_seconds` i varje `/events`-svar är sanningen; mellan svaren räknar en lokal klocka (`lib/runClock.ts`) vidare, och visningen går aldrig bakåt (det största av det som redan visats och serverns värde plus lokalt förfluten tid). Samma klocka används för förbrukad tid, resursrutan, stegen och tidslinjen. Efter avslut visas serverns slutvärde. `error` i svaret normaliseras till text.
+
+**3. Resultat och jämförelse.** Sammanfattning, jämförelse mot föregående körning av samma scenario (eller en vald körning) via `GET /api/joint-runs/{id}/compare`, de tre bedömningarna isär, körningens tidslinje, start från förra körningen och "Förlopp i efterhand". En kort ruta förklarar hur resultatet läses.
+
+- Sammanfattningen visar vilka parametrar som avviker från standardvärdet (etikett ur parameterlistan, annars id). Har körningen ingen verifierad lösning (`has_verified_solution: false`) visas bara ett besked med skälet (`unverified_reason`) och domarna: aldrig en kostnad, ett intervall eller andra lösningsmått, och inte heller kostnadsgrafen.
+- Har kostnads- eller efterfrågeantaganden ändrats mellan två körningar (`assumption_changes`) visas rutan "Antaganden har ändrats" före måtttabellen. Kostnadsraderna visar Tidigare och Nu men ingen skillnad och är märkta "Jämförs inte (andra antaganden)"; salar, vaktpool och flyttade tentor framhävs och behåller sin skillnad. En jämförelse mot en körning utan verifierad lösning visas utan skillnader.
+- "Förlopp i efterhand" är hopfälld som standard och spelar upp hur körningen gick till ur den sparade händelseloggen. Inget körs om.
+
+Kostnad utan bevisat optimum visas som intervallet "undre gräns–verifierad kostnad" och aldrig som besparing. Saknat värde tolkas som `not_evaluated`.
 
 ## API-kontrakt
 
-`/api/parameters` visar både parameterregistrets status för implementation och verifiering, samt `term_parameter_bindings`: den uttömmande listan över den aktuella terminsmotorns TOML-sökvägar och deras faktiska implementationsstatus. Terminsmallen har typade kontroller för kalender, skrivpass och -perioder, ställtid, bemanningstrappa, arbetspass, raster, arbetstidsgränser, dygnsvila, kostnader, kompatibilitet och krockpolicy; JSON är enbart ett avancerat alternativ. Vid varje scenariesparning synkroniseras redovisade antaganden från beräkningsvärdena, och kalenderperioder följer ändrade terminsgränser. `/api/scenarios` hanterar inbyggda mallar och redigerbara användarkopior och validerar nya innehåll atomiskt före lagring. `/api/preparation` och `/api/simulations` returnerar jobb-id:n; en lokal arbetskö med exakt en arbetare hindrar konkurrerande skrivningar till resultatfiler. Vid jobbinlämning kopieras scenariot till en oföränderlig snapshot som sedan följer med körningsartefakten. `/api/runs`, `/api/runs/{id}/validation` och `/api/runs/compare` exponerar sparade resultat, fristående eftervalidering samt både parameter- och resultatskillnader mellan frysta körningar.
+Klienten använder bara dessa rutter:
 
-Äldre kapacitetsscenarier är läsbara för spårbarhet men har inte den nya termins-eftervalideringsartefakten. Gränssnittet gör den begränsningen synlig.
+| Rutt | Används av |
+| --- | --- |
+| `GET` och `PUT /api/settings` | Underlag: källdatakatalog |
+| `POST /api/preparation`, `GET /api/jobs/{id}` | Underlag: förberedelse och jobbstatus |
+| `GET` och `POST /api/joint-runs/scenarios`, `GET /api/joint-runs/parameters` | Optimering: scenarier och parametrar |
+| `GET /api/joint-runs/options` | Optimering: salar och tentamenstyper i underlaget (kryssrutor) |
+| `POST /api/joint-runs`, `GET /api/joint-runs/{id}/events`, `POST /api/joint-runs/{id}/cancel` | Optimering: starta, följa och stoppa en körning |
+| `GET /api/joint-runs/{id}/summary`, `GET /api/joint-runs/{id}/compare` | Optimering: resultat och jämförelse |
+| `GET /api/joint-runs/warm-start-candidates` | Optimering: sparade körningar och val av startpunkt |
+| `GET /api/runs/{id}/events`, `GET /api/runs/{id}/warm-start` | Optimering: uppspelning och startbeslut |
+
+Typerna ligger i `frontend/src/lib/jointTypes.ts` och `frontend/src/lib/underlayApi.ts`. Appen skickar aldrig inspelade eller påhittade händelser. Testdata för logiktesterna ligger under `frontend/src/lib/testing/` och ett test säkerställer att appkod inte importerar dem och att inga borttagna rutter anropas. `npm --prefix frontend test` kör logiktesterna med Node utan extra beroenden.
+
+## Kontraktstester
+
+Riktiga svar från backend finns som ögonblicksbilder i `frontend/src/lib/testing/contract/` (sammanfattning med och utan verifierad lösning, jämförelse med ändrade antaganden, utan tidigare körning och mot en körning utan verifierad lösning, alternativen ur underlaget (`options.json`) samt `/events` för en klar och en misslyckad körning). `jointContract.test.ts` matar dem genom klientens adaptrar och kräver att varje fält i svaret är hanterat, så att ett nytt eller omdöpt fält fångas i testerna och inte först i webbläsaren. När backend ändrar kontraktet: uppdatera ögonblicksbilderna och låt testet visa vad klienten saknar.

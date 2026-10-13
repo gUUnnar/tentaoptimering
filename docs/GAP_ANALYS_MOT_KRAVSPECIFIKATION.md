@@ -1,5 +1,7 @@
 # Teknisk status – Tentaoptimering
 
+> Den äldre kapacitets- och termmotorn är borttagen (finns i Git-historiken före den här grenen). Hänvisningar nedan till dess moduler, scenarier, kommandon och rutter beskriver därför det tidigare läget.
+
 **Granskningsdatum:** 2026-10-08  
 **Källa:** GitHub-`main` samt uppgifter från lokala provkörningar.  
 **Syfte:** identifiera vilka tekniska komponenter som finns och vad som återstår att verifiera inför implementation av [kravspecifikationen](KONCEPTUELL_KRAVSPECIFIKATION.md).

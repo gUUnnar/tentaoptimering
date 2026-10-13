@@ -1,68 +1,41 @@
 from __future__ import annotations
 
-import tempfile
-import tomllib
-import unittest
-from copy import deepcopy
 from pathlib import Path
+import tempfile
+import unittest
 
-from tentaoptimering.app_storage import AppStorage, dump_toml
-from tentaoptimering.integrated_config import load_integrated_term_scenario
-from tentaoptimering.term_calendar import generate_calendar_slots
+from tentaoptimering.app_storage import AppStorage
 
 
 class AppStorageTest(unittest.TestCase):
-    def test_toml_writer_preserves_nested_scenario_shape(self) -> None:
-        content = {
-            "scenario_id": "demo",
-            "calendar": {"allowed_weekdays": [1, 2], "passes": [{"pass_id": "day", "start_time": "08:00"}]},
-            "assumption": [{"id": "known", "value": "1", "status": "provisional"}],
-        }
-        self.assertEqual(tomllib.loads(dump_toml(content)), content)
-
-    def test_user_copy_is_editable_and_validated(self) -> None:
+    def test_storage_creates_its_directories_and_keeps_settings(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             storage = AppStorage(Path(temporary))
-            copied = storage.create_scenario("ui-test")
-            self.assertTrue(copied["editable"])
-            self.assertEqual(copied["engine"], "integrated_term")
-            self.assertTrue(storage.validate_scenario("ui-test")["valid"])
-
-    def test_invalid_update_preserves_valid_scenario_and_run_ids_are_safe(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary:
-            storage = AppStorage(Path(temporary))
-            before = storage.create_scenario("safe-copy")["content"]
-            invalid = deepcopy(before)
-            del invalid["calendar"]["passes"]
+            for directory in (storage.runs_dir, storage.snapshots_dir, storage.processed_dir, storage.reports_dir):
+                self.assertTrue(directory.is_dir())
+            self.assertEqual(storage.settings(), {"source_dir": None})
+            self.assertEqual(storage.save_settings(temporary), {"source_dir": temporary})
+            self.assertEqual(AppStorage(Path(temporary)).settings(), {"source_dir": temporary})
             with self.assertRaises(ValueError):
-                storage.update_scenario("safe-copy", invalid)
-            self.assertEqual(storage.scenario("safe-copy")["content"], before)
-            snapshot = storage.create_run_snapshot("safe-copy")
-            changed = deepcopy(before)
-            changed["calendar"]["turnaround_minutes"] = 15
-            storage.update_scenario("safe-copy", changed)
-            self.assertEqual(tomllib.loads(Path(snapshot["path"]).read_text(encoding="utf-8")), before)
-            for run_id in ("../outside", "..\\outside", "/outside"):
-                with self.assertRaises(ValueError):
-                    storage.run(run_id)
+                storage.save_settings(str(Path(temporary) / "saknas"))
 
-    def test_saved_controls_synchronize_assumptions_and_calendar_period(self) -> None:
+    def test_run_ids_cannot_point_outside_the_run_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             storage = AppStorage(Path(temporary))
-            content = storage.create_scenario("synchronized")["content"]
-            content["calendar"]["start_date"] = "2026-02-01"
-            content["calendar"]["end_date"] = "2026-02-28"
-            content["calendar"]["turnaround_minutes"] = 15
-            content["staffing"]["minimum_break_minutes"] = 20
-            storage.update_scenario("synchronized", content)
-            saved = storage.scenario("synchronized")["content"]
-            assumptions = {item["id"]: item["value"] for item in saved["assumption"]}
-            self.assertEqual(assumptions["room_turnaround"], "15")
-            self.assertIn("break 20 min", assumptions["individual_staffing_rules"])
-            self.assertEqual(saved["calendar"]["period"][0]["start_date"], "2026-02-01")
-            self.assertEqual(saved["calendar"]["period"][0]["end_date"], "2026-02-28")
-            scenario = load_integrated_term_scenario(storage.scenario_path("synchronized"))
-            slots = generate_calendar_slots(scenario.calendar)
-            self.assertTrue(slots)
-            self.assertGreaterEqual(min(item.scheduled_date.isoformat() for item in slots), "2026-02-01")
-            self.assertLessEqual(max(item.scheduled_date.isoformat() for item in slots), "2026-02-28")
+            self.assertEqual(storage.run_directory("kord-1"), (storage.runs_dir / "kord-1").resolve())
+            for run_id in ("../outside", "..\\outside", "/outside", ".hidden"):
+                with self.subTest(run_id=run_id), self.assertRaises(ValueError):
+                    storage.run_directory(run_id)
+                with self.assertRaises(ValueError):
+                    storage.warm_start(run_id)
+
+    def test_warm_start_decision_is_none_for_a_run_without_one(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            storage = AppStorage(Path(temporary))
+            (storage.runs_dir / "kord-1").mkdir()
+            self.assertIsNone(storage.warm_start("kord-1"))
+            self.assertEqual(storage.warm_start_candidates(), [])
+
+
+if __name__ == "__main__":
+    unittest.main()

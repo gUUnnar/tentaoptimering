@@ -21,7 +21,7 @@ Den tekniska kandidatnyckeln är `course_code + scheduled_date + booking_start_t
 
 ## Provisoriskt efterfrågemått
 
-Parameterregistret väljer tills vidare Ladoks `registered_count` (`VARAV_ANTAL_ANMALDA`) som källa till `demand_value`. Valet är uttryckligt och maskinläsbart i `config/parameters.toml`, och kan bytas utan kodändring när dataägaren fastställt ett annat mått.
+Parameterregistret väljer tills vidare Ladoks `registered_count` (`VARAV_ANTAL_ANMALDA`) som källa till `demand_value`. Valet är uttryckligt och maskinläsbart i `config/data_preparation.toml`, och kan bytas utan kodändring när dataägaren fastställt ett annat mått.
 
 Det är inte faktisk närvaro. Rader med saknat värde får `missing_configured_demand_value` och är inte klara för en första efterfrågekörning.
 

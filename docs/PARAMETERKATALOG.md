@@ -1,14 +1,14 @@
 # Parameterkatalog v2
 
 **Status:** Implementerad kontraktskälla för den nya gemensamma optimeringsmotorn.
-**Maskinläsbar källa:** `config/joint_parameter_catalog.toml` (`catalog_version = "2.2.0"`).
+**Maskinläsbar källa:** `config/joint_parameter_catalog.toml` (`catalog_version = "2.3.0"`).
 
 Det tidigare S0-beslutet att dölja parametrar utan motorstöd är upphävt. Alla definierade verksamhetsparametrar finns i samma katalog för framtida GUI, lagring, validering och motoranslutning. Varje post har ett av två tydliga stödtillstånd:
 
 - `implemented`: värdet läses av angiven adapter- eller solverfunktion och har ett automatiserat effektfall.
 - `contract_only`: värdet kan visas, redigeras, frysas och sparas, men påverkar ännu inte beräkningen. En körning listar alltid dessa parametrar som begränsningar; de får aldrig tolkas som kontrollerade krav.
 
-Varje definition innehåller id, verksamhetsgrupp, etikett, typ, enhet, standardvärde, standardgrund, hjälptext, motorstöd och – när stöd finns – `honored_by`. Körningskontraktet fryser dessutom värde, grund, motivering och motorstöd för varje parameter.
+Varje definition innehåller id, verksamhetsgrupp, etikett, typ, enhet, standardvärde, standardgrund, hjälptext, motorstöd, för valparametrar (`value_type = "choice"`) de tillåtna värdena i `choices` och – när stöd finns – `honored_by`. Körningskontraktet fryser dessutom värde, grund, motivering och motorstöd för varje parameter.
 
 ## Omfattning
 
@@ -27,9 +27,20 @@ Katalogen har 55 poster, varav 32 har motorstöd. Varje implementerad post har e
 | Särskilt stöd | – | regler för särskilt pedagogiskt stöd |
 | Examinationsvillkor | faktisk skrivtid per behov | experimentell maximal skrivtid |
 
+## Redigering i gränssnittet
+
+Gränssnittet hämtar katalogen med `GET /api/joint-runs/parameters?scenario=<id>`. Varje parameter levereras med standardvärde, scenariots värde och gällande värde, och bara parametrar med `engine_support = "implemented"` är redigerbara. Parametrarna listas i sex fasta grupper (tid och kalender, lokaler och digitalt, bemanning, kostnader, körning, efterfrågan och övrigt); gruppindelningen och ordningen ligger i `joint_parameters.py`, medan själva katalogen är oförändrad. Tekniska sökparametrar (frö, trådar, strategi, reproducerbarhet, gap) är markerade `advanced`.
+
+- **Tillåtna val.** Varje `choice`-parameter anger sina val som en lista `choices = [{value = "up", label = "Uppåt ..."}, ...]` (svenska etiketter). Katalogen laddas inte om en valparameter saknar val eller om standardvärdet inte finns bland dem. Testerna kontrollerar att motorn godtar varje listat val och att den avvisar andra.
+- **Validering.** `validate_overrides(katalog, ändringar)` (`parameter_validation.py`) används av körningsrutten och av rutten som sparar scenarier. Den avvisar okända parametrar, parametrar som är `contract_only` ("Stöds inte av motorn än"), värden av fel typ och orimliga intervall (heltal under noll, veckodagar utanför 1-7, klockslag som inte är HH:MM, en bemanningstrappa som inte stiger, ett första datum efter det sista) och svarar med `[{id, message}]`. Scenariofiler som läses från disk valideras inte på det sättet; deras värden är de tidigare frusna scenariovärdena.
+- **Val av salar och tentamenstyper.** `GET /api/joint-runs/options?scenario=<id>` svarar `{scenario_id, data_available, rooms, exam_types, plan_area}` så att gränssnittet kan låta användaren välja. `rooms` är de salar motorn skulle överväga i scenariots planeringsområde (`room_id`, `label`, `building_id`, `address`, `capacity`, `digital` = `all`/`partial`/`none`/`unknown`), sorterade efter byggnad och kapacitet fallande; de är värdena för `rooms.selection` (tom lista betyder alla). `exam_types` är de observerade typerna bland scenariots tentor med antal tentor; `value` är typens text i gemener och används som del i `flex.movable_types` (delsträngsmatchning, så `ordinarie` träffar "Ordinarie tenta"). Saknas det förberedda underlaget är `data_available` falskt och listorna tomma, utan fel. Ett sal-id som inte finns i planeringsområdet ger `422` med `detail.errors[{id: "rooms.selection", message: "Okänd sal: ..."}]` vid körning och vid sparande av scenario, och i dataadaptern ett `ValueError`; ett urval ignoreras alltså aldrig tyst.
+- **Ändringar i en körning.** En körning kan få `parameters: {id: värde}` (bara ändringar jämfört med scenariot). De slås ihop med en kopia av scenariot, med motiveringen "Ändrat i gränssnittet." per ändrad parameter. Scenariofilen ändras aldrig och scenariots id behålls, så att jämförelse och varmstart mot föregående körning av samma scenario fungerar. Den scenariofil som faktiskt användes sparas i körningsmappen som `joint_scenario.toml`.
+- **Egna scenarier.** `POST /api/joint-runs/scenarios` sparar ett scenario i mappen `joint_scenarios/` under appens datamapp. Urvalet kopieras från basscenariot.
+- **Jämförelse.** `GET /api/joint-runs/{run_id}/compare` visar vilka parametrar som skiljer och hur kostnad, undre gräns, gap, ändrade tentor, pool och salar skiljer. Kostnadsskillnaden tolkas bara om den är större än det största gapet av de två körningarnas gap. Körningar på olika dataunderlag eller olika tentamängd jämförs aldrig. Alla belopp är modellkostnad med scenariots proxypriser.
+
 ## Spårning mot det tidigare registret
 
-Varje parameter i det tidigare registret (`config/parameters.toml`) och i terminsmotorns bindningar har en post här, angiven i `legacy_ids`. `test_catalog_keeps_every_legacy_parameter_or_a_declared_counterpart` kontrollerar att ingen försvinner. Ingen parameter har tagits bort för att motorstöd saknas.
+Varje parameter i det tidigare, nu borttagna registret (`config/parameters.toml`) och i den borttagna terminsmotorns bindningar har en post här, angiven i `legacy_ids`. `test_catalog_keeps_every_legacy_parameter_or_a_declared_counterpart` kontrollerar att ingen försvinner. Ingen parameter har tagits bort för att motorstöd saknas.
 
 ## Grund och motivering
 

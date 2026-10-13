@@ -19,6 +19,7 @@ from .joint_contract import (
     SolverSummary,
     validate_problem,
 )
+from .joint_progress import ProgressSink, emit, finished_event
 
 
 @dataclass
@@ -36,7 +37,7 @@ class _Variables:
 
 def solve_joint_optimization(
     problem: JointOptimizationInput, start: dict[str, Any] | None = None,
-    budget: Any = None, cancel: Any = None, report: Any = None,
+    budget: Any = None, cancel: Any = None, report: Any = None, progress: ProgressSink | None = None,
 ) -> JointOptimizationResult:
     """Solve the complete modeled demand; partial placement is never an objective option.
 
@@ -44,7 +45,16 @@ def solve_joint_optimization(
     never trusted: the decomposed strategy re-checks it exactly, the monolithic one uses it as a hint.
     `budget` (ExecutionBudget), `cancel` (CancelToken) and `report` (StartReport, filled in) belong to the
     decomposed strategy, which runs its day checks in parallel within the budget.
+    `progress` (ProgressSink) only observes the run; it never changes a decision or a result.
     """
+    result = _solve(problem, start, budget, cancel, report, progress)
+    return finished_event(progress, result, bool(cancel is not None and cancel.cancelled))
+
+
+def _solve(
+    problem: JointOptimizationInput, start: dict[str, Any] | None, budget: Any, cancel: Any, report: Any,
+    progress: ProgressSink | None,
+) -> JointOptimizationResult:
     validate_problem(problem)
     blocked = tuple(item.exam_demand_id for item in problem.demands if not item.candidate_slot_ids)
     if blocked:
@@ -53,7 +63,7 @@ def solve_joint_optimization(
     if problem.solver.strategy == "decomposed":
         from .joint_strategy import solve_decomposed  # the strategy builds on this module
 
-        return solve_decomposed(problem, seed, budget, cancel, report)
+        return solve_decomposed(problem, seed, budget, cancel, report, progress)
     if problem.solver.strategy != "monolithic":
         raise ValueError(f"Okänd lösningsstrategi: {problem.solver.strategy}")
     from .joint_strategy.resources import solve_cancellable  # imported here: the strategy package builds on this module
@@ -61,6 +71,8 @@ def solve_joint_optimization(
     if report is not None and seed is not None:
         report.status = "hint_only"
         report.notes.append("Den monolitiska strategin kontrollerar inte en tidigare placering särskilt; den används bara som ledtråd.")
+        emit(progress, "warm_start", decision="hint_only", source_run_id=getattr(report, "source_run_id", None),
+             explanation="Den monolitiska strategin kontrollerar inte en tidigare placering särskilt; den används bara som ledtråd.")
     model = cp_model.CpModel()
     slots = {slot.slot_id: slot for slot in problem.slots}
     variables = _build_variables_and_constraints(model, problem, slots)

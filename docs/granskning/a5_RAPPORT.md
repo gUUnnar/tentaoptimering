@@ -1,5 +1,7 @@
 # Testrevision (A5): mutationstestning och handräknade kontrollexempel
 
+> Den äldre kapacitets- och termmotorn är borttagen (finns i Git-historiken före den här grenen). Hänvisningar nedan till dess moduler, scenarier, kommandon och rutter beskriver därför det tidigare läget.
+
 Repo oförändrat. Alla körningar mot kopian `...\audit\a5\repo_copy` (`mut_work`). Verifierat: `tentaoptimering.__file__` pekar på kopian (se första raden i `mut_log.txt` och `handcalc`-utskriften). Sviten: 62 tester, alla gröna, ca 3 s.
 
 ## 1. Vad varje testfil faktiskt bevisar

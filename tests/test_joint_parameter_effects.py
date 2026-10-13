@@ -20,7 +20,7 @@ from tentaoptimering.parameter_catalog import load_parameter_catalog
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CATALOG = REPO_ROOT / "config" / "joint_parameter_catalog.toml"
 
-# Identifiers of the pre-contract registry (config/parameters.toml and the term-engine bindings).
+# Identifiers of the removed pre-contract registry (the old config/parameters.toml and the term-engine bindings).
 LEGACY_REGISTRY_IDS = {
     "date_shift_earlier_days", "date_shift_later_days", "start_time_shift_minutes", "allowed_weekdays",
     "earliest_start_time", "latest_end_time", "turnaround_minutes", "demand_measure", "capacity_safety_margin",

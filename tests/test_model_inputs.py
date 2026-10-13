@@ -16,7 +16,7 @@ from tentaoptimering.paths import REPO_ROOT
 class OptimizationInputTests(unittest.TestCase):
     def test_demand_measure_is_read_from_parameter_registry(self) -> None:
         self.assertEqual(
-            load_demand_measure(REPO_ROOT / "config" / "parameters.toml"), "registered_count"
+            load_demand_measure(REPO_ROOT / "config" / "data_preparation.toml"), "registered_count"
         )
 
     def test_official_room_capacity_keeps_temporal_uncertainty(self) -> None:
@@ -36,7 +36,7 @@ class OptimizationInputTests(unittest.TestCase):
         )
 
     def test_explicit_poc_policy_selects_only_room_scoped_capacities(self) -> None:
-        parameter_path = REPO_ROOT / "config" / "parameters.toml"
+        parameter_path = REPO_ROOT / "config" / "data_preparation.toml"
         policy = load_poc_policy(parameter_path)
         official_rooms = load_room_register(REPO_ROOT / "config" / "room_register.toml")
         bookings = pd.DataFrame(

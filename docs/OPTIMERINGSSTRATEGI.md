@@ -445,7 +445,7 @@ Detta steg handlar om genomförandets effektivitet. Parametrar, kostnadsdefiniti
   - Ändrade parametrar sedan startkörningen listas, och om underlaget skiljer sig anges det.
 - *Fallback.* En avvisad varmstart ger samma optimering som utan start. Testerna jämför kostnaden med en kall körning.
 
-**Gränssnitt (förberett, ingen vy).** `GET /api/runs/{run_id}/warm-start` och `GET /api/joint-runs/warm-start-candidates` läser sparade artefakter. Det finns inget separat lagringssystem. Gränssnittet kör ännu bara den äldre termmotorn.
+**Gränssnitt (förberett, ingen vy).** `GET /api/runs/{run_id}/warm-start` och `GET /api/joint-runs/warm-start-candidates` läser sparade artefakter. Det finns inget separat lagringssystem. (Den äldre termmotorn är sedan borttagen; gränssnittet har bara den gemensamma motorn.)
 
 ### 9.2 Korrekthet
 

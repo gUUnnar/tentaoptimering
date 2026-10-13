@@ -1,0 +1,40 @@
+{
+  "cancelled": false,
+  "changed_exams": 1,
+  "cost_is_proven_optimum": true,
+  "cost_ore": 9000,
+  "created_at": "2026-10-12T13:29:56Z",
+  "exams_total": 2,
+  "first_solution_basis": "solver_start",
+  "first_solution_seconds": 0.0,
+  "first_solution_source": null,
+  "gap_ore": 0,
+  "gap_relative": 0.0,
+  "has_verified_solution": true,
+  "lower_bound_ore": 9000,
+  "parameters_changed_count": 6,
+  "parameters_changed_from_default": [
+    "cost.room_annual_per_seat_ore",
+    "cost.staff_annual_ore",
+    "solver.time_limit_seconds",
+    "solver.workers",
+    "staffing.ladder",
+    "window.later_days"
+  ],
+  "problem_id": "pair",
+  "run_id": "20261012T132956Z-pair",
+  "scenario_id": "pair",
+  "solver_outcome": "optimal",
+  "staff_pool_size": 1,
+  "technical_placement_complete": true,
+  "unverified_reason": null,
+  "verdicts": {
+    "business_verification": "not_evaluated",
+    "provenance": "not_evaluated",
+    "source": "validated_now",
+    "technical_validation": "pass",
+    "technically_validated": true
+  },
+  "wall_time_seconds": 0.041356599977007136,
+  "warm_start_decision": "not_used"
+}

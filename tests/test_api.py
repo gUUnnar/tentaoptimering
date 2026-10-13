@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from copy import deepcopy
 import json
 from pathlib import Path
 import socket
@@ -11,20 +10,18 @@ import unittest
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-import pandas as pd
 import uvicorn
 
 from tentaoptimering.api import create_app
 from tentaoptimering.app_storage import AppStorage
 
 
-class ApiWorkflowTest(unittest.TestCase):
-    """Exercise the local HTTP workflow, worker, term engine, and validation."""
+class ApiBasicsTest(unittest.TestCase):
+    """The local HTTP layer outside the joint-run routes (those are tested in test_joint_api and test_joint_scenarios_api)."""
 
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.storage = AppStorage(Path(self.temporary.name))
-        _write_processed_inputs(self.storage.processed_dir)
         with socket.socket() as listener:
             listener.bind(("127.0.0.1", 0))
             self.port = listener.getsockname()[1]
@@ -48,63 +45,42 @@ class ApiWorkflowTest(unittest.TestCase):
             with error:
                 return error.code, _payload(error.read())
 
-    def _create_and_update(self, scenario_id: str, room_cost: int) -> dict[str, object]:
-        status, created = self._request("POST", "/api/scenarios", {"scenario_id": scenario_id})
+    def test_health_and_settings(self) -> None:
+        self.assertEqual(self._request("GET", "/api/health"), (200, {"status": "ok"}))
+        status, settings = self._request("GET", "/api/settings")
         self.assertEqual(status, 200)
-        content = created["content"]
-        self.assertIsInstance(content, dict)
-        content = deepcopy(content)
-        content["costs"]["annual_room_cost_ore_per_seat"] = room_cost
-        status, saved = self._request("PUT", f"/api/scenarios/{scenario_id}", {"content": content})
-        self.assertEqual(status, 200)
-        return saved
-
-    def _run(self, scenario_id: str) -> str:
-        status, job = self._request("POST", f"/api/simulations?scenario_id={scenario_id}")
-        self.assertEqual(status, 200)
-        job_id = str(job["job_id"])
-        for _ in range(100):
-            status, current = self._request("GET", f"/api/jobs/{job_id}")
-            self.assertEqual(status, 200)
-            if current["status"] == "completed":
-                return str(current["result"]["run_id"])
-            self.assertNotEqual(current["status"], "failed", current.get("error"))
-            time.sleep(0.02)
-        self.fail("Terminskörningen slutfördes inte i testets tidsgräns.")
-
-    def test_scenario_to_validated_run_and_comparison_workflow(self) -> None:
-        status, parameters = self._request("GET", "/api/parameters")
-        self.assertEqual(status, 200)
-        self.assertTrue(parameters["parameters"])
-        self.assertTrue(any(item["engine_binding"] == "staffing.shift" for item in parameters["term_parameter_bindings"]))
-        first = self._create_and_update("workflow-one", 100000)
-        content = deepcopy(first["content"])
-        del content["calendar"]["passes"]
-        status, _ = self._request("PUT", "/api/scenarios/workflow-one", {"content": content})
+        self.assertEqual(settings["settings"], {"source_dir": None})
+        self.assertEqual(settings["app_data_dir"], str(self.storage.root))
+        status, saved = self._request("PUT", "/api/settings", {"source_dir": self.temporary.name})
+        self.assertEqual((status, saved["settings"]), (200, {"source_dir": self.temporary.name}))
+        status, _ = self._request("PUT", "/api/settings", {"source_dir": str(Path(self.temporary.name) / "saknas")})
         self.assertEqual(status, 422)
-        status, preserved = self._request("GET", "/api/scenarios/workflow-one")
-        self.assertEqual(status, 200)
-        self.assertEqual(preserved["content"]["costs"]["annual_room_cost_ore_per_seat"], 100000)
-        first_run = self._run("workflow-one")
-        self._create_and_update("workflow-two", 200000)
-        second_run = self._run("workflow-two")
-        status, validation = self._request("GET", f"/api/runs/{first_run}/validation")
-        self.assertEqual(status, 200)
-        self.assertIn("technical_placement_completeness", validation)
-        self.assertIn("business_feasibility", validation)
-        status, comparison = self._request("POST", "/api/runs/compare", [first_run, second_run])
-        self.assertEqual(status, 200)
-        self.assertEqual(len(comparison["runs"]), 2)
-        self.assertTrue(any(item["parameter"] == "costs.annual_room_cost_ore_per_seat" for item in comparison["parameter_changes"]))
+
+    def test_preparation_requires_a_source_directory(self) -> None:
+        status, _ = self._request("POST", "/api/preparation")
+        self.assertEqual(status, 422)
+
+    def test_routes_of_the_removed_engines_do_not_exist(self) -> None:
+        for path in ("/api/parameters", "/api/scenarios", "/api/scenarios/reference", "/api/runs", "/api/runs/some-run", "/api/runs/some-run/validation"):
+            with self.subTest(path=path):
+                status, _ = self._request("GET", path)
+                self.assertEqual(status, 404)
+
+    def test_unsafe_run_ids_are_rejected(self) -> None:
         for unsafe in ("..%2Foutside", "..%5Coutside"):
-            status, _ = self._request("GET", f"/api/runs/{unsafe}")
+            status, _ = self._request("GET", f"/api/runs/{unsafe}/warm-start")
             self.assertIn(status, (404, 422))
+        status, decision = self._request("GET", "/api/runs/no-such-run/warm-start")
+        self.assertEqual((status, decision["decision"]), (200, "not_recorded"))
 
 
 def _wait_for(predicate: object) -> None:
     for _ in range(100):
-        if callable(predicate) and predicate():
-            return
+        try:
+            if callable(predicate) and predicate():
+                return
+        except OSError:
+            pass
         time.sleep(0.02)
     raise AssertionError("HTTP-servern startade inte.")
 
@@ -116,18 +92,5 @@ def _payload(body: bytes) -> dict[str, object]:
         return {"raw": body.decode("utf-8", errors="replace")}
 
 
-def _write_processed_inputs(path: Path) -> None:
-    pd.DataFrame([{
-        "demand_id": "demand-1", "activity_id": "activity-1", "exam_event_id": "event-1",
-        "course_code": "COURSE", "scheduled_time": "08:00-10:00", "demand_value": 12,
-        "demand_measure_source_field": "registered_count",
-        "demand_input_status": "ready_provisional_ladok_demand", "observed_cities": "Uppsala",
-    }]).to_csv(path / "optimization_demands.csv", index=False, encoding="utf-8-sig")
-    pd.DataFrame([{
-        "room_id": "room-1", "capacity_seats": 20, "reference_city": "Uppsala",
-        "eligible_for_exploratory_capacity_poc": True,
-    }]).to_csv(path / "optimization_rooms.csv", index=False, encoding="utf-8-sig")
-    pd.DataFrame([
-        {"activity_id": "activity-1", "scope_status": "included"},
-        {"activity_id": "activity-2", "scope_status": "unresolved"},
-    ]).to_csv(path / "demand_scope.csv", index=False, encoding="utf-8-sig")
+if __name__ == "__main__":
+    unittest.main()
