@@ -28,7 +28,7 @@ Läget i uttaget (aktiva rader, 8 102): sal identifierad i registret på 5 005 r
 
 | # | Fråga | Underlag | Därför frågar vi |
 |---|---|---|---|
-| C1 | Är **Hemma** (124 rader) och **Hemtenta** (115 rader) hemtentamen och alltså aldrig en fysisk sal som ska spärras? | Regeln `candidate-hemma` och `candidate-hemtenta` är overifierade. Hemtenta finns i salsregistret som sal. | Avgör om raderna får klassas som `declared_non_physical`. |
+| C1 | ~~Är **Hemma** (124 rader) och **Hemtenta** (115 rader) hemtentamen och alltså aldrig en fysisk sal som ska spärras?~~ **Besvarad 2026-10-13 av användaren: ja, hemtentor är aldrig med.** | Reglerna `candidate-hemma` och `candidate-hemtenta` är verifierade i `config/booking_data_quality.toml` och raderna klassas som `declared_non_physical`. Bekräftelsen kommer från användaren, inte uttryckligen från dataägaren. Hemtenta finns fortfarande i salsregistret som sal utan kapacitet (D1). | Raderna spärrar ingen fysisk sal. |
 | C2 | Vad är **"Ordinarie sal utan anpassningar"** (13 rader, alla utan sal)? Står den i adressfältet av misstag? | Regeln `candidate-sal-utan-anpassningar` är overifierad. | Avgör om adressfältet är ogiltigt för de raderna. |
 | C3 | Finns andra lokaler eller bokningstyper som inte avser en fysisk sal (externa, digitala)? | Okänt. | Så att de inte räknas som upptagna salar. |
 
