@@ -169,6 +169,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `frontend/src/components/rooms/day-timeline.tsx` | Tidslinje per dag; avbokade bokningar streckade, dagar utan bokning visas inte som lediga. |
 | `frontend/src/components/rooms/exam-panel.tsx` | Sök och visa en bokad tentamen med alla salar och tider samt märkning av osäker Ladok-koppling. |
 | `frontend/src/components/rooms/overview-view.tsx` | Vyn Dag eller period per adress: datum, adressval, mått, tabell per adress och sal, tidslinje för vald adress och tentamenslista. |
+| `frontend/src/components/rooms/findings.tsx` | Visar fynd i datat (räkningar från datakvalitetslagret) och rader som liknar overifierade mönster, utan att förklara varför uppgifter saknas. |
 | `frontend/src/components/rooms/compare-panel.tsx` | Jämförelse mellan den ursprungliga bokningen och placeringen i en vald körning, med märkning av provisorisk koppling. |
 | `frontend/src/lib/bookingView.test.ts` | Test av datum, tidslinje, intervall och mått (verklig närvaro okänd, aldrig noll). |
 | `frontend/src/lib/underlay.ts`, `underlayApi.ts`, `useUnderlay.ts` | Underlag: avgör om underlaget saknas, anrop mot `/api/settings`, `/api/preparation` och `/api/jobs/{id}`, samt hook med jobbpollning. |

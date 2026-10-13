@@ -22,10 +22,9 @@ from typing import Any
 import pandas as pd
 
 from .app_storage import AppStorage
-from .booking_overview import place_label
-from .booking_views import LINK_TEXT, ROOMS_FILE, load_bookings, read_csv
+from .booking_quality import load_config
+from .booking_views import LINK_TEXT, UNCLEAR_LINKS, load_bookings, place_label, read_csv
 
-LINKAGE_FILE = "candidate_linkage.csv"
 RESULT_FILE, INPUT_FILE = "joint_result.json", "joint_input.json"
 
 
@@ -45,17 +44,32 @@ def _slot(slot_id: str | None) -> dict[str, Any] | None:
     return {"date": day, "start": clock[:5], "slot_id": slot_id}
 
 
-def _room_names(processed_dir: Path) -> dict[str, dict[str, Any]]:
-    rooms = read_csv(processed_dir, ROOMS_FILE)
+def _room_names(processed_dir: Path, config: Any) -> dict[str, dict[str, Any]]:
+    """Room id to address, name and capacity, with the register's column names from the configuration."""
+    reg = config.register
+    rooms = read_csv(processed_dir, reg["file"])
     if rooms is None:
         return {}
-    usable = rooms[rooms["room_id"] != ""]
-    return {r.room_id: {"address": r.reference_address, "room": r.reference_room_name, "capacity": int(r.capacity_seats) if r.capacity_seats.isdigit() else None}
-            for r in usable.itertuples()}
+    usable = rooms[rooms[reg["room_id"]] != ""]
+    return {row[reg["room_id"]]: {"address": row[reg["address"]], "room": row[reg["room_name"]], "capacity": int(row[reg["capacity"]]) if row[reg["capacity"]].isdigit() else None}
+            for row in usable.to_dict("records")}
 
 
 def _days_between(first: str, last: str) -> int:
     return int((pd.Timestamp(last) - pd.Timestamp(first)).days)
+
+
+def _no_link_reason(certainties: list[str]) -> dict[str, str]:
+    """Why a booking has no linked Ladok activity, told apart by cause. Nothing is guessed from course code or date."""
+    if set(certainties) == {"none_outside_coverage"}:
+        return {"status": "no_link", "reason_code": "outside_ladok_coverage",
+                "reason": "Bokningens datum ligger utanför Ladok-underlagets period, så ingen koppling kan finnas. Ingen koppling har gissats fram."}
+    if "not_assessed" in certainties:
+        return {"status": "no_link", "reason_code": "link_not_assessed", "reason": "Kopplingsunderlaget saknas, så bokningen kan inte sättas mot körningens tentamina."}
+    if "none_coverage_unknown" in certainties:
+        return {"status": "no_link", "reason_code": "coverage_unknown", "reason": "Ingen Ladok-aktivitet hittad och Ladok-täckningen för datumet är okänd. Ingen koppling har gissats fram."}
+    return {"status": "no_link", "reason_code": "no_candidate_within_coverage",
+            "reason": "Ingen Ladok-aktivitet hittades trots att Ladok-underlaget täcker datumet, så bokningen kan inte sättas mot körningens tentamina. Ingen koppling har gissats fram."}
 
 
 def compare_payload(storage: AppStorage, order_id: str, run_id: str) -> dict[str, Any]:
@@ -69,26 +83,28 @@ def compare_payload(storage: AppStorage, order_id: str, run_id: str) -> dict[str
     result, problem = _json(run_dir / RESULT_FILE), _json(run_dir / INPUT_FILE)
     if not result or not problem:
         raise FileNotFoundError("Körningen har inget sparat resultat att jämföra med.")
+    config = load_config()
     live = rows[~rows["cancelled"]]
-    booking = [{"date": r.scheduled_date or None, "start": r.start_min, "label": place_label(r.address, r.room), "address": r.address or None,
-                "room": r.room or None, "booked_places": int(r.places), "status": r.status}
+    booking = [{"date": r.scheduled_date or None, "start": r.start_min, "label": place_label(r.address, r.room, r.identification), "identification": r.identification,
+                "address": r.address or None, "room": r.room or None, "booked_places": int(r.places), "status": r.status, "cancelled": bool(r.cancelled)}
                for r in rows.itertuples()]
     for item, row in zip(booking, rows.itertuples()):
         item["start"] = None if pd.isna(row.start_min) else f"{int(row.start_min) // 60:02d}:{int(row.start_min) % 60:02d}"
         item["end"] = None if pd.isna(row.end_min) else f"{int(row.end_min) // 60:02d}:{int(row.end_min) % 60:02d}"
-    links = read_csv(processed, LINKAGE_FILE)
-    mine = links[links["placement_id"].isin(set(rows["placement_id"]))] if links is not None else pd.DataFrame(columns=["placement_id", "activity_id", "candidate_status"])
-    statuses = sorted(set(mine["candidate_status"])) if len(mine) else ["unknown"]
-    activities = sorted({a for a in mine.get("activity_id", pd.Series(dtype=str)) if a})
+    cfg = config.linkage
+    links = read_csv(processed, cfg["file"])
+    mine = links[links[cfg["placement_id"]].isin(set(rows["placement_id"]))] if links is not None else pd.DataFrame(columns=[cfg["placement_id"], cfg["activity_id"]])
+    statuses = sorted(set(rows["link"]))  # the layer's link certainty per placement, not the source's raw status
+    activities = sorted({a for a in mine[cfg["activity_id"]] if a}) if len(mine) else []
     base = {"exam_order_id": order_id, "course_codes": rows["course_codes"].iloc[0], "course_name": rows["course_name"].iloc[0], "run_id": run_id,
             "problem_id": result.get("problem_id"), "booking": booking, "booked_places": int(live["places"].sum()),
-            "link": {"statuses": statuses, "texts": [LINK_TEXT.get(item, "Kopplingen till Ladok är inte bedömd.") for item in statuses], "activity_ids": activities,
-                     "unclear": any(item != "single_candidate" for item in statuses), "provisional": True},
+            "link": {"certainties": statuses, "texts": [LINK_TEXT[item] for item in statuses], "activity_ids": activities,
+                     "unclear": any(item in UNCLEAR_LINKS for item in statuses), "provisional": True},
             "run": {"outcome": (result.get("solver") or {}).get("outcome") if isinstance(result.get("solver"), dict) else None,
                     "technical_placement_complete": (result.get("coverage") or {}).get("technical_placement_complete")},
             "demands": [], "notes": []}
     if not activities:
-        return {**base, "status": "no_link", "reason": "Bokningen har ingen kopplad Ladok-aktivitet, så den kan inte sättas mot körningens tentamina. Ingen koppling har gissats fram."}
+        return {**base, **_no_link_reason(statuses)}
     wanted = set(activities)
     demands = [d for d in problem.get("demands", []) if isinstance(d, dict) and wanted & {a for g in d.get("participant_groups", []) for a in g.get("source_activity_ids", [])}]
     if not demands:
@@ -97,18 +113,18 @@ def compare_payload(storage: AppStorage, order_id: str, run_id: str) -> dict[str
     assigned: dict[str, list[dict[str, Any]]] = {}
     for item in result.get("assignments", []):
         assigned.setdefault(item["exam_demand_id"], []).append(item)
-    names = _room_names(processed)
-    booked_rooms = {(item["address"], item["room"]) for item in booking if not item["status"] == "Avbokad" and item["room"]}
-    booked_addresses = {item["address"] for item in booking if item["status"] != "Avbokad" and item["address"]}
+    names = _room_names(processed, config)
+    booked_rooms = {(item["address"], item["room"]) for item in booking if not item["cancelled"] and item["room"]}
+    booked_addresses = {item["address"] for item in booking if not item["cancelled"] and item["address"]}
     for demand in demands:
         key = demand["exam_demand_id"]
         entry = schedule.get(key, {})
         original, simulated = _slot(demand.get("original_slot_id")), _slot(entry.get("slot_id"))
-        sim_rooms = [{"room_id": a["room_id"], "label": place_label(names.get(a["room_id"], {}).get("address", ""), names.get(a["room_id"], {}).get("room", "")) if a["room_id"] in names else a["room_id"],
+        sim_rooms = [{"room_id": a["room_id"], "label": place_label(names.get(a["room_id"], {}).get("address", ""), names.get(a["room_id"], {}).get("room", ""), "room_matched") if a["room_id"] in names else a["room_id"],  # a simulated room comes from the register
                       "address": names.get(a["room_id"], {}).get("address"), "room": names.get(a["room_id"], {}).get("room"), "participants": int(a["participants"])}
                      for a in assigned.get(key, [])]
         sim_pairs = {(r["address"], r["room"]) for r in sim_rooms}
-        unnamed = [item for item in booking if item["status"] != "Avbokad" and not item["room"]]
+        unnamed = [item for item in booking if not item["cancelled"] and not item["room"]]
         base["demands"].append({
             "exam_demand_id": key, "course_code": demand.get("course_code"), "participants": sum(int(g["participant_count"]) for g in demand.get("participant_groups", [])),
             "duration_minutes": demand.get("duration_minutes"), "movable": bool(demand.get("movable")), "original": original, "simulated": simulated,

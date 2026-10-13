@@ -7,6 +7,7 @@ import { formatMinutes, overviewMeasures, percent, rangeError, stepRange, type R
 import { addDays } from "@/lib/dates"
 import { useOverview } from "@/lib/useBookings"
 import { DayTimeline } from "./day-timeline"
+import { Findings } from "./findings"
 
 type Props = {
   range: Range
@@ -24,7 +25,7 @@ const SPANS: { label: string; days: number }[] = [{ label: "En dag", days: 1 }, 
 
 /**
  * Vilka lokaler som varit bokade under en dag eller period, för vilka tentamina och i vilken omfattning, per adress och sal.
- * Bokningar som bara anger adress ligger kvar under sin adress som "sal ej angiven" och hänförs aldrig till en sal. Läser
+ * Bokningar som bara anger adress ligger kvar under sin adress som "sal saknas i uttaget" och hänförs aldrig till en sal. Läser
  * historiska bokningar direkt; ingen körning behövs.
  */
 export function OverviewView({ range, onRange, address, onAddress, addresses, selectedPlacement, onOpen, onOpenExam }: Props) {
@@ -32,7 +33,7 @@ export function OverviewView({ range, onRange, address, onAddress, addresses, se
   const error = rangeError(range)
   const data = useOverview(range, address)
   const result = data.data
-  const unnamed = result?.totals.unspecified_room_placements ?? 0
+  const unnamed = result?.totals.address_only_placements ?? 0
 
   return <div className="space-y-4">
     <Card><CardContent className="space-y-3 pt-4">
@@ -47,7 +48,7 @@ export function OverviewView({ range, onRange, address, onAddress, addresses, se
         <div className="min-w-[14rem] flex-1"><label className="label" htmlFor={`${id}-address`}>Adress</label>
           <select id={`${id}-address`} className="field" value={address === null ? "*" : address} onChange={event => onAddress(event.target.value === "*" ? null : event.target.value)}>
             <option value="*">Alla adresser</option>
-            {addresses.map(item => <option key={item.address} value={item.address}>{item.label} · {item.bookings} bokningar{item.unspecified_room_bookings ? `, ${item.unspecified_room_bookings} utan sal` : ""}</option>)}
+            {addresses.map(item => <option key={item.address} value={item.address}>{item.label} · {item.bookings} bokningar{item.address_only_bookings ? `, ${item.address_only_bookings} utan sal i uttaget` : ""}</option>)}
           </select></div>
       </div>
       {error && <p role="alert" className="text-sm text-red-900">{error}</p>}
@@ -63,9 +64,10 @@ export function OverviewView({ range, onRange, address, onAddress, addresses, se
             <dt className="text-xs text-slate-900">{measure.label}</dt><dd className="mt-0.5 text-base font-semibold tabular-nums">{measure.value}</dd>
             <p className="mt-0.5 text-[11px] text-slate-800">{measure.hint}</p></div>)}
         </dl>
-        {unnamed > 0 && <p className="mt-2 flex items-start gap-1.5 text-xs text-slate-900"><Info size={14} className="mt-0.5 shrink-0" aria-hidden="true"/>{unnamed} av {result.totals.placements} bokningsrader anger bara adress. De syns under sin adress som "sal ej angiven" och ingår i alla summor.</p>}
+        {unnamed > 0 && <p className="mt-2 flex items-start gap-1.5 text-xs text-slate-900"><Info size={14} className="mt-0.5 shrink-0" aria-hidden="true"/>{unnamed} av {result.totals.placements} bokningsrader anger bara adress (sal saknas i uttaget, orsaken är okänd). De syns under sin adress, ingår i alla summor och har inte hänförts till någon sal.</p>}
       </CardContent></Card>
 
+      <Findings quality={result.data_quality}/>
       <Card><CardHeader><CardTitle>Lokaler</CardTitle></CardHeader><CardContent>
         {result.addresses.length === 0 ? <p className="text-sm text-slate-800">Inga bokningar i perioden i underlaget. Det betyder inte att lokalerna var lediga.</p> :
           <table className="w-full text-sm"><thead><tr className="text-left text-xs text-slate-700">
@@ -78,7 +80,7 @@ export function OverviewView({ range, onRange, address, onAddress, addresses, se
                 <td className="pr-2 text-right tabular-nums" title={result.measures.booked_time}>{formatMinutes(item.booked_minutes)}</td>
                 <td className="pr-2 text-right tabular-nums">{item.booked_places}</td><td className="text-right tabular-nums">{item.peak_places}</td></tr>,
               ...item.rooms.map(room => <tr key={`${item.address}|${room.label}`} className="border-t text-slate-900">
-                <td className="py-1 pl-4 pr-2">{room.room ?? "sal ej angiven"}{room.capacity ? <span className="text-xs text-slate-700"> ({room.capacity} platser)</span> : null}</td>
+                <td className="py-1 pl-4 pr-2">{room.room ?? "sal saknas i uttaget"}{room.capacity ? <span className="text-xs text-slate-700"> ({room.capacity} platser)</span> : null}</td>
                 <td className="pr-2 text-right tabular-nums">{room.exam_orders}</td><td className="pr-2 text-right tabular-nums">{room.placements}</td>
                 <td className="pr-2 text-right tabular-nums">{formatMinutes(room.booked_minutes)}</td><td className="pr-2 text-right tabular-nums">{room.booked_places}</td>
                 <td className="text-right tabular-nums">{room.peak_places}{room.peak_share_of_capacity !== null ? ` (${percent(room.peak_share_of_capacity)})` : ""}</td></tr>)])}</tbody></table>}

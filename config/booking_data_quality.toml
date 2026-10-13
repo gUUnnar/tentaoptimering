@@ -30,6 +30,8 @@ file = "room_inventory.csv"
 room_id = "room_id"
 location_key = "location_key"
 capacity = "capacity_seats"
+address = "reference_address"
+room_name = "reference_room_name"
 
 [linkage]
 file = "candidate_linkage.csv"

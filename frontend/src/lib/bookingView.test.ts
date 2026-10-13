@@ -2,12 +2,12 @@ import assert from "node:assert/strict"
 import { describe, it } from "node:test"
 import type { BookingItem, CompareDemand, LocationSummary } from "./bookingTypes.ts"
 import { addDays, daysBetween, isIsoDate, weekdayName } from "./dates.ts"
-import { defaultRange, formatMinutes, moveText, overviewMeasures, placeText, unnamedShare, groupByDay, linkIsUnclear, placeBars, rangeDays, rangeError, stepRange, summaryMeasures, timelineScale, toMinutes } from "./bookingView.ts"
+import { defaultRange, flagLabel, flagList, formatMinutes, linkLabel, moveText, overviewMeasures, placeText, unnamedShare, groupByDay, linkIsUnclear, placeBars, rangeDays, rangeError, stepRange, summaryMeasures, timelineScale, toMinutes } from "./bookingView.ts"
 
 const item = (id: string, date: string, start: string | null, end: string | null, extra: Partial<BookingItem> = {}): BookingItem => ({
   placement_id: id, exam_order_id: `o-${id}`, course_codes: "1AA001", course_name: "Analys", exam_type: "Ordinarie tenta", date, start, end,
   address: "A 1", room: "Sal 1", location_key: "a-1|sal-1", booked_places: 10, capacity: 100, seat_share: 0.1, status: "Klar", cancelled: false,
-  digital: "Nej", ladok_link: "single_candidate", ladok_link_text: "", ...extra,
+  digital: "Nej", identification: "room_matched", identification_text: "", place_label: "A 1 – Sal 1", flags: [], status_class: "active", ladok_coverage: "within", link_certainty: "unique", link_text: "", ...extra,
 })
 
 describe("datum", () => {
@@ -61,7 +61,7 @@ describe("intervall", () => {
     assert.equal(rangeDays({ from: "2026-02-09", to: "2026-02-15" }), 7)
     assert.deepEqual(stepRange({ from: "2026-02-09", to: "2026-02-15" }, 1), { from: "2026-02-16", to: "2026-02-22" })
     assert.deepEqual(stepRange({ from: "2026-02-09", to: "2026-02-15" }, -1), { from: "2026-02-02", to: "2026-02-08" })
-    assert.deepEqual(defaultRange({ location_key: "k", address: "a", room: null, label: "l", capacity: null, bookings: 1, first: "2026-02-09", last: "2026-03-01" }), { from: "2026-02-09", to: "2026-02-15" })
+    assert.deepEqual(defaultRange({ location_key: "k", address: "a", room: null, identification: "address_only", label: "l", capacity: null, bookings: 1, first: "2026-02-09", last: "2026-03-01" }), { from: "2026-02-09", to: "2026-02-15" })
   })
 })
 
@@ -84,20 +84,22 @@ describe("mått", () => {
     assert.match(rows["Högsta samtidiga bokning"].hint, /Kapacitet okänd/)
   })
   it("tveksamma Ladok-kopplingar märks", () => {
-    assert.equal(linkIsUnclear("single_candidate"), false)
-    for (const link of ["ambiguous_candidates", "no_candidate", "unknown"]) assert.equal(linkIsUnclear(link), true)
+    assert.equal(linkIsUnclear("unique"), false)
+    assert.equal(linkIsUnclear("none_outside_coverage"), false)  // kan inte finnas: inte oklar, inte tillämplig
+    for (const link of ["ambiguous", "none_within_coverage", "none_coverage_unknown"]) assert.equal(linkIsUnclear(link), true)
+    assert.equal(linkLabel("none_outside_coverage"), "Utanför Ladok-period")
   })
 })
 
 describe("översikt per period och adress", () => {
-  const totals = { placements: 54, cancelled_placements: 2, exam_orders: 31, booked_places: 1585, addresses: 4, without_address_placements: 1, unspecified_room_placements: 22, exam_orders_in_several_places: 22 }
+  const totals = { placements: 54, cancelled_placements: 2, exam_orders: 31, booked_places: 1585, addresses: 4, no_address_placements: 1, address_only_placements: 22, exam_orders_in_several_places: 22 }
   it("tentamina räknas en gång, bokningar utan sal och utan adress redovisas, närvaro är okänd", () => {
     const rows = Object.fromEntries(overviewMeasures(totals, { booked_places: "platser", attendance: "okänd närvaro" }).map(row => [row.label, row]))
     assert.equal(rows["Tentamina"].value, "31")
     assert.match(rows["Tentamina"].hint, /22 använder flera lokaler/)
     assert.match(rows["Bokningsrader"].hint, /2 avbokade ingår inte/)
-    assert.equal(rows["Bara adress angiven"].value, "22")
-    assert.match(rows["Bara adress angiven"].hint, /hänförs inte till någon sal/)
+    assert.equal(rows["Sal saknas i uttaget"].value, "22")
+    assert.match(rows["Sal saknas i uttaget"].hint, /Orsaken är okänd/)
     assert.equal(rows["Utan adress"].value, "1")
     assert.equal(rows["Verklig närvaro"].value, "okänd")
   })
@@ -127,5 +129,13 @@ describe("jämförelse mot körning", () => {
     assert.match(placeText(demand({ rooms_compared: false, same_rooms: null, booked_rooms_without_name: 2 })), /Salar jämförs inte: 2 bokade lokaler saknar salnamn/)
     assert.match(placeText(demand({ rooms_compared: false, same_rooms: null, booked_rooms_without_name: 1 })), /1 bokad lokal saknar salnamn/)
     assert.match(placeText(demand({ rooms_compared: false, same_rooms: null, booked_addresses: [] })), /okänd adress/)
+  })
+})
+
+describe("fynd i datat", () => {
+  it("koder får läsbar text, okända koder visas som de är, och störst fynd kommer först", () => {
+    assert.equal(flagLabel("room_missing"), "sal saknas i uttaget")
+    assert.equal(flagLabel("something_new"), "something_new")
+    assert.deepEqual(flagList({ flags: { date_missing: 1, room_missing: 22 } }).map(item => [item.code, item.count]), [["room_missing", 22], ["date_missing", 1]])
   })
 })

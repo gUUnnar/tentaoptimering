@@ -3,11 +3,12 @@ import { ChevronLeft, ChevronRight, CircleAlert, Info, TriangleAlert } from "luc
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { BookingItem } from "@/lib/bookingTypes"
-import { defaultRange, linkIsUnclear, linkLabel, rangeError, stepRange, summaryMeasures, type Range } from "@/lib/bookingView"
+import { defaultRange, flagList, linkIsShown, linkIsUnclear, linkLabel, rangeError, stepRange, summaryMeasures, type Range } from "@/lib/bookingView"
 import { addDays } from "@/lib/dates"
 import { useLocation, useLocations } from "@/lib/useBookings"
 import { DayTimeline } from "./day-timeline"
 import { ExamPanel } from "./exam-panel"
+import { Findings } from "./findings"
 import { OverviewView } from "./overview-view"
 
 /**
@@ -72,7 +73,7 @@ export default function RoomsPage({ reloadKey }: { reloadKey?: unknown }) {
         {error && <p role="alert" className="text-sm text-red-900">{error}</p>}
         {locations.data && <p className="flex items-start gap-1.5 text-xs text-slate-900"><Info size={14} className="mt-0.5 shrink-0" aria-hidden="true"/>
           <span>Bokningsunderlaget täcker {locations.data.coverage.first}–{locations.data.coverage.last} ({locations.data.coverage.rows} rader, {locations.data.coverage.cancelled} avbokade{locations.data.coverage.without_date ? `, ${locations.data.coverage.without_date} utan datum` : ""}). Det är historiska bokningar, ingen simulering.</span></p>}
-        {current && !current.room && <p className="flex items-start gap-1.5 text-xs text-amber-900"><TriangleAlert size={14} className="mt-0.5 shrink-0" aria-hidden="true"/>Bokningarna gäller bara adressen: sal är inte angiven, så platserna kan inte sättas mot en salskapacitet.</p>}
+        {current?.identification === "address_only" && <p className="flex items-start gap-1.5 text-xs text-amber-900"><TriangleAlert size={14} className="mt-0.5 shrink-0" aria-hidden="true"/>Bokningarna anger bara adressen (sal saknas i uttaget). Orsaken är okänd och ingen sal har antagits, så platserna sätts inte mot någon salskapacitet.</p>}
       </CardContent></Card>
 
       {data.status === "error" && <p role="alert" className="text-sm text-red-900">{data.error}</p>}
@@ -85,6 +86,7 @@ export default function RoomsPage({ reloadKey }: { reloadKey?: unknown }) {
               <dt className="text-xs text-slate-900">{measure.label}</dt><dd className="mt-0.5 text-base font-semibold tabular-nums">{measure.value}</dd>
               <p className="mt-0.5 text-[11px] text-slate-800">{measure.hint}</p></div>)}
           </dl></CardContent></Card>
+        <Findings quality={result.data_quality}/>
         <Card><CardHeader><CardTitle>Tidslinje</CardTitle></CardHeader><CardContent>
           <DayTimeline bookings={result.bookings} days={result.days} selected={placementId} onOpen={open}/></CardContent></Card>
         <Card><CardHeader><CardTitle>Bokningar ({result.bookings.length})</CardTitle></CardHeader><CardContent>
@@ -94,7 +96,7 @@ export default function RoomsPage({ reloadKey }: { reloadKey?: unknown }) {
               <tbody>{result.bookings.map(item => <tr key={item.placement_id} className={`border-t ${item.cancelled ? "text-slate-600" : ""} ${item.placement_id === placementId ? "bg-sky-50" : ""}`}>
                 <td className="py-1 pr-2">{item.date ?? "saknas"}</td><td className="pr-2">{item.start && item.end ? `${item.start}–${item.end}` : "saknas"}</td>
                 <td className="pr-2"><button type="button" onClick={() => open(item)} className="text-left text-sky-900 underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700">{item.course_codes} {item.course_name}</button>
-                  {linkIsUnclear(item.ladok_link) && <span className={`ml-1.5 rounded px-1 text-[11px] ${item.ladok_link === "ambiguous_candidates" ? "bg-amber-100 text-amber-950" : "bg-slate-100 text-slate-800"}`} title={item.ladok_link_text}>{linkLabel(item.ladok_link)}</span>}</td>
+                  {linkIsShown(item.link_certainty) && <span className={`ml-1.5 rounded px-1 text-[11px] ${linkIsUnclear(item.link_certainty) ? "bg-amber-100 text-amber-950" : "bg-slate-100 text-slate-800"}`} title={item.link_text}>{linkLabel(item.link_certainty)}</span>}</td>
                 <td className="pr-2 text-right tabular-nums">{item.booked_places}{item.capacity ? ` av ${item.capacity}` : ""}</td><td>{item.status}</td></tr>)}</tbody></table>}
         </CardContent></Card>
       </>}

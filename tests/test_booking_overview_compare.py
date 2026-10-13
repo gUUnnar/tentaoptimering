@@ -33,6 +33,7 @@ ROWS = [
     ("p7", "o5", "1EE005", "Biologi", "Ordinarie tenta", "Nej", "2026-02-10", "08:00-11:00", "", "", "", "7", "Klar"),
     ("p8", "o6", "Extern", "Ahmed", "", "", "", "-", "", "", "", "0", "Avbokad"),
     ("p9", "o7", "1FF006", "Geologi", "Ordinarie tenta", "Nej", "2026-03-20", "08:00-11:00", "Gata 1", "Sal 1", "gata-1|sal-1", "10", "Klar"),
+    ("p10", "o8", "1GG007", "Zoologi", "Ordinarie tenta", "Nej", "2026-03-25", "08:00-11:00", "Gata 1", "Sal 1", "gata-1|sal-1", "5", "Klar"),
 ]
 ROOMS = [("uu-g1-s1", "gata-1|sal-1", "Gata 1", "Sal 1", "120"), ("uu-g1-s2", "gata-1|sal-2", "Gata 1", "Sal 2", "50"), ("uu-g3-s9", "gata-3|sal-9", "Gata 3", "Sal 9", "80")]
 LINKS = [("p1", "act-1", "single_candidate"), ("p2", "act-1", "single_candidate"), ("p3", "act-1", "single_candidate"), ("p4", "", "no_candidate"),
@@ -43,6 +44,7 @@ def _write(folder: Path) -> None:
     pd.DataFrame(ROWS, columns=COLUMNS).to_csv(folder / "bookings.csv", index=False, encoding="utf-8-sig")
     pd.DataFrame(ROOMS, columns=["room_id", "location_key", "reference_address", "reference_room_name", "capacity_seats"]).to_csv(folder / "room_inventory.csv", index=False, encoding="utf-8-sig")
     pd.DataFrame(LINKS, columns=["placement_id", "activity_id", "candidate_status"]).to_csv(folder / "candidate_linkage.csv", index=False, encoding="utf-8-sig")
+    pd.DataFrame({"start_date": ["2026-02-01", "2026-03-10"]}).to_csv(folder / "ladok_activities.csv", index=False, encoding="utf-8-sig")  # Ladok covers Feb to 10 March
 
 
 class OverviewTests(unittest.TestCase):
@@ -67,16 +69,16 @@ class OverviewTests(unittest.TestCase):
         by_address = {item["address"]: item for item in result["addresses"]}
         gata2 = by_address["Gata 2"]
         self.assertEqual([(room["room"], room["label"], room["placements"], room["capacity"]) for room in gata2["rooms"]],
-                         [(None, "Gata 2 (sal ej angiven)", 2, None)])
-        self.assertEqual((gata2["unspecified_room_placements"], gata2["named_rooms"]), (2, 0))
-        self.assertEqual(result["totals"]["unspecified_room_placements"], 2)
+                         [(None, "Gata 2 (sal saknas i uttaget)", 2, None)])
+        self.assertEqual((gata2["address_only_placements"], gata2["named_rooms"]), (2, 0))
+        self.assertEqual(result["totals"]["address_only_placements"], 2)
         self.assertTrue(any("anger bara adress" in note for note in result["notes"]))
         rooms = {room["label"]: room for room in by_address["Gata 1"]["rooms"]}
         self.assertEqual(set(rooms), {"Gata 1 – Sal 1", "Gata 1 – Sal 2"})  # the unnamed Gata 2 rows did not move here
 
     def test_rows_without_an_address_are_an_entry_of_their_own_not_dropped(self) -> None:
         result = overview.overview_payload(self.dir, date(2026, 2, 10), date(2026, 2, 10))
-        self.assertEqual(result["totals"]["without_address_placements"], 1)
+        self.assertEqual(result["totals"]["no_address_placements"], 1)
         none = next(item for item in result["addresses"] if item["address"] == "")
         self.assertEqual((none["label"], none["placements"], none["booked_places"]), ("Adress saknas", 1, 7))
         self.assertEqual(result["addresses"][-1]["address"], "")  # listed last
@@ -95,7 +97,7 @@ class OverviewTests(unittest.TestCase):
         self.assertEqual([item["exam_order_id"] for item in result["exams"]], ["o1", "o2"])
         o1 = result["exams"][0]
         self.assertEqual((o1["booked_places"], o1["place_count"]), (145, 3))
-        self.assertEqual(sorted(item["label"] for item in o1["places"]), ["Gata 1 – Sal 1", "Gata 1 – Sal 2", "Gata 2 (sal ej angiven)"])
+        self.assertEqual(sorted(item["label"] for item in o1["places"]), ["Gata 1 – Sal 1", "Gata 1 – Sal 2", "Gata 2 (sal saknas i uttaget)"])
 
     def test_periods_outside_the_data_and_bad_requests(self) -> None:
         outside = overview.overview_payload(self.dir, date(2027, 1, 1), date(2027, 1, 2))
@@ -111,7 +113,7 @@ class OverviewTests(unittest.TestCase):
     def test_the_address_list_includes_every_address_with_its_unnamed_bookings(self) -> None:
         from tentaoptimering.booking_views import locations_payload
         rows = {item["address"]: item for item in locations_payload(self.dir)["addresses"]}
-        self.assertEqual((rows["Gata 2"]["bookings"], rows["Gata 2"]["unspecified_room_bookings"], rows["Gata 2"]["named_rooms"]), (2, 2, 0))
+        self.assertEqual((rows["Gata 2"]["bookings"], rows["Gata 2"]["address_only_bookings"], rows["Gata 2"]["named_rooms"]), (2, 2, 0))
         self.assertEqual(rows[""]["label"], "Adress saknas")
         self.assertEqual(rows["Gata 1"]["named_rooms"], 2)
 
@@ -164,9 +166,16 @@ class CompareTests(unittest.TestCase):
         no_link = compare.compare_payload(self.storage, "o2", self.run)
         self.assertEqual((no_link["status"], no_link["demands"]), ("no_link", []))
         self.assertIn("Ingen koppling har gissats fram", no_link["reason"])
+        self.assertEqual(no_link["reason_code"], "no_candidate_within_coverage")  # Ladok covers the date, so the missing link is a finding
         missing = compare.compare_payload(self.storage, "o7", self.run)  # ambiguous link to activities the run does not contain
         self.assertEqual((missing["status"], missing["link"]["unclear"]), ("not_in_run", True))
         self.assertIn("ingår inte i körningen", missing["reason"])
+
+    def test_outside_ladok_coverage_is_told_apart_from_a_missing_link(self) -> None:
+        outside = compare.compare_payload(self.storage, "o8", self.run)  # 25 March, after the Ladok period; no linkage rows at all
+        self.assertEqual((outside["status"], outside["reason_code"]), ("no_link", "outside_ladok_coverage"))
+        self.assertEqual(outside["link"]["certainties"], ["none_outside_coverage"])
+        self.assertFalse(outside["link"]["unclear"])  # not applicable is not unclear
 
     def test_bad_requests(self) -> None:
         with self.assertRaisesRegex(ValueError, "Okänd tentamensbokning"):
@@ -186,7 +195,7 @@ class RealDataTests(unittest.TestCase):
         self.assertEqual(result["totals"]["exam_orders"], live["exam_order_id"].nunique())
         self.assertEqual(result["totals"]["booked_places"], int(live["booked_places"].sum()))
         self.assertEqual(sum(item["placements"] for item in result["addresses"]), len(live))  # nothing lost, nothing counted twice per address
-        self.assertEqual(result["totals"]["unspecified_room_placements"], int((live["room"].isna() & live["address"].notna()).sum()))
+        self.assertEqual(result["totals"]["address_only_placements"], int((live["room"].isna() & live["address"].notna()).sum()))
         for item in result["addresses"]:
             self.assertEqual(sum(room["placements"] for room in item["rooms"]), item["placements"])
 

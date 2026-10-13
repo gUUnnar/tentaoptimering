@@ -4,7 +4,7 @@ Answers: which places were booked, for which exams, and to what extent, for a ch
 
 How the counting is kept honest:
 
-* The grain is the booking placement. A booking that names only an address stays in its own "sal ej angiven" row under that
+* The grain is the booking placement. A booking that names only an address stays in its own row ("sal saknas i uttaget") under that
   address; it is never assigned to a room, and it is never dropped. A booking without an address is one entry of its own.
 * An exam that uses several rooms is counted **once** in every total (`exam_orders`) and once in each place it uses. The place
   rows therefore may add up to more than the total, which `notes` says. Booked places are seats and do add up.
@@ -21,18 +21,12 @@ from typing import Any
 import pandas as pd
 
 from .booking_views import (
-    MEASURES, NO_ADDRESS, booking_item, coverage_payload, load_bookings, peak_places, union_minutes,
+    MEASURES, NO_ADDRESS, booking_item, coverage_payload, load_bookings, peak_places, place_label, quality_summary, union_minutes,
 )
 
 EXAM_LIMIT = 300
 MULTI_PLACE_NOTE = ("En tentamen som använder flera lokaler räknas en gång i totalen men i varje lokal den använder, "
                     "så summan av raderna kan överstiga totalen. Bokade platser är platser och summeras.")
-
-
-def place_label(address: str, room: str) -> str:
-    if not address:
-        return NO_ADDRESS
-    return f"{address} – {room}" if room else f"{address} (sal ej angiven)"
 
 
 def _measures(group: pd.DataFrame) -> dict[str, Any]:
@@ -54,7 +48,7 @@ def _room_rows(group: pd.DataFrame) -> list[dict[str, Any]]:
         capacity = part["capacity"].dropna()
         values = _measures(part)
         cap = int(capacity.iloc[0]) if len(capacity) else None
-        rows.append({"room": room or None, "label": place_label(part["address"].iloc[0], room), "location_key": part["location_key"].iloc[0] or None,
+        rows.append({"room": room or None, "label": place_label(part["address"].iloc[0], room, part["identification"].iloc[0]), "identification": part["identification"].iloc[0], "location_key": part["location_key"].iloc[0] or None,
                      "capacity": cap, "peak_share_of_capacity": round(values["peak_places"] / cap, 3) if cap else None, **values})
     rows.sort(key=lambda item: (item["room"] is None, item["room"] or ""))
     return rows
@@ -63,7 +57,7 @@ def _room_rows(group: pd.DataFrame) -> list[dict[str, Any]]:
 def _exam_rows(live: pd.DataFrame) -> tuple[list[dict[str, Any]], int]:
     rows = []
     for order_id, group in live.groupby("exam_order_id"):
-        places = [{"label": place_label(r.address, r.room), "address": r.address or None, "room": r.room or None, "booked_places": int(r.places)}
+        places = [{"label": place_label(r.address, r.room, r.identification), "identification": r.identification, "address": r.address or None, "room": r.room or None, "booked_places": int(r.places)}
                   for r in group.itertuples()]
         rows.append({"exam_order_id": order_id, "course_codes": group["course_codes"].iloc[0], "course_name": group["course_name"].iloc[0],
                      "exam_type": group["exam_type"].iloc[0], "first_date": group["scheduled_date"].min(), "last_date": group["scheduled_date"].max(),
@@ -94,19 +88,24 @@ def overview_payload(processed_dir: Path, first: date, last: date, address: str 
         values = _measures(group)
         named = group[group["room"] != ""]
         addresses.append({"address": name, "label": name or NO_ADDRESS, **values, "named_rooms": int(named["room"].nunique()),
-                          "unspecified_room_placements": int(((group["room"] == "") & ~group["cancelled"]).sum()), "rooms": _room_rows(group)})
+                          "address_only_placements": int(((group["identification"] == "address_only") & ~group["cancelled"]).sum()), "rooms": _room_rows(group)})
     addresses.sort(key=lambda item: (item["address"] == "", -item["booked_places"], item["address"]))
     exams, exam_total = _exam_rows(live)
     several = int((live.groupby("exam_order_id").apply(lambda g: len({(a, r) for a, r in zip(g["address"], g["room"])}), include_groups=False) > 1).sum()) if len(live) else 0
     totals = {"placements": int(len(live)), "cancelled_placements": int(scope["cancelled"].sum()), "exam_orders": int(live["exam_order_id"].nunique()),
               "booked_places": int(live["places"].sum()), "addresses": int(live["address"].replace("", pd.NA).nunique()),
-              "without_address_placements": int((live["address"] == "").sum()), "unspecified_room_placements": int(((live["room"] == "") & (live["address"] != "")).sum()),
+              "no_address_placements": int((live["identification"] == "no_address").sum()), "address_only_placements": int((live["identification"] == "address_only").sum()),
               "exam_orders_in_several_places": several}
     if len(live):
         notes.append(MULTI_PLACE_NOTE)
-    if totals["unspecified_room_placements"]:
-        notes.append(f"{totals['unspecified_room_placements']} bokningar anger bara adress. De visas som \"sal ej angiven\" under sin adress och har inte hänförts till någon sal.")
+    if totals["address_only_placements"]:
+        notes.append(f"{totals['address_only_placements']} bokningar anger bara adress (sal saknas i uttaget). De visas under sin adress, ingår i alla summor och har inte hänförts till någon sal. "
+                     "Orsaken till att sal saknas är okänd och har inte antagits.")
+    quality = quality_summary(live)
+    unverified = quality["unverified_rule_matches"]
+    if unverified:
+        notes.append("Vissa rader liknar mönster som dataägaren inte bekräftat ännu (" + ", ".join(f"{name}: {count}" for name, count in unverified.items()) + "). De är inte omklassade.")
     return {"date_from": first.isoformat(), "date_to": last.isoformat(), "address": address, "totals": totals, "addresses": addresses,
             "exams": exams, "exams_total": exam_total, "exams_truncated": exam_total > len(exams),
             "bookings": [booking_item(row) for _, row in scope.sort_values(["scheduled_date", "start_min", "placement_id"]).iterrows()] if address is not None else None,
-            "attendance": coverage["attendance"], "measures": MEASURES, "coverage": coverage, "notes": notes}
+            "data_quality": quality, "attendance": coverage["attendance"], "measures": MEASURES, "coverage": coverage, "notes": notes}

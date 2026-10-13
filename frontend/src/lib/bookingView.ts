@@ -83,11 +83,27 @@ export function summaryMeasures(summary: LocationSummary, definitions: Record<st
   ]
 }
 
-export const linkLabel = (link: string): string =>
-  link === "single_candidate" ? "Trolig Ladok-koppling" : link === "ambiguous_candidates" ? "Tvetydig Ladok-koppling" : link === "no_candidate" ? "Ingen Ladok-koppling" : "Koppling ej bedömd"
+/** Läsbar text för ett fynd i datat (flaggor från datakvalitetslagret). Okända koder visas som de är. */
+export const FLAG_LABELS: Record<string, string> = {
+  room_missing: "sal saknas i uttaget", room_not_in_register: "sal saknas i salsregistret", capacity_missing_in_register: "kapacitet saknas i salsregistret",
+  places_exceed_capacity: "bokade platser över salens kapacitet", places_missing_or_zero: "bokade platser saknas eller är noll", date_missing: "datum saknas",
+  time_unparseable: "tid saknas eller kan inte läsas", status_unclassified: "bokningsstatus ej klassad", address_field_not_an_address: "adressfältet är ingen adress (verifierad regel)",
+}
+export const flagLabel = (code: string): string => FLAG_LABELS[code] ?? code
 
-/** Är kopplingen till Ladok något annat än en enda trolig kandidat? Sådana kopplingar märks, de gissas inte bort. */
-export const linkIsUnclear = (link: string): boolean => link !== "single_candidate"
+/** Fynd i datat som lista att visa, störst först. */
+export const flagList = (quality: { flags: Record<string, number> }): { code: string; label: string; count: number }[] =>
+  Object.entries(quality.flags).sort((a, b) => b[1] - a[1]).map(([code, count]) => ({ code, label: flagLabel(code), count }))
+
+export const linkLabel = (link: string): string =>
+  link === "unique" ? "Trolig Ladok-koppling" : link === "ambiguous" ? "Tvetydig Ladok-koppling" : link === "none_within_coverage" ? "Ingen Ladok-koppling (inom täckning)"
+    : link === "none_outside_coverage" ? "Utanför Ladok-period" : link === "none_coverage_unknown" ? "Ladok-täckning okänd" : "Koppling ej bedömd"
+
+/** Kopplingar som en läsare bör behandla försiktigt. En koppling som inte kan finnas för att Ladok inte täcker datumet är inte oklar, den är inte tillämplig. */
+export const linkIsUnclear = (link: string): boolean => link === "ambiguous" || link === "none_within_coverage" || link === "none_coverage_unknown"
+
+/** Märks en bokning med sin koppling? Allt utom en trolig koppling märks, men bara de oklara varnar. */
+export const linkIsShown = (link: string): boolean => link !== "unique"
 
 // ---- Översikt per period och adress ---------------------------------------------------------------------------------
 
@@ -97,8 +113,8 @@ export function overviewMeasures(totals: OverviewResponse["totals"], definitions
     { label: "Tentamina", value: String(totals.exam_orders), hint: totals.exam_orders_in_several_places ? `Varje tentamen räknas en gång; ${totals.exam_orders_in_several_places} använder flera lokaler.` : "Varje tentamen räknas en gång." },
     { label: "Bokningsrader", value: String(totals.placements), hint: `En rad = en tentamen i en lokal vid en tid${totals.cancelled_placements ? `; ${totals.cancelled_placements} avbokade ingår inte` : ""}.` },
     { label: "Bokade platser", value: String(totals.booked_places), hint: definitions.booked_places ?? "" },
-    { label: "Bara adress angiven", value: String(totals.unspecified_room_placements), hint: "Bokningar utan salnamn. De ligger kvar under sin adress och hänförs inte till någon sal." },
-    { label: "Utan adress", value: String(totals.without_address_placements), hint: "Bokningar utan adress visas för sig som \"Adress saknas\"." },
+    { label: "Sal saknas i uttaget", value: String(totals.address_only_placements), hint: "Bara adress angiven. Orsaken är okänd och har inte antagits; raderna ligger kvar under sin adress och hänförs inte till någon sal." },
+    { label: "Utan adress", value: String(totals.no_address_placements), hint: "Bokningar utan adress visas för sig som \"Adress saknas\"." },
     { label: "Verklig närvaro", value: "okänd", hint: definitions.attendance ?? "" },
   ]
 }
