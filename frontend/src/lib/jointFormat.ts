@@ -33,6 +33,10 @@ export const formatCount = (value: number | null | undefined): string => value =
  * Ärlig kostnadsredovisning: utan bevisat optimum visas ett intervall "undre gräns–verifierad kostnad"
  * och aldrig en enskild siffra som kan läsas som besparing. Kostnaden är en modellkostnad, inte faktisk kostnad.
  */
+/** Det kostnaden kallas överallt: den är en årlig kapacitetskostnad för de valda tentorna, inte kostnaden för en period. */
+export const COST_NAME = "Modellerad årlig kapacitetskostnad"
+export const COST_SCOPE = "för valt urval"
+
 export type CostStatement = { proven: boolean; headline: string; note: string }
 export function costStatement(costOre: number | null, boundOre: number | null, provenOptimum: boolean): CostStatement {
   if (costOre === null) return { proven: false, headline: DASH, note: "Ingen kontrollerad lösning finns ännu." }

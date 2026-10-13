@@ -67,7 +67,7 @@ def _widen(path: Path) -> None:
     base = rooms.iloc[0].to_dict()
     pd.DataFrame([
         {**base, "room_id": room, "reference_address": address, "reference_city": city, "capacity_seats": seats,
-         "digital_capability_status": status, "eligible_for_exploratory_capacity_poc": eligible}
+         "digital_capability_status": status, "eligible_for_exploratory_capacity_poc": eligible, "eligible_for_operational_scheduling": False}
         for room, (address, city, seats, status, eligible) in ROOMS.items()
     ]).to_csv(path / "optimization_rooms.csv", index=False, encoding="utf-8-sig")
 

@@ -21,7 +21,7 @@ export function CostPanel({ state, nowT }: { state: JointState; nowT: number }) 
     <CardHeader><CardTitle>Kostnad över tid</CardTitle></CardHeader>
     <CardContent className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-3">
-        <Figure title="Verifierad kostnad" value={formatKr(cost)} hint={bestIncumbent(state)?.source ? `Lägsta kostnad hittills som är kontrollerad. Från: ${sourceLabel(bestIncumbent(state)!.source)}` : "Ingen kontrollerad lösning ännu"}/>
+        <Figure title="Verifierad kapacitetskostnad (årlig, valt urval)" value={formatKr(cost)} hint={bestIncumbent(state)?.source ? `Lägsta kostnad hittills som är kontrollerad. Från: ${sourceLabel(bestIncumbent(state)!.source)}` : "Ingen kontrollerad lösning ännu"}/>
         <Figure title="Undre gräns" value={formatKr(bound)} hint={state.bounds.length ? `Lägsta kostnad som bevisats möjlig (varv ${state.bounds.at(-1)!.round})` : "Ingen gräns bevisad ännu"}/>
         <Figure title="Gap" value={formatGap(gap)} hint="Hur långt verifierad kostnad ligger över undre gräns, i procent av kostnaden"/>
       </div>

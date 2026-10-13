@@ -107,6 +107,20 @@ def build_real_subset_problem(
     )
 
 
+def _new_run_directory(runs_dir: Path, problem_id: str) -> tuple[str, Path]:
+    """Create the directory of a new run. The id keeps its time stamp format; a run that starts in the same second as
+    another (short periods finish in under a second) gets the next free second, so ids stay unique and ordered."""
+    stamp = int(time.time())
+    while True:
+        run_id = f"{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime(stamp))}-{problem_id}"
+        try:
+            (runs_dir / run_id).mkdir(parents=True, exist_ok=False)  # parents: the runs folder may not exist yet
+        except FileExistsError:
+            stamp += 1
+            continue
+        return run_id, runs_dir / run_id
+
+
 def _prepare_events(ready: pd.DataFrame, values: dict[str, Any]) -> list[dict[str, Any]]:
     """Resolve each named exam event to one historical occasion, duration and type."""
     events = []
@@ -276,9 +290,7 @@ def run_real_subset(
     choice = find_start(runs_dir, problem, warm_start)
     budget = (budget or ExecutionBudget()).resolve(problem.solver)
     report = StartReport()
-    run_id = f"{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}-{problem.problem_id}"
-    run_dir = runs_dir / run_id
-    run_dir.mkdir(parents=True, exist_ok=False)
+    run_id, run_dir = _new_run_directory(runs_dir, problem.problem_id)
     shutil.copyfile(config_path, run_dir / SCENARIO_COPY)  # the scenario file that this run actually used
     if progress is not None:
         progress.run_id = run_id
