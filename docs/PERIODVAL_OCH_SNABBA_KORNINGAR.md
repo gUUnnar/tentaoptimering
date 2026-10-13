@@ -63,6 +63,8 @@ Inga tidsmål har fastställts; målen ska sättas efter dessa mätningar (kravs
 
 ## 3. Steg 3 – design: hänsyn till redan lagda bokningar (inte implementerat)
 
+> **Ersätts delvis.** Den här utkast-designen utgår från dagens datauttag och föreslår "kapacitetsreduktion per adress och pass" som modell när sal saknas. Det gör en datalucka till ett modellantagande och strider mot principerna i `docs/ARKITEKTURPRINCIPER_DATAKVALITET.md` (modell och datakvalitet hålls isär, saknade uppgifter hanteras explicit, inga tysta antaganden). Gällande riktning är den arkitekturen: bokningsrader klassificeras till resurstillstånd i datainläsningen och undantagspolicy väljs per planeringsläge. Avsnittet nedan ska skrivas om innan steg 3 påbörjas; läs det som en beskrivning av dagens data, inte som modell.
+
 ### Problemet
 
 Vid planering av en kort period väljs en delmängd tentor ut för optimering. Andra bokningar i samma period (andra tentor, tentor som inte ingår i populationen, eventuellt annan verksamhet) tar plats i salarna. Idag modelleras varje sal som fri alla pass där den är öppen (`Room.available_slot_ids`, byggd av `_rooms` i `joint_inputs.py` ur `available_from/available_to`). Därför kan ett resultat visa en lokal som ledig fast den är bokad. Det är acceptabelt för **explorativa snabbtester** men inte för **verklig korttidsplanering**.
