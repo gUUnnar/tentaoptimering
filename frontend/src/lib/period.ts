@@ -2,7 +2,8 @@ import type { PeriodCheck, PeriodCoverage } from "./jointTypes.ts"
 
 // Val av planeringsperiod: genvägar, enkel kontroll och text. Själva kontrollen mot underlaget görs av servern.
 
-export type PeriodChoice = { from: string; to: string }
+/** `accept`: användaren har uttryckligen godkänt den kortare period som underlaget täcker när valet når utanför det. */
+export type PeriodChoice = { from: string; to: string; accept?: boolean }
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/
 const DAY_MS = 86_400_000
@@ -50,3 +51,9 @@ export const coverageText = (coverage: PeriodCoverage): string =>
     : "Det finns inget förberett efterfrågeunderlag."
 
 export const sameChoice = (a: PeriodChoice | null, b: PeriodChoice | null): boolean => a === b || (!!a && !!b && a.from === b.from && a.to === b.to)
+
+/** Kan perioden köras? Delvis täckta perioder kräver ett uttryckligt godkännande. */
+export const periodRunnable = (choice: PeriodChoice | null, check: PeriodCheck | null): boolean =>
+  !choice || (!periodInputError(choice) && check?.can_plan === true && (!check.partial || choice.accept === true))
+
+export const partialText = (check: PeriodCheck): string => `Jag godkänner att bara ${check.planned_from} – ${check.planned_to} planeras. Resultatet gäller inte hela den valda perioden.`

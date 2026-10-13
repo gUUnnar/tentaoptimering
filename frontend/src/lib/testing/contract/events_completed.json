@@ -1,19 +1,19 @@
 {
-  "elapsed_seconds": 0.107,
+  "elapsed_seconds": 0.128,
   "events": [
     {
       "decision": "not_used",
       "explanation": "Ingen varmstart begärdes.",
       "seq": 1,
       "source_run_id": null,
-      "t": 0.013,
+      "t": 0.014,
       "type": "warm_start"
     },
     {
-      "memory_mb": 5562,
+      "memory_mb": 5300,
       "parallel_checks": 2,
       "seq": 2,
-      "t": 0.013,
+      "t": 0.015,
       "threads": 2,
       "type": "resources",
       "workers_per_check": 1
@@ -22,14 +22,14 @@
       "name": "relaxation",
       "seq": 3,
       "state": "started",
-      "t": 0.014,
+      "t": 0.015,
       "type": "phase"
     },
     {
       "lower_ore": 7000,
       "round": 1,
       "seq": 5,
-      "t": 0.024,
+      "t": 0.023,
       "type": "bound"
     },
     {
@@ -38,7 +38,7 @@
       "parallel": 1,
       "seq": 7,
       "statuses": {},
-      "t": 0.024,
+      "t": 0.023,
       "total": 1,
       "type": "batch",
       "workers_per_check": 2
@@ -47,16 +47,16 @@
       "date": "2026-01-12",
       "kind": "day",
       "seq": 8,
-      "t": 0.025,
+      "t": 0.023,
       "type": "day_started"
     },
     {
       "date": "2026-01-12",
       "kind": "day",
-      "seconds": 0.012,
+      "seconds": 0.018,
       "seq": 9,
       "status": "optimal",
-      "t": 0.037,
+      "t": 0.042,
       "type": "day"
     },
     {
@@ -64,7 +64,7 @@
       "cost_ore": 7000,
       "seq": 13,
       "source": "round 1",
-      "t": 0.037,
+      "t": 0.042,
       "type": "incumbent"
     },
     {
@@ -73,11 +73,11 @@
       "cost_ore": 7000,
       "outcome": "optimal",
       "seq": 16,
-      "t": 0.107,
+      "t": 0.128,
       "type": "finished"
     }
   ],
   "last_seq": 16,
-  "run_id": "20261013T061600Z-pair",
+  "run_id": "20261013T063656Z-pair",
   "status": "completed"
 }

@@ -82,6 +82,24 @@ class PeriodTests(unittest.TestCase):
         self.assertEqual(SCENARIO["subset"]["date_to"], "2026-03-31")  # the original is untouched
         self.assertNotIn("calendar.start_date", SCENARIO["parameters"])
 
+    def test_a_partly_covered_period_needs_the_users_explicit_approval(self) -> None:
+        asked = dict(date_from=date(2026, 1, 1), date_to=date(2026, 4, 30))
+        report = period_report(self.dir, "Uppsala", asked["date_from"], asked["date_to"])
+        self.assertTrue(report["partial"])
+        self.assertEqual((report["planned_from"], report["planned_to"]), ("2026-01-12", "2026-03-31"))
+        self.assertIn("inte hela den valda perioden", " ".join(report["warnings"]))
+        with self.assertRaisesRegex(PeriodError, "Godkänn uttryckligen den kortare perioden 2026-01-12–2026-03-31"):
+            with_period(SCENARIO, self.dir, PeriodRequest(**asked))
+        merged = with_period(SCENARIO, self.dir, PeriodRequest(**asked, accept_partial=True))
+        self.assertEqual(merged["period"], {"requested_from": "2026-01-01", "requested_to": "2026-04-30", "planned_from": "2026-01-12",
+                                            "planned_to": "2026-03-31", "partial": True, "partial_accepted": True})
+        self.assertEqual(merged["parameters"]["calendar.end_date"], "2026-03-31")
+
+    def test_a_fully_covered_period_is_not_partial_and_needs_no_approval(self) -> None:
+        merged = with_period(SCENARIO, self.dir, PeriodRequest(date_from=date(2026, 1, 12), date_to=date(2026, 1, 20)))
+        self.assertFalse(merged["period"]["partial"])
+        self.assertFalse(period_report(self.dir, "Uppsala", date(2026, 1, 12), date(2026, 3, 31))["partial"])
+
     def test_scenario_with_named_exams_cannot_take_a_period(self) -> None:
         named = {**SCENARIO, "subset": {"plan_area": "Uppsala", "exam_event_ids": ["e1"]}}
         with self.assertRaises(PeriodError):

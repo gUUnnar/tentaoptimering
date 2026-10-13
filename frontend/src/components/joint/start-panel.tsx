@@ -8,7 +8,7 @@ import { isMissingUnderlayMessage, scenarioNeedsUnderlay } from "@/lib/underlay"
 import type { RunChangeText } from "@/lib/jointJobMemory"
 import type { JointScenario, StartJointRunBody } from "@/lib/jointTypes"
 import { DEFAULT_RUN_OPTIONS, runOptionsValid, toStartBody, type RunOptions } from "@/lib/runOptions"
-import { periodInputError, type PeriodChoice } from "@/lib/period"
+import { periodRunnable, type PeriodChoice } from "@/lib/period"
 import { useParameterEditor } from "@/lib/useParameterEditor"
 import { usePeriod } from "@/lib/usePeriod"
 import { PeriodPicker } from "./period-picker"
@@ -49,9 +49,9 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
   const problems = useMemo(() => editor.params.filter(param => editor.errors[param.id]).map(param => ({ id: param.id, label: param.label, message: editor.errors[param.id] })), [editor.params, editor.errors])
   const missingUnderlay = scenarioNeedsUnderlay(scenario) || isMissingUnderlayMessage(startError) || isMissingUnderlayMessage(loadError)
   const namedExams = scenario?.subset?.selection === "event_list"
-  const periodOk = !period || (!periodInputError(period) && periodState.check?.can_plan === true)
+  const periodOk = periodRunnable(period, periodState.check)
   const canStart = !busy && !submitting && !!scenarioId && ready && !editor.hasErrors && optionsOk && periodOk && !scenarioNeedsUnderlay(scenario)
-  const why = busy ? "En körning pågår redan." : scenarioNeedsUnderlay(scenario) ? "Förbered underlaget under Underlag först." : !ready ? "Parametrarna har inte hämtats än." : editor.hasErrors ? "Rätta felen i parametrarna först." : !optionsOk ? "Rätta valen för start och resurser först." : !periodOk ? "Välj en period som går att planera först." : null
+  const why = busy ? "En körning pågår redan." : scenarioNeedsUnderlay(scenario) ? "Förbered underlaget under Underlag först." : !ready ? "Parametrarna har inte hämtats än." : editor.hasErrors ? "Rätta felen i parametrarna först." : !optionsOk ? "Rätta valen för start och resurser först." : !periodOk ? (periodState.check?.partial && !period?.accept ? "Godkänn den kortare perioden först." : "Välj en period som går att planera först.") : null
 
   const changeScenario = (id: string) => {
     if (id === scenarioId) return

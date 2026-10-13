@@ -1,6 +1,6 @@
 import { CircleX } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { describeVerdict } from "@/lib/jointFormat"
+import { COST_NAME, COST_SCOPE, describeVerdict } from "@/lib/jointFormat"
 import { changedParameters, changedParametersHeading, summaryView, type StatView } from "@/lib/jointSummaryView"
 import type { JointSummary } from "@/lib/jointTypes"
 import { VerdictChip } from "./status-chip"
@@ -18,7 +18,7 @@ export function SummaryCard({ summary, labels }: { summary: JointSummary; labels
       <CardContent className="space-y-3">
         {view.verified ? <>
           <div className={view.statement.proven ? "rounded-md bg-emerald-50 p-3 text-emerald-900" : "rounded-md bg-amber-50 p-3 text-amber-900"}>
-            <div className="text-xs">{view.statement.proven ? "Verifierad kostnad (lägsta möjliga i modellen är bevisad)" : "Kostnadsintervall: undre gräns–verifierad kostnad"}</div>
+            <div className="text-xs">{view.statement.proven ? `${COST_NAME} ${COST_SCOPE} (verifierad; lägsta möjliga i modellen är bevisad)` : `${COST_NAME} ${COST_SCOPE}: intervall från undre gräns till verifierad kostnad`}</div>
             <div className="mt-0.5 text-2xl font-semibold tabular-nums">{view.statement.headline}</div>
             <div className="mt-1 text-xs">{view.statement.note}</div>
             <div className="mt-1 text-xs">Det är en modellkostnad. Faktisk kostnad, teoretisk årlig potential och verifierad realiserbar besparing redovisas separat och framgår inte av denna siffra.</div>
@@ -63,7 +63,8 @@ function PlanningNote({ summary }: { summary: JointSummary }) {
   if (!from && !to && !basis) return null
   return <div className="rounded-md bg-slate-100 p-2.5 text-xs text-slate-900">
     {(from || to) && <p><strong>Planeringsperiod:</strong> {from ?? "början"} – {to ?? "slutet"}</p>}
+    {summary.period.partial && <p className="mt-0.5 rounded bg-amber-100 p-1.5 font-medium text-amber-950">Delvis planerad period: du valde {summary.period.requested_from} – {summary.period.requested_to}, men underlaget täcker bara {from} – {to} (godkänd kortare period). Resultatet gäller inte hela den valda perioden.</p>}
     {basis && <p className="mt-0.5"><strong>{basis.label}.</strong> {basis.note}</p>}
-    {basis && <p className="mt-0.5">{basis.cost_note}</p>}
+    {basis && <p className="mt-0.5"><strong>{basis.cost_name}.</strong> {basis.cost_note}</p>}
   </div>
 }

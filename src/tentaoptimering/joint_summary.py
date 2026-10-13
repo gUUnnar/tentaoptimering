@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 import re
+import tomllib
 from typing import Any
 
 from .app_storage import AppStorage
@@ -129,7 +130,19 @@ def _period(directory: Path) -> dict[str, Any]:
     """The dates a run was planned for, read from its frozen parameters; the exams' own dates when no calendar was fixed."""
     items = (read_json(directory / "joint_input.json") or {}).get("parameters", ())
     values = {item.get("parameter_id"): item.get("value") for item in items if isinstance(item, dict)}
-    return {"date_from": values.get("calendar.start_date") or None, "date_to": values.get("calendar.end_date") or None}
+    asked = _requested_period(directory)
+    return {"date_from": values.get("calendar.start_date") or None, "date_to": values.get("calendar.end_date") or None,
+            "requested_from": asked.get("requested_from"), "requested_to": asked.get("requested_to"),
+            "partial": bool(asked.get("partial")), "partial_accepted": bool(asked.get("partial_accepted"))}
+
+
+def _requested_period(directory: Path) -> dict[str, Any]:
+    """The `[period]` table of the run's frozen scenario: what the user asked for next to what was planned."""
+    try:
+        table = tomllib.loads((directory / "joint_scenario.toml").read_text(encoding="utf-8")).get("period", {})
+    except (OSError, ValueError):
+        return {}
+    return table if isinstance(table, dict) else {}
 
 
 def _unverified_reason(solver: dict[str, Any], coverage: dict[str, Any], technical: str, verdict: dict[str, Any]) -> str:

@@ -33,6 +33,6 @@ export function toStartBody(scenario: string, options: RunOptions, parameters: R
     parallel_day_checks: options.parallel,
   }
   if (Object.keys(parameters).length) body.parameters = parameters
-  if (period) body.period = { date_from: period.from, date_to: period.to }
+  if (period) body.period = { date_from: period.from, date_to: period.to, ...(period.accept ? { accept_partial: true } : {}) }
   return body
 }

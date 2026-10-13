@@ -1,5 +1,5 @@
 {
-  "elapsed_seconds": 0.051,
+  "elapsed_seconds": 0.049,
   "error": "OSError: disk full",
   "events": [
     {
@@ -7,14 +7,14 @@
       "explanation": "Ingen varmstart begärdes.",
       "seq": 1,
       "source_run_id": null,
-      "t": 0.017,
+      "t": 0.019,
       "type": "warm_start"
     },
     {
-      "memory_mb": 5563,
+      "memory_mb": 5298,
       "parallel_checks": 2,
       "seq": 2,
-      "t": 0.017,
+      "t": 0.019,
       "threads": 2,
       "type": "resources",
       "workers_per_check": 1
@@ -23,14 +23,14 @@
       "name": "relaxation",
       "seq": 3,
       "state": "started",
-      "t": 0.017,
+      "t": 0.019,
       "type": "phase"
     },
     {
       "lower_ore": 7000,
       "round": 1,
       "seq": 5,
-      "t": 0.033,
+      "t": 0.045,
       "type": "bound"
     },
     {
@@ -39,7 +39,7 @@
       "parallel": 1,
       "seq": 7,
       "statuses": {},
-      "t": 0.033,
+      "t": 0.045,
       "total": 1,
       "type": "batch",
       "workers_per_check": 2
@@ -48,16 +48,16 @@
       "date": "2026-01-12",
       "kind": "day",
       "seq": 8,
-      "t": 0.033,
+      "t": 0.045,
       "type": "day_started"
     },
     {
       "date": "2026-01-12",
       "kind": "day",
-      "seconds": 0.017,
+      "seconds": 0.003,
       "seq": 9,
       "status": "optimal",
-      "t": 0.05,
+      "t": 0.049,
       "type": "day"
     },
     {
@@ -65,7 +65,7 @@
       "cost_ore": 7000,
       "seq": 13,
       "source": "round 1",
-      "t": 0.051,
+      "t": 0.049,
       "type": "incumbent"
     },
     {
@@ -75,11 +75,11 @@
       "error": "OSError: disk full",
       "outcome": "failed",
       "seq": 16,
-      "t": 0.051,
+      "t": 0.049,
       "type": "finished"
     }
   ],
   "last_seq": 16,
-  "run_id": "20261013T061600Z-pair",
+  "run_id": "20261013T063656Z-pair",
   "status": "failed"
 }

@@ -3,7 +3,7 @@
   "changed_exams": null,
   "cost_is_proven_optimum": false,
   "cost_ore": null,
-  "created_at": "2026-10-13T06:15:58Z",
+  "created_at": "2026-10-13T06:36:54Z",
   "exams_total": 2,
   "first_solution_basis": "solver_start",
   "first_solution_seconds": 0.0,
@@ -22,17 +22,22 @@
   ],
   "period": {
     "date_from": null,
-    "date_to": null
+    "date_to": null,
+    "partial": false,
+    "partial_accepted": false,
+    "requested_from": null,
+    "requested_to": null
   },
   "planning_basis": {
-    "cost_note": "Kostnaden är modellens årskostnad för den lokal- och bemanningskapacitet som den valda perioden kräver, inte periodens faktiska kostnad. Kostnader för olika perioder är inte jämförbara och får inte skalas upp till en årlig besparing.",
+    "cost_name": "Modellerad årlig kapacitetskostnad för valt urval",
+    "cost_note": "Kostnaden är modellens årliga kapacitetskostnad för det valda urvalet: lokalerna som behövs (platser gånger årspris) och vaktpoolen, som dimensioneras efter toppbelastningen. Den är inte kostnaden för perioden och inte faktisk kostnad. Kostnader för olika urval är inte jämförbara och får inte skalas upp till en årlig besparing.",
     "fixed_bookings_considered": false,
     "label": "Explorativ planering",
     "mode": "exploratory",
     "note": "Modellen känner inte till bokningar som ligger utanför de valda tentorna. Ett resultat visar därför inte att en sal är ledig i verkligheten: salens verkliga tillgänglighet måste kontrolleras mot bokningssystemet."
   },
   "problem_id": "pair",
-  "run_id": "20261013T061558Z-pair",
+  "run_id": "20261013T063654Z-pair",
   "scenario_id": "pair",
   "solver_outcome": "optimal",
   "staff_pool_size": null,
@@ -45,6 +50,6 @@
     "technical_validation": "fail",
     "technically_validated": false
   },
-  "wall_time_seconds": 0.036574199999449775,
+  "wall_time_seconds": 0.014908300014212728,
   "warm_start_decision": "not_used"
 }

@@ -34,7 +34,7 @@ const SUMMARY_FIELDS: Record<string, [(out: JointSummary) => unknown, (raw: Raw)
   parameters_changed_count: [out => out.parameters_changed_count, raw => raw.parameters_changed_count],
   parameters_changed_from_default: [out => ids(out), raw => raw.parameters_changed_from_default],
   problem_id: [out => out.problem_id, raw => raw.problem_id],
-  period: [out => out.period, raw => ({ date_from: raw.period.date_from, date_to: raw.period.date_to })],
+  period: [out => out.period, raw => raw.period],
   planning_basis: [out => out.planning_basis, raw => raw.planning_basis],
   run_id: [out => out.run_id, raw => raw.run_id],
   scenario_id: [out => out.scenario_id, raw => raw.scenario_id],

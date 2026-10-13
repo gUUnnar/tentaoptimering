@@ -35,14 +35,18 @@ PLANNING_BASIS: dict[str, Any] = {
     "label": "Explorativ planering",
     "note": ("Modellen känner inte till bokningar som ligger utanför de valda tentorna. Ett resultat visar därför inte att en sal "
              "är ledig i verkligheten: salens verkliga tillgänglighet måste kontrolleras mot bokningssystemet."),
-    "cost_note": ("Kostnaden är modellens årskostnad för den lokal- och bemanningskapacitet som den valda perioden kräver, inte periodens "
-                  "faktiska kostnad. Kostnader för olika perioder är inte jämförbara och får inte skalas upp till en årlig besparing."),
+    "cost_name": "Modellerad årlig kapacitetskostnad för valt urval",
+    "cost_note": ("Kostnaden är modellens årliga kapacitetskostnad för det valda urvalet: lokalerna som behövs (platser gånger årspris) och "
+                  "vaktpoolen, som dimensioneras efter toppbelastningen. Den är inte kostnaden för perioden och inte faktisk kostnad. "
+                  "Kostnader för olika urval är inte jämförbara och får inte skalas upp till en årlig besparing."),
 }
 
 
 class PeriodRequest(BaseModel):
     date_from: date
     date_to: date
+    # A period that reaches outside the demand data is planned only if the user has accepted the shorter period.
+    accept_partial: bool = False
 
 
 class PeriodError(ValueError):
@@ -94,7 +98,7 @@ def period_report(processed_dir: Path, plan_area: str, first: date, last: date) 
     coverage = coverage_payload(processed_dir, plan_area)
     report: dict[str, Any] = {"date_from": first.isoformat(), "date_to": last.isoformat(), "plan_area": plan_area, "coverage": coverage["demand"],
                               "planning_basis": PLANNING_BASIS, "ready_events": 0, "not_ready_events": 0, "planned_from": None,
-                              "planned_to": None, "warnings": [], "error": None, "can_plan": False}
+                              "planned_to": None, "partial": False, "warnings": [], "error": None, "can_plan": False}
     if first > last:
         report["error"] = "Startdatum får inte vara senare än slutdatum."
         return report
@@ -111,9 +115,11 @@ def period_report(processed_dir: Path, plan_area: str, first: date, last: date) 
     report["ready_events"] = sum(row["ready"] for row in inside_days)
     report["not_ready_events"] = sum(row["not_ready"] for row in inside_days)
     report["planned_from"], report["planned_to"] = max(first, low).isoformat(), min(last, high).isoformat()
-    if first < low or last > high:
+    report["partial"] = first < low or last > high
+    if report["partial"]:
         report["warnings"].append(f"Delar av perioden saknar efterfrågeunderlag ({low.isoformat()}–{high.isoformat()} täcks). "
-                                  f"Bara {report['planned_from']}–{report['planned_to']} planeras; resten är okänd, inte tom.")
+                                  f"Bara {report['planned_from']}–{report['planned_to']} kan planeras; resten är okänd, inte tom. "
+                                  "Resultatet gäller då inte hela den valda perioden.")
     if report["not_ready_events"]:
         report["warnings"].append(f"{report['not_ready_events']} tentor i perioden saknar deltagarantal och ingår inte i planeringen.")
     if report["ready_events"] == 0:
@@ -132,9 +138,15 @@ def with_period(content: dict[str, Any], processed_dir: Path, request: PeriodReq
     report = period_report(processed_dir, str(subset.get("plan_area", "")), request.date_from, request.date_to)
     if not report["can_plan"]:
         raise PeriodError(str(report["error"]))
+    if report["partial"] and not request.accept_partial:
+        raise PeriodError(f"Perioden {request.date_from.isoformat()}–{request.date_to.isoformat()} täcks bara delvis av underlaget. "
+                          f"Godkänn uttryckligen den kortare perioden {report['planned_from']}–{report['planned_to']} för att planera den.")
     first, last = report["planned_from"], report["planned_to"]
     merged = deepcopy(content)
     merged["subset"].update({"date_from": first, "date_to": last})
+    # What was asked for and what is planned stay together in the run's frozen scenario, so a result can never read as the whole request.
+    merged["period"] = {"requested_from": request.date_from.isoformat(), "requested_to": request.date_to.isoformat(),
+                        "planned_from": first, "planned_to": last, "partial": bool(report["partial"]), "partial_accepted": bool(report["partial"])}
     merged.setdefault("parameters", {}).update({"calendar.start_date": first, "calendar.end_date": last})
     merged.setdefault("rationales", {}).update({"calendar.start_date": "Vald planeringsperiod i gränssnittet.",
                                                 "calendar.end_date": "Vald planeringsperiod i gränssnittet."})

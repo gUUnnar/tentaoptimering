@@ -147,7 +147,7 @@ export function fixtureSummary(events: JointEvent[], warm: FixtureWarm): JointSu
     changed_exams: lastIncumbent?.type === "incumbent" ? lastIncumbent.changed_exams : null, exams_total: 1172, staff_pool_size: 41,
     first_solution_seconds: firstIncumbent?.t ?? null, first_solution_basis: "solver_start", first_solution_source: "warm start",
     wall_seconds: last?.t ?? null, outcome, proven_optimum: outcome === "optimal", has_verified_solution: outcome !== "unknown", cancelled: outcome === "cancelled",
-    warm_start_decision: warm === "none" ? "not_used" : warm, parameters_changed_from_default: [], parameters_changed_count: 0, period: { date_from: null, date_to: null }, planning_basis: null, unverified_reason: null,
+    warm_start_decision: warm === "none" ? "not_used" : warm, parameters_changed_from_default: [], parameters_changed_count: 0, period: { date_from: null, date_to: null, requested_from: null, requested_to: null, partial: false, partial_accepted: false }, planning_basis: null, unverified_reason: null,
     technical_validation: "pass", business_verification: "not_evaluated", provenance: "not_evaluated",
   }
 }

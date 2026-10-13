@@ -19,7 +19,7 @@ Kravunderlag: `docs/OVERLAMNING_CLAUDE_2026-10-12.md` och `docs/KONCEPTUELL_KRAV
 |---|---|
 | Vilka tentor ingår? | De vars historiska datum ligger i perioden (inklusive gränsdagarna), klara för modellering i scenariots planeringsområde. |
 | Tentor vars flyttfönster passerar periodgränsen | Kalendern skärs till perioden. En tenta flyttas aldrig ut ur perioden, så en tenta nära gränsen har mindre rörelsefrihet. Det anges som varning vid valet. |
-| Period delvis utanför efterfrågeunderlaget | Bara den del som täcks planeras (`planned_from`/`planned_to`). Resten redovisas som okänd, inte tom. |
+| Period delvis utanför efterfrågeunderlaget (till exempel 1 januari–30 april när Ladok täcker 12 januari–31 mars) | Systemet begränsar **inte** beräkningen på egen hand. Kontrollen visar vilken kortare period som kan planeras och körningen kan startas först när användaren uttryckligen kryssat i godkännandet av den kortare perioden (`accept_partial`); utan godkännande avvisas begäran (HTTP 422). Godkännandet nollställs när ett datum ändras. Körningens frusna scenario och sammanfattningen sparar både vald och planerad period (`[period]`), och resultatvyn visar "Delvis planerad period … gäller inte hela den valda perioden". Resten är okänd, inte tom. |
 | Period helt utanför underlaget | Avvisas med besked om täckningen (HTTP 422), ingen körning startas. |
 | Inga tentor med känt deltagarantal | Avvisas med besked. |
 | Scenario med namngivna tentor (`exam_event_ids`) | Tar inget periodval; felet förklarar varför. |
@@ -29,7 +29,14 @@ Kravunderlag: `docs/OVERLAMNING_CLAUDE_2026-10-12.md` och `docs/KONCEPTUELL_KRAV
 
 ### Explorativ planering, märkt i varje resultat
 
-Modellen känner inte till bokningar som ligger utanför de valda tentorna. `planning_basis` i sammanfattningen (`mode = "exploratory"`, `fixed_bookings_considered = false`) och en text i resultatvyn säger att ett resultat **inte visar att en sal är ledig i verkligheten**. Detta gäller alla körningar i nuvarande motor, inte bara perioder. Kostnaden för en period är modellens **årskostnad för den kapacitet och bemanning perioden kräver**, inte periodens faktiska kostnad. En dag (508 tkr) kan därför kosta mer än en vecka (379 tkr), och kostnader för olika perioder får inte jämföras eller skalas upp till en årlig besparing.
+Modellen känner inte till bokningar som ligger utanför de valda tentorna. `planning_basis` i sammanfattningen (`mode = "exploratory"`, `fixed_bookings_considered = false`) och en text i resultatvyn säger att ett resultat **inte visar att en sal är ledig i verkligheten**. Detta gäller alla körningar i nuvarande motor, inte bara perioder.
+
+
+### Kostnadsbegreppet: modellerad årlig kapacitetskostnad för valt urval
+
+Kostnaden i resultatet är inte kostnaden för perioden. Den är summan av de salar som behövs (platser gånger årspris, `annual_room_cost_ore`) och vaktpoolen, som dimensioneras efter toppbelastningen (`staff_pool_size` gånger årskostnad per vakt, `annual_staff_pool_cost_ore`), plus eventuella pass- och externkostnader. Posterna är kontrollerade mot resultatet i `tests/test_joint_period_run.py`: totalen är summan av delposterna och vaktpoolskostnaden är poolstorleken gånger årskostnaden.
+
+Namnet **"Modellerad årlig kapacitetskostnad för valt urval"** används därför konsekvent i sammanfattningen, kostnadsfältet, jämförelsetabellen, förklaringsrutan och i `planning_basis.cost_name`. En dag (508 tkr) kan kosta mer än en vecka (379 tkr) eftersom kapaciteten dimensioneras efter toppen och en endagsperiod har en kalender på en enda dag: tentorna kan inte flyttas till andra dagar för att jämna ut toppen. Det är en rimlig förklaring som inte är separat testad; det som är testat är att kostnaden följer av salarna och vaktpoolen. Kostnader för olika urval jämförs inte och skalas inte upp till en årlig besparing.
 
 ### Korrigering som korta körningar avslöjade
 

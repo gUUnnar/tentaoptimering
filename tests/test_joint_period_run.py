@@ -6,6 +6,7 @@ request, and the result is compared with an independent pandas count of the exam
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import shutil
 import sys
@@ -59,14 +60,39 @@ class PeriodRunTests(unittest.TestCase):
         self.assertTrue(summary["has_verified_solution"])
         self.assertTrue(summary["technical_placement_complete"])
         self.assertEqual(summary["verdicts"]["technical_validation"], "pass")
-        self.assertEqual(summary["period"], {"date_from": "2026-02-09", "date_to": "2026-02-09"})
+        self.assertEqual(summary["period"], {"date_from": "2026-02-09", "date_to": "2026-02-09", "requested_from": "2026-02-09",
+                                               "requested_to": "2026-02-09", "partial": False, "partial_accepted": False})
 
     def test_the_result_is_marked_exploratory_and_its_cost_is_not_a_period_cost(self) -> None:
         _, summary = self._run("2026-02-09", "2026-02-15")
         self.assertEqual(summary["exams_total"], self._expected_events("2026-02-09", "2026-02-15"))
         basis = summary["planning_basis"]
         self.assertEqual((basis["mode"], basis["fixed_bookings_considered"]), ("exploratory", False))
-        self.assertIn("inte periodens faktiska kostnad", basis["cost_note"])
+        self.assertIn("inte kostnaden för perioden", basis["cost_note"])
+
+    def test_a_partly_covered_period_runs_only_after_approval_and_the_result_shows_both_periods(self) -> None:
+        request = dict(scenario=SCENARIO, warm_start="none", threads=2)
+        asked = dict(date_from="2026-03-30", date_to="2026-04-30")
+        with self.assertRaisesRegex(ValueError, "Godkänn uttryckligen"):
+            joint_api.start_joint_run(self.jobs, self.storage, JointRunRequest(**request, period=PeriodRequest(**asked)))
+        end = _wait_for_end(self.jobs, joint_api.start_joint_run(
+            self.jobs, self.storage, JointRunRequest(**request, period=PeriodRequest(**asked, accept_partial=True)))["job_id"], seconds=300)
+        self.assertEqual(end["status"], "completed", end.get("error"))
+        period = joint_api.run_summary(self.storage, end["run_id"])["period"]
+        self.assertEqual(period, {"date_from": "2026-03-30", "date_to": "2026-03-31", "requested_from": "2026-03-30",
+                                  "requested_to": "2026-04-30", "partial": True, "partial_accepted": True})
+
+    def test_the_cost_is_an_annual_capacity_cost_that_follows_from_rooms_and_the_staff_pool(self) -> None:
+        for first, last in (("2026-02-09", "2026-02-09"), ("2026-02-09", "2026-02-15")):
+            with self.subTest(period=(first, last)):
+                end, summary = self._run(first, last)
+                result = json.loads((self.storage.run_directory(end["run_id"]) / "joint_result.json").read_text(encoding="utf-8"))
+                costs, staff_annual = result["costs"], 5_000_000  # cost.staff_annual_ore of the scenario
+                self.assertEqual(costs["annual_staff_pool_cost_ore"], result["staff_pool_size"] * staff_annual)
+                self.assertEqual(costs["comparable_total_cost_ore"], costs["annual_room_cost_ore"] + costs["external_room_session_cost_ore"]
+                                 + costs["annual_staff_pool_cost_ore"] + costs["staff_session_cost_ore"])
+                self.assertEqual(summary["cost_ore"], costs["comparable_total_cost_ore"])
+                self.assertEqual(summary["planning_basis"]["cost_name"], "Modellerad årlig kapacitetskostnad för valt urval")
 
     def test_runs_of_different_periods_are_not_compared_as_equal(self) -> None:
         (day, _), (week, _) = self._run("2026-02-09", "2026-02-09"), self._run("2026-02-09", "2026-02-15")

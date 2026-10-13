@@ -72,7 +72,7 @@ export type BackendSummary = {
   wall_time_seconds: number | null; first_solution_seconds: number | null
   first_solution_basis?: string | null; first_solution_source?: string | null
   cancelled: boolean; warm_start_decision?: string | null
-  period?: { date_from?: string | null; date_to?: string | null }; planning_basis?: PlanningBasis | null
+  period?: { date_from?: string | null; date_to?: string | null; requested_from?: string | null; requested_to?: string | null; partial?: boolean; partial_accepted?: boolean }; planning_basis?: PlanningBasis | null
   parameters_changed_from_default?: unknown; parameters_changed_count?: number | null; unverified_reason?: string | null
   verdicts: { technical_validation: string; business_verification: string; provenance: string; technically_validated?: boolean; source?: string }
 }
@@ -103,7 +103,8 @@ export function toJointSummary(raw: BackendSummary): JointSummary {
     outcome, proven_optimum: verified && (raw.cost_is_proven_optimum === true || outcome === "optimal"),
     has_verified_solution: verified, cancelled: raw.cancelled === true,
     warm_start_decision: raw.warm_start_decision ?? null,
-    period: { date_from: raw.period?.date_from ?? null, date_to: raw.period?.date_to ?? null }, planning_basis: raw.planning_basis ?? null,
+    period: { date_from: raw.period?.date_from ?? null, date_to: raw.period?.date_to ?? null, requested_from: raw.period?.requested_from ?? null,
+      requested_to: raw.period?.requested_to ?? null, partial: raw.period?.partial === true, partial_accepted: raw.period?.partial_accepted === true }, planning_basis: raw.planning_basis ?? null,
     parameters_changed_from_default: normalizeChangedParameters(raw.parameters_changed_from_default),
     parameters_changed_count: typeof raw.parameters_changed_count === "number" ? raw.parameters_changed_count : null,
     unverified_reason: typeof raw.unverified_reason === "string" && raw.unverified_reason ? raw.unverified_reason : null,
