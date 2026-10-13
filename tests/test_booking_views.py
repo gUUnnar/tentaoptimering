@@ -35,7 +35,8 @@ ROWS = [
     ("p7", "o6", "Extern", "Ahmed", "", "", "", "-", "", "", "", "0", "Avbokad"),
 ]
 ROOMS = [("uu-a-1-sal-1", S1, "Sal 1", "120"), ("uu-a-1-sal-2", S2, "Sal 2", ""), ("", ADDR, "", ""), ("uu-a-1-x", ADDR, "X", "41")]
-LINKS = [("p1", "single_candidate"), ("p2", "ambiguous_candidates"), ("p2", "ambiguous_candidates"), ("p4", "no_candidate")]
+LINKS = [("p1", "a1", "single_candidate"), ("p2", "a2", "ambiguous_candidates"), ("p2", "a3", "ambiguous_candidates"), ("p4", "", "no_candidate")]
+LADOK_START_DATES = ["2026-02-01", "2026-03-31"]  # the period the Ladok source covers
 
 
 def _write(folder: Path, rows: list[tuple] | None = ROWS, rooms: bool = True) -> None:
@@ -43,7 +44,8 @@ def _write(folder: Path, rows: list[tuple] | None = ROWS, rooms: bool = True) ->
         pd.DataFrame(rows, columns=COLUMNS).to_csv(folder / "bookings.csv", index=False, encoding="utf-8-sig")
     if rooms:
         pd.DataFrame(ROOMS, columns=["room_id", "location_key", "reference_room_name", "capacity_seats"]).to_csv(folder / "room_inventory.csv", index=False, encoding="utf-8-sig")
-        pd.DataFrame(LINKS, columns=["placement_id", "candidate_status"]).to_csv(folder / "candidate_linkage.csv", index=False, encoding="utf-8-sig")
+        pd.DataFrame(LINKS, columns=["placement_id", "activity_id", "candidate_status"]).to_csv(folder / "candidate_linkage.csv", index=False, encoding="utf-8-sig")
+        pd.DataFrame({"start_date": LADOK_START_DATES}).to_csv(folder / "ladok_activities.csv", index=False, encoding="utf-8-sig")
 
 
 class ViewTests(unittest.TestCase):
@@ -66,7 +68,8 @@ class ViewTests(unittest.TestCase):
         self.assertEqual((rows[S1]["bookings"], rows[S1]["capacity"], rows[S1]["room"]), (3, 120, "Sal 1"))  # p3 is cancelled
         self.assertEqual((rows[S2]["capacity"], rows[S2]["bookings"]), (None, 1))  # the register has no capacity for it
         self.assertEqual((rows[ADDR]["room"], rows[ADDR]["capacity"]), (None, None))  # an address is not given a room's capacity
-        self.assertIn("sal ej angiven", rows[ADDR]["label"])
+        self.assertIn("sal saknas i uttaget", rows[ADDR]["label"])
+        self.assertEqual(rows[ADDR]["identification"], "address_only")
 
     def test_a_room_over_a_week_counts_overlap_once_and_leaves_out_cancelled_time(self) -> None:
         result = views.location_payload(self.dir, S1, date(2026, 2, 9), date(2026, 2, 15))
@@ -81,12 +84,23 @@ class ViewTests(unittest.TestCase):
         self.assertFalse(result["attendance"]["available"])
         self.assertEqual(set(result["measures"]), {"booked_time", "booked_places", "seat_share", "attendance"})
 
+    def test_findings_are_counted_without_explaining_them_and_capacity_conflicts_are_flagged(self) -> None:
+        room = views.location_payload(self.dir, S1, date(2026, 2, 9), date(2026, 2, 15))
+        self.assertEqual(room["data_quality"]["identification"], {"room_matched": 2})
+        self.assertTrue(any("Högsta samtidiga bokning överstiger" in note for note in room["notes"]))  # 160 booked at once in a room of 120
+        address = views.location_payload(self.dir, ADDR, date(2026, 2, 9), date(2026, 2, 15))
+        self.assertEqual(address["data_quality"]["flags"], {"room_missing": 1})
+        self.assertEqual(address["bookings"][0]["identification"], "address_only")
+        self.assertEqual(address["bookings"][0]["place_label"], "A 1 (sal saknas i uttaget)")
+        self.assertNotIn("adressbokning", " ".join(address["notes"]).lower())  # no explanation of why the room is missing is offered
+        self.assertEqual(address["bookings"][0]["flags"], ["room_missing"])
+
     def test_a_place_without_capacity_gives_no_share_and_says_why(self) -> None:
         result = views.location_payload(self.dir, ADDR, date(2026, 2, 9), date(2026, 2, 15))
         self.assertIsNone(result["summary"]["capacity"])
         self.assertIsNone(result["summary"]["peak_share_of_capacity"])
         self.assertIsNone(result["bookings"][0]["seat_share"])
-        self.assertTrue(any("kapacitet är okänd" in note for note in result["notes"]))
+        self.assertTrue(any("ingen sal har antagits" in note for note in result["notes"]))
 
     def test_periods_outside_or_partly_outside_the_data_are_not_empty_rooms(self) -> None:
         outside = views.location_payload(self.dir, S1, date(2027, 1, 1), date(2027, 1, 7))
@@ -111,10 +125,9 @@ class ViewTests(unittest.TestCase):
         self.assertEqual([(item["room"], item["start"], item["end"], item["booked_places"]) for item in exam["placements"]],
                          [("Sal 1", "08:00", "12:00", 100), ("Sal 2", "08:00", "12:00", 40)])
         self.assertEqual((exam["booked_places"], exam["rooms"]), (140, 2))
-        self.assertTrue(exam["ladok_link_unclear"])  # p4 has no candidate
-        self.assertEqual(exam["ladok_links"], ["no_candidate", "single_candidate"])
-        self.assertFalse(views.exam_payload(self.dir, "o2")["placements"][0]["ladok_link"] == "single_candidate")
-        self.assertIsNone(exam["simulated"])
+        self.assertTrue(exam["link_unclear"])  # p4 has no candidate although Ladok covers the date
+        self.assertEqual(exam["link_certainties"], ["none_within_coverage", "unique"])
+        self.assertEqual(views.exam_payload(self.dir, "o2")["placements"][0]["link_certainty"], "ambiguous")
 
     def test_search_finds_by_id_course_and_name_and_by_date(self) -> None:
         self.assertEqual([item["exam_order_id"] for item in views.search_exams(self.dir, "1bb")["exams"]], ["o2"])
@@ -136,7 +149,8 @@ class ViewTests(unittest.TestCase):
             _write(Path(folder), rooms=False)
             result = views.location_payload(Path(folder), S1, date(2026, 2, 9), date(2026, 2, 15))
             self.assertIsNone(result["summary"]["capacity"])
-            self.assertEqual(result["bookings"][0]["ladok_link"], "unknown")
+            self.assertEqual(result["bookings"][0]["link_certainty"], "not_assessed")
+            self.assertEqual(result["bookings"][0]["identification"], "room_named_not_in_register")  # without a register no room is matched
 
 
 class RouteTests(unittest.TestCase):
@@ -177,6 +191,13 @@ class RouteTests(unittest.TestCase):
             self.assertEqual(get("/exams?q=Kemi")[1]["exams"][0]["exam_order_id"], "o4")
             self.assertEqual(get("/exams/o1")[1]["booked_places"], 140)
             self.assertEqual(get("/exams/nope")[0], 422)
+            status, body = get("/overview?date_from=2026-02-09&date_to=2026-02-15")
+            self.assertEqual((status, body["totals"]["exam_orders"]), (200, 3))
+            status, body = get("/overview?date_from=2026-02-09&date_to=2026-02-15&address=A%201")
+            self.assertEqual((status, len(body["bookings"])), (200, 5))
+            self.assertEqual(get("/overview?date_from=2026-02-09&date_to=2026-02-15&address=Nowhere")[0], 422)
+            self.assertEqual(get("/overview?date_from=2026-02-16&date_to=2026-02-15")[0], 422)
+            self.assertEqual(get("/exams/o1/compare?run=20260101T000000Z-none")[0], 404)
 
 
 @unittest.skipUnless((PROCESSED / "bookings.csv").is_file(), "kräver lokalt genererat underlag (data/processed)")

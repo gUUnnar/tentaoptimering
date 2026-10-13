@@ -3,6 +3,7 @@ import { CircleAlert, Search, TriangleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { linkIsUnclear, linkLabel } from "@/lib/bookingView"
 import { useExam, useExamSearch } from "@/lib/useBookings"
+import { ComparePanel } from "./compare-panel"
 
 type Props = { orderId: string; onSelect: (orderId: string) => void }
 
@@ -39,12 +40,13 @@ export function ExamPanel({ orderId, onSelect }: Props) {
         <thead><tr className="text-left text-xs text-slate-700"><th className="py-1 pr-2 font-medium">Datum</th><th className="pr-2 font-medium">Tid</th><th className="pr-2 font-medium">Lokal</th><th className="pr-2 text-right font-medium">Platser</th><th className="font-medium">Status</th></tr></thead>
         <tbody>{exam.data.placements.map(item => <tr key={item.placement_id} className={`border-t ${item.cancelled ? "text-slate-600 line-through" : ""}`}>
           <td className="py-1 pr-2">{item.date ?? "saknas"}</td><td className="pr-2">{item.start && item.end ? `${item.start}–${item.end}` : "saknas"}</td>
-          <td className="pr-2">{item.room ? `${item.address} – ${item.room}` : item.address ? `${item.address} (sal ej angiven)` : "saknas"}</td>
+          <td className="pr-2" title={item.identification_text}>{item.place_label}</td>
           <td className="pr-2 text-right tabular-nums">{item.booked_places}{item.capacity ? ` av ${item.capacity}` : ""}</td><td>{item.status}</td></tr>)}</tbody>
       </table>
-      {exam.data.ladok_link_unclear && <p className="flex items-start gap-1.5 rounded bg-amber-50 p-2 text-xs text-amber-950"><TriangleAlert size={14} className="mt-0.5 shrink-0" aria-hidden="true"/>
-        Kopplingen till Ladok är inte säker: {[...new Set(exam.data.placements.filter(item => linkIsUnclear(item.ladok_link)).map(item => linkLabel(item.ladok_link)))].join(", ").toLowerCase()}. Den visas här i stället för att gissas.</p>}
-      <p className="text-xs text-slate-800">{exam.data.attendance.note} {exam.data.simulated_note}</p>
+      {exam.data.link_unclear && <p className="flex items-start gap-1.5 rounded bg-amber-50 p-2 text-xs text-amber-950"><TriangleAlert size={14} className="mt-0.5 shrink-0" aria-hidden="true"/>
+        Kopplingen till Ladok är inte säker: {[...new Set(exam.data.placements.filter(item => linkIsUnclear(item.link_certainty)).map(item => linkLabel(item.link_certainty)))].join(", ").toLowerCase()}. Den visas här i stället för att gissas.</p>}
+      <p className="text-xs text-slate-800">{exam.data.attendance.note}</p>
+      <ComparePanel orderId={exam.data.exam_order_id}/>
     </div>}
   </section>
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { bookingApi } from "./bookingApi"
-import type { ExamResponse, ExamSearchResponse, LocationResponse, LocationsResponse } from "./bookingTypes"
+import type { CompareResponse, ExamResponse, ExamSearchResponse, LocationResponse, LocationsResponse, OverviewResponse } from "./bookingTypes"
 import { rangeError, type Range } from "./bookingView"
 
 export type Load<T> = { status: "idle" | "loading" | "ready" | "error"; data: T | null; error: string }
@@ -31,3 +31,9 @@ export const useExamSearch = (query: string, range: Range | null): Load<ExamSear
   useLoad(query.trim() || range ? `${query.trim()}|${range?.from ?? ""}|${range?.to ?? ""}` : null, () => bookingApi.searchExams(query.trim(), range?.from, range?.to))
 
 export const useExam = (orderId: string): Load<ExamResponse> => useLoad(orderId || null, () => bookingApi.exam(orderId))
+
+export const useOverview = (range: Range, address: string | null): Load<OverviewResponse> =>
+  useLoad(rangeError(range) ? null : `${range.from}|${range.to}|${address ?? "*"}`, () => bookingApi.overview(range.from, range.to, address), true)
+
+export const useCompare = (orderId: string, runId: string): Load<CompareResponse> =>
+  useLoad(orderId && runId ? `${orderId}|${runId}` : null, () => bookingApi.compare(orderId, runId))
