@@ -94,3 +94,31 @@ Tabellen ovan är S0-planen. Efter att den äldre motorn togs bort gäller detta
 | Tentamensperioder och omtentaintervall | Realistiska standardfönster |
 | Digital kompatibilitet per sal | Digital andel |
 | Underlag för fler terminer och Visby | Årsvärden; ortsbedömning |
+
+## Komplettering: verksamhetspresentation 2026-10-02 (ej kravuppfyllelse)
+
+Det har tillkommit en [sammanställning av redovisade verksamhetsuppgifter](VERKSAMHETSUNDERLAG_2026-10-02.md): 1 109 ordinarie salplatser + 41 RPS, bemanningstrappa med minst två vakter/pass, förslag att pröva tre skrivpass per sal och dag, toppar till juni samt preliminära överbeställnings- och personalkostnader. **Uppgifterna är inte verifierade verksamhetsbeslut** och ändrar därför inte status *Uppfyllt* i matrisen.
+
+Inför leverans ska minst följande bedömas med explicita verifieringsprov: (a) valbar planeringsperiod (nuvarande `joint_underlay_period` är korrekt avgränsad till 12 januari–31 mars men perioden ska bli användarstyrd inom dataunderlaget), (b) verifierad kapacitet och sal-ID, (c) bemanningstrappa med entydiga intervall, (d) tidspass och längder vid försök med tre pass/dag, (e) jämförbara kostnadsantaganden och faktisk undvikbarhet (kraven N-1/N-5). Markera respektive krav som delvis eller saknas tills bevis finns.
+
+
+## Nya uttryckliga krav 2026-10-12: periodval, läsvyer och export
+
+Den tidigare formuleringen att **minsta planeringsperiod är en termin** har ersatts av **valfri vald period inom tillgängligt dataunderlag**. Detta är ett bindande ändrat krav, inte en tolkning av presentationen. Förväntad dataleverans: 1 januari–30 september inklusive verklig beläggning. Det faktiska året och måttens definition fastställs vid import.
+
+| Krav | Status inför implementation | Kontroll innan uppfyllt |
+| --- | --- | --- |
+| UX-9 Val av planeringsperiod inom dokumenterad datatäckning | **Ej verifierat**; dagens scenariourval har fasta datum | Datumväljare, visad datatäckning/luckor, korrekt urval och solvervalidering för kort/valfri period; begripligt besked utanför täckning. |
+| UX-10 Lokalens nyttjande per vald tidsperiod | **Saknas i det nya gränssnittets resultat-/underlagsvyer** | Välj sal och vecka/månad/valfri period; visa bokningsschema och beläggning endast där verkliga mätdata finns, med korrekt definition och täckning. |
+| UX-11 Historiskt schema för en viss bokad tentamen | **Saknas som dedikerad uppslagsvy** | Sök ID/kurs/datum; visa datum, start/slut, alla salar, bokat antal och eventuellt observerat utfall; jämför med simulerad plan vid vald körning. |
+| Data: verklig beläggning med egen proveniens och tidsstämpel | **Inväntar ny data** | Säker uppslagsnyckel, definition per mått, täckning, test att frånvaro av data inte blir noll. |
+| Framtida systemkompatibel export | **Utanför PoC** | Dokumentera importformat för senare leverans; eventuell enkel fil inom PoC ska beskrivas som preliminär, inte direkt importerbar. |
+
+Skilj ett datumval för att **studera historiska bokningar** från en **planeringskörning**; de ska kunna använda samma tidsfilter utan krav på att användaren först optimerar. Nuläge och simulering måste dela planeringsperiod, data och antaganden för att kunna jämföras.
+
+
+### Snabb iteration med små perioder (ej verifierad, 2026-10-12)
+
+**Status: saknas i UX, delvis stöd i motorn.** Backendens `joint_selection.select_ready_demands` kan välja korta intervall med `date_from`/`date_to`, men de är ännu bundna till scenariofilen: ingen enkel datumväljare finns i körgränssnittet. Ett litet reproducerbart testfall går att köra i dag via befintligt namngivet delurval eller manuellt skapad scenariofil; det uppfyller inte kravet att kunna snabbt växla period från UX.
+
+Acceptanskriterier: dags- och veckourval direkt i UX utan TOML, redovisat antal tentor/oklarheter, verifierad fullständig placering, sparad specifikation och mätning av både tid till första verifierade lösning och total tid. Testa att redan lagda salbokningar utanför den valda optimeringspopulationen inte felaktigt betraktas som ledig resurs. Den korta perioden ska vara ett verkligt användningsfall för **kortvarselplanering** och för **snabba funktions-/regressionstester**.

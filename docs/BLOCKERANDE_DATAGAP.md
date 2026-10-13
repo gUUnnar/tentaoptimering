@@ -26,3 +26,9 @@ Det förberedda underlaget (`data/processed`) innehåller tentor med ursprungsda
 Kandidatrelationer, provisoriska bokningshändelser och observerade rumsnamn är nu materialiserade i separata tabeller. Aktuella publicerade kapaciteter från UU:s webbplats har lagts till som ett versionsmärkt referenslager, men de är inte verifierade för den historiska bokningsperioden och sidans totalsumma kan inte stämmas av mot de individuellt angivna kapaciteterna.
 
 För PoC:n tillåts de individuellt publicerade kapaciteterna som ett uttryckligt scenarioantagande. Datagap 1–5 kvarstår ändå för operativ användning: i synnerhet saknas fortfarande verifierad aktivitet–beställningsnyckel, historisk kapacitet och kalendertillgänglighet.
+
+## Kompletterande verksamhetsuppgifter 2026-10-02
+
+Presentationens [verksamhetsuppgifter](VERKSAMHETSUNDERLAG_2026-10-02.md) tillför indikationer på **7 ordinarie salar/1 109 platser + RPS 41**, en annan **bemanningstrappa med minst 2 vakter per arbetspass**, efterfrågetoppar till och med **juni 2026**, planerade platsvolymer och historisk bom-/övertid. Detta är **nya källuppgifter men inte verifierad modellindata**; datagapen ovan kan inte markeras som lösta av presentationen.
+
+För verifiering behöver vi särskilt salslista och giltighetsperioder (gap 4–5), entydiga deltagar-/närvaromått (gap 2), överenskommen bemanningstrappa inklusive gränsen 250 och >300 tentander samt passdefinition (gap 8 och 10), Retendo-/lönekälla för bomtid/mertid (gap 7), och avstämning av presentationens två olika belopp för ”pengar i sjön”. Ett föreslaget **tredje skrivpass per sal och dag** är en möjlig justerbar förutsättning, inte en beslutad regel.

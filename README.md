@@ -4,7 +4,7 @@
 
 PoC:n ska uppskatta den långsiktiga **årliga besparingspotentialen** i Uppsala universitets tentamensverksamhet genom samordnad planering av **tentamenstillfällen, lokaler och tentamensvakter**.
 
-Målet är den lägsta **totala årskostnaden** för en fullt genomförbar verksamhet. Samtliga tentamina och tentander inom den uttryckligen valda omfattningen ska få plats. Planeringsenheten är minst en termin; datum, tentamensperioder och pass är justerbara verksamhetsparametrar.
+Målet är den lägsta **totala årskostnaden** för en fullt genomförbar verksamhet. Samtliga tentamina och tentander inom den uttryckligen valda omfattningen ska få plats. Användaren väljer själv planeringsperiodens start- och slutdatum inom den tid som finns representerad i dataunderlaget, även kortare än en termin. Datum, tentamensperioder och pass är justerbara verksamhetsparametrar. Kostnader som ska tolkas som årsvärden kräver en särskild och tydligt angiven beräkningsgrund.
 
 ## Dokumentation
 
@@ -13,6 +13,14 @@ Målet är den lägsta **totala årskostnaden** för en fullt genomförbar verks
 - [Kodgranskning och arbetsuppdrag](docs/KODGRANSKNING_OCH_CODEX_UPPDRAG_2026-10-08.md) – ursprunglig kodinventering och nästa leverans.
 - [Gemensam optimeringsdesign](docs/GEMENSAM_OPTIMERINGSDESIGN.md) – kanoniskt tentamensbehov, salstillfällen, bemanning och årskostnad.
 - [Datamodell](docs/DATAMODELL.md), [kostnadsmodell](docs/KOSTNADSMODELL.md) och [datagap](docs/BLOCKERANDE_DATAGAP.md) – tekniska underlag som stäms av mot kravspecifikationen.
+- [Verksamhetsunderlag 2026-10-02](docs/VERKSAMHETSUNDERLAG_2026-10-02.md) – presentationens lokaler, pass, bemanning, utnyttjande och historiska kostnadskalkyler; källuppgifter är ännu inte verifierade modellregler.
+- [Överlämning till Claude 2026-10-12](docs/OVERLAMNING_CLAUDE_2026-10-12.md) – konkreta nästa steg och verifieringsfrågor för PR #11.
+
+## Valbar period och granskning i gränssnittet
+
+PoC:n ska visa tillgängliga dataperioder och låta användaren välja start- och slutdatum. Nästa dataleverans avses omfatta **1 januari–30 september** inklusive uppgifter om **verklig beläggning**; årtal, fältdefinitioner och täckning fastställs vid import, och denna leverans är ännu inte inläst. Källdata ska gå att utforska separat från optimeringen: användaren ska kunna se hur en viss lokal nyttjas under en vald period och hur en identifierad bokad tentamen är schemalagd (datum, tid, salplacering/ar). Historisk bokning, beläggningsobservation och simulerat schema ska inte förväxlas.
+
+Målbilden är en framtida export som universitetets bokningssystem kan importera. Systemanpassad export ligger **utanför PoC** tills ett importkontrakt finns; en enkel maskinläsbar resultatfil kan prövas utan att påstå kompatibilitet med bokningssystemet. Se [kravspecifikationen](docs/KONCEPTUELL_KRAVSPECIFIKATION.md) och [överlämningen](docs/OVERLAMNING_CLAUDE_2026-10-12.md).
 
 ## Källfiler
 

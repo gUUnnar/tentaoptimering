@@ -1,14 +1,16 @@
 # Arbetsinstruktioner för Codex
 
 ## Projektets mål
-Bygg en PoC som uppskattar den lägsta långsiktiga årskostnaden för Uppsala universitets tentamensverksamhet genom **gemensam optimering av schemaläggning, lokalbestånd, externhyror och tentamensvakter**. Minsta planeringsenhet är en hel termin. Modellen ska kunna justera kalenderdatum, tentamensperioder, dagar och skrivpass inom valda verksamhetsregler.
+Bygg en PoC som uppskattar den lägsta långsiktiga årskostnaden för Uppsala universitets tentamensverksamhet genom **gemensam optimering av schemaläggning, lokalbestånd, externhyror och tentamensvakter**. Användaren ska kunna välja valfri sammanhängande planeringsperiod inom tillgängligt dataunderlag (även kortare än en termin); start- och slutdatum samt täckning ska framgå. Modellen ska kunna justera kalenderdatum, tentamensperioder, dagar och skrivpass inom valda verksamhetsregler.
 
 ## Obligatoriska acceptanskriterier
 1. **Fullständig efterfrågetäckning.** Varje tentamen och varje dimensionerande tentand inom uttryckligen vald omfattning ska placeras. En lösning med oplacerad obligatorisk efterfrågan är inte godkänd. Vid brist på fullständig genomförbarhet redovisas status och blockerande krav; en partiell placering får endast förekomma i separat diagnostik.
-2. **Terminsövergripande planering.** Optimeraren ska kunna fördela tentamina över tillåtna kalenderperioder och skrivpass, inklusive justerbara verksamhetsvillkor om helger och tentamensperioder. Ursprungligt schema bevaras när förändring saknar tillräcklig nytta.
+2. **Valbar planeringsperiod.** Användaren väljer start- och slutdatum inom dataunderlagets dokumenterade täckning, från en kort period till en eller flera terminer. Optimeraren ska kunna fördela tentamina inom uttryckligen valda tillåtna kalenderperioder och skrivpass. Ingen obestyrkt flytt får hamna utanför vald planeringshorisont; ursprungligt schema bevaras när förändring saknar tillräcklig nytta.
 3. **Gemensam totalkostnad.** Datum, salar och bemanning optimeras tillsammans. Personalkostnader, bomtid och transporter får öka om lägre lokalkostnader mer än kompenserar. Bemanningsstyrkans storlek är en kostnadsvariabel.
 4. **Hårda villkor.** Fysisk sal-/formatkapacitet; digital kompatibilitet; skilda planeringsområden Uppsala och Visby; kurs- och programkrockar; tillämpliga lagar, avtal och arbetstidsvillkor.
-5. **Spårbara data.** Använd kvalificerade antaganden när data saknas. Alla antaganden ska deklareras och kunna ersättas genom kompletterande data utan större kodändringar. Håll isär faktisk kostnad, teoretisk årlig potential och verifierad realiserbar besparing.
+5. **Spårbara data.** Använd kvalificerade antaganden när data saknas. Alla antaganden ska deklareras och kunna ersättas genom kompletterande data utan större kodändringar. Håll isär faktisk kostnad, teoretisk årlig potential och verifierad realiserbar besparing.\n6. **Inspektera källdata och schema i UX.** Användaren kan för en vald period se hur en sal nyttjas och slå upp en specifik bokad tentamens datum, klockslag, sal(ar) och omfattning. Historisk bokning, rapporterad faktisk beläggning och simulerad placering skiljs åt, inklusive saknade/tvetydiga uppgifter.
+
+7. **Korta planeringsperioder för snabb återkoppling.** Användaren ska kunna välja en dag, en vecka eller valfritt kort intervall inom planeringsbar datatäckning och genomföra en mycket snabb men fullständigt eftervaliderad testkörning. Syften: kortvarselbokning och snabb kontroll av andra UX-/API-funktioner. Ingen manuell scenariofil ska krävas, och fasta bokningar som blockerar lokaler får inte ignoreras.
 
 ## Läsordning
 1. `README.md`

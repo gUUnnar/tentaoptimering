@@ -26,14 +26,16 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `config/room_register.toml` | Versionsmärkt officiellt rumsreferenslager med publicerade kapaciteter, källadress och tidsmässig osäkerhet. |
 | `config/source_files.toml` | Namn, blad och rubrikrad för de tre lästa källexporterna. |
 | `config/scenarios/joint_real_subset.toml` | Reproducerbart avgränsat verkligt datafall för den nya gemensamma CP-SAT-kärnan. |
-| `config/scenarios/joint_underlay_period.toml` | Hela vårterminen 2026 som bundet scenario (`joint_underlay_period_2026`): urvalet anges med regel (`selection = "all_ready"` med datumintervall) i stället för en id-lista, och ger samma 1 172 tentor som den frusna terminsinstansen. |
+| `config/scenarios/joint_underlay_period.toml` | Befintligt avgränsat scenariourval i Uppsala (`joint_underlay_period_2026`), 12 januari–31 mars 2026: regel `selection = "all_ready"` med datumintervall, 1 172 tentor. Ingen generell minsta terminslängd; framtida användarstyrt periodval är krav. |
 
 ## Dokumentation
 
 | Fil | Ansvar |
 |---|---|
 | `docs/BLOCKERANDE_DATAGAP.md` | Datagap som måste lösas före tillförlitlig optimering eller kronberäkning. |
-| `docs/DATAMODELL.md` | Korn, nycklar och gränser mellan beställning, placering, Ladokaktivitet och lokalrad. |
+| `docs/VERKSAMHETSUNDERLAG_2026-10-02.md` | Källtrogen genomgång av verksamhetspresentationens kapacitet, planerade platser, bemanningsregler och historiska kalkyler, inklusive oklarheter och verifieringsbehov. |
+| `docs/OVERLAMNING_CLAUDE_2026-10-12.md` | Överlämning till Claude om verksamhetsuppgifter, valbar period, salutnyttjande, tentamensuppslag och framtida exportavgränsning. |
+| `docs/DATAMODELL.md` | Korn, nycklar och gränser mellan beställning, placering, Ladokaktivitet och lokalrad; tidsmässig datatäckning och åtskild verklig beläggning. |
 | `docs/FILOVERSIKT.md` | Denna innehållsförteckning och filernas ansvar. |
 | `docs/GEMENSAM_OPTIMERINGSDESIGN.md` | Teknisk specifikation för kanoniskt tentamensbehov, salstillfällen, integrerad bemanning och konsekvent årskostnad. |
 | `docs/GEMENSAM_CP_SAT_FORSTA_LEVERANS.md` | Levererad modell, solverstatus, handräknade facit, verklig delmängdskörning och kvarstående begränsningar. |
@@ -44,7 +46,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `docs/OPTIMERINGSUNDERLAG.md` | Korn, relationsregler och tillåten användning av det maskinläsbara underlaget före motorbygge. |
 | `docs/MALARKITEKTUR_ANALYS_2026-10-09.md` | Beslutsunderlag och leveransplan för omtaget (arkitektur, Nuläge, CP-SAT-restriktioner, steg, rensningsverifiering). Tillfälligt tills omtaget är genomfört. |
 | `docs/PARAMETERKATALOG.md` | Utkast till den enda parameterkatalogen (endast parametrar som motorn läser) med grund och effektfall. |
-| `docs/DOMANMODELL.md` | Utkast till domänmodellen: Dataunderlag, Simulering, Förutsättning, Körning, Resultat; lagring och jämförbarhet. |
+| `docs/DOMANMODELL.md` | Domänmodellen: Dataunderlag, Simulering, Förutsättning, Körning, Resultat; valbar period, jämförbarhet samt lokal- och tentamensuppslag. |
 | `docs/KAPACITETSFORTECKNING.md` | Varje funktion i dagens system med beslut (behåll, bygg om, ersätt, ta bort) och beroenden. |
 | `docs/KRAVUPPFYLLNAD.md` | Kravmatris: status idag och efter första leveransen, bevis och datakrav. |
 | `docs/DATAANALYS_S0.md` | Analys av population, delade tillfällen, `canonical_demand`, hemtentor, institution och kapacitetsavvikelser. |
