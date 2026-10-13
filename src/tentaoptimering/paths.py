@@ -40,6 +40,12 @@ class SourceFiles:
     def leases(self) -> Path:
         return self.source_dir / "2026 Tentamenslokaler.xlsx"
 
+    def roles(self) -> list[tuple[str, str, Path]]:
+        """(role, Swedish label, expected path) of every source file the preparation reads."""
+        return [("bookings", "Tentaplaceringar (lokalbokningar)", self.bookings),
+                ("ladok", "Ladok-uppgifter om tentander", self.ladok),
+                ("leases", "Tentamenslokaler (hyror och kostnader)", self.leases)]
+
     def validate(self) -> None:
         missing = [path for path in (self.bookings, self.ladok, self.leases) if not path.is_file()]
         if missing:

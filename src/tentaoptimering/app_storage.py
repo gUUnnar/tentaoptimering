@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import re
 from typing import Any
@@ -27,7 +28,10 @@ class AppStorage:
     def settings(self) -> dict[str, str | None]:
         if not self.settings_path.is_file():
             return {"source_dir": None}
-        return {"source_dir": json.loads(self.settings_path.read_text(encoding="utf-8")).get("source_dir")}
+        try:
+            return {"source_dir": json.loads(self.settings_path.read_text(encoding="utf-8")).get("source_dir")}
+        except (OSError, ValueError):
+            return {"source_dir": None}  # an unreadable settings file is treated as "nothing saved"; saving writes a new one
 
     def save_settings(self, source_dir: str | None) -> dict[str, str | None]:
         if source_dir is not None and not Path(source_dir).is_dir():

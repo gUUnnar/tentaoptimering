@@ -18,7 +18,7 @@ from . import joint_api
 from .job_manager import LocalJobManager
 from .joint_diagnosis_api import register_diagnosis_routes
 from .parameter_catalog import load_parameter_catalog
-from .pipeline import run_pipeline
+from .underlay_api import register_underlay_routes
 
 
 class SettingsUpdate(BaseModel):
@@ -64,13 +64,6 @@ def create_app(storage_root: Path | None = None) -> FastAPI:
         except Exception as error:
             raise _error(error) from error
 
-    @app.post("/api/preparation")
-    def prepare() -> dict[str, Any]:
-        source_dir = storage.settings()["source_dir"]
-        if not source_dir:
-            raise HTTPException(status_code=422, detail="Välj källdatakatalog innan underlaget förbereds.")
-        return jobs.start(lambda: _prepare(storage, Path(source_dir)))
-
     @app.get("/api/jobs/{job_id}")
     def job_status(job_id: str) -> dict[str, Any]:
         try:
@@ -79,6 +72,7 @@ def create_app(storage_root: Path | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail=str(error)) from error
 
     register_booking_routes(app, storage)
+    register_underlay_routes(app, storage, jobs)
     register_diagnosis_routes(app, storage, jobs)
 
     @app.get("/api/joint-runs/warm-start-candidates")
@@ -200,11 +194,6 @@ def create_app(storage_root: Path | None = None) -> FastAPI:
             return FileResponse(dist / "index.html")
 
     return app
-
-
-def _prepare(storage: AppStorage, source_dir: Path) -> dict[str, Any]:
-    outputs = run_pipeline(source_dir, storage.processed_dir, storage.reports_dir)
-    return {"kind": "preparation", "outputs": {key: str(value) for key, value in vars(outputs).items()}}
 
 
 app = create_app()

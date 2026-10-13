@@ -90,9 +90,14 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `joint_warm_start.py` | Tidigare sparade körningar som startpunkt: val av körning (`auto`, `none` eller körnings-id), kontroll av filernas integritet och ny oberoende teknisk eftervalidering, samt beslutsfilen `joint_warm_start.json` i den nya körningen. Placeringen kontrolleras alltid mot de nya reglerna av lösaren. |
 | `joint_validation/` | Fristående eftervalidering av gemensamma körningar. Läser bara sparade `joint_input.json`, `joint_result.json` och `joint_manifest.json`; delar ingen regel-, bemannings- eller kostnadskod med optimeraren. `context.py` (rå JSON-vy), `derive.py` (egen bemanningstrappa, salstillfällen, tidslinje, kostnad), `rules_placement.py` (behov, kalender), `rules_rooms.py`, `rules_staffing_cost.py`, `rules_business.py` (verksamhetsgrund), `integrity.py` (hashar, versioner), `report.py` (regelstatus, sammanfattning, rapport), `run.py` (körning och skrivning av `joint_validation.json/.md`). |
 | `parameter_catalog.py` | Läser och fryser den gemensamma parameterkatalogen och bevarar explicit motorstöd och tillåtna val. |
-| `api.py` | FastAPI-lager: hälsa, inställningar, förberedelse, jobb, `/api/joint-runs/*`, händelser och varmstart för sparade körningar samt statisk frontend. |
+| `api.py` | FastAPI-lager: hälsa, inställningar, jobb, `/api/joint-runs/*`, händelser och varmstart för sparade körningar samt statisk frontend. |
 | `app_paths.py` | Resurs- och användarskrivbara sökvägar för utveckling och paketerad applikation. |
-| `app_storage.py` | Appens användarskrivbara tillstånd: inställningar, körningsmapp med validerade körnings-id, varmstartsuppgifter och katalogerna för underlag, rapporter och ögonblicksfiler. |
+| `underlay_api.py` | Rutterna för sidan Underlag: `/api/preparation` (tillstånd, senaste jobb, start), `/api/source-check` och `/api/settings/choose-source-directory`. |
+| `underlay_manifest.py` | Underlagets manifest (`underlay.json`), tillstånd (aktuellt, föråldrat, ofullständigt, ospårat, saknas) och stegen i förberedelsen. |
+| `underlay_prepare.py` | Atomär förberedelse: bygger i en tillfällig katalog, byter in resultatet först när det är komplett, och rapporterar steg. |
+| `underlay_sources.py` | Förhandskontroll av källkatalogen: vilka förväntade filer som finns, med storlek och ändringstid. |
+| `directory_picker.py` | Windows mappväljare (tkinter) som öppnas i den lokala processen. |
+| `app_storage.py` | Appens användarskrivbara tillstånd: inställningar (skrivs atomärt), körningsmapp med validerade körnings-id, varmstartsuppgifter och katalogerna för underlag, rapporter och ögonblicksfiler. |
 | `desktop.py` | Windowsstartpunkt som startar localhost-server och öppnar standardwebbläsaren. |
 | `job_manager.py` | Enkeltrådig lokal jobbkö som hindrar samtidiga resultatskrivningar; ett jobb kan bära en avbrottstoken och en händelsesink. |
 | `linkage.py` | Kandidatdiagnostik mellan bokningsplaceringar och Ladok; gör inga verifierade kopplingar. |
@@ -139,6 +144,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `tests/test_joint_optimizer.py` | Handräknade referensfall för kostnadsavvägning, full täckning, samtentor, digitalt krav, kurskrock, ställtid och kontraktsrundresa. |
 | `tests/test_parameter_catalog.py` | Säkrar att alla parametrar exponeras och att motorstöd samt frusna experimentvärden är explicita. |
 | `tests/test_api.py` | Säkrar hälsa, inställningar, krav på källkatalog före förberedelse, att den borttagna motorns rutter inte finns och att osäkra körnings-id avvisas. |
+| `tests/test_underlay.py` | Förhandskontroll, manifest och tillstånd (aktuellt/föråldrat/ofullständigt/ospårat), atomär förberedelse (fel lämnar gamla underlaget orört) samt rutterna över HTTP. |
 | `tests/test_app_storage.py` | Säkrar katalogerna, inställningarna och att körnings-id inte kan peka utanför körningsmappen. |
 | `tests/test_linkage.py` | Säkrar kurskodsextraktion och att kandidatmatchningens tvetydighet bevaras. |
 | `tests/test_model_inputs.py` | Säkrar kandidatrelationer, flera placeringar per efterfrågepost och behandling av saknat efterfrågevärde. |
@@ -188,7 +194,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `frontend/src/components/ui/info-tip.tsx`, `notice.tsx` | ⓘ-ikon som visar en förklaring vid klick, och varning/fel med hopfällda detaljer. |
 | `frontend/src/lib/diagnosisApi.ts`, `diagnosisView.ts`, `useDiagnosis.ts` | Anrop, namn och slutsats i klartext (testade) samt hook som följer utredningsjobbet, även efter omladdning. |
 | `frontend/src/components/joint/period-picker.tsx` | Periodval i gränssnittet: datum, genvägar, täckning, kontrollresultat och märkningen som explorativ planering. |
-| `frontend/src/lib/underlay.ts`, `underlayApi.ts`, `useUnderlay.ts` | Underlag: avgör om underlaget saknas, anrop mot `/api/settings`, `/api/preparation` och `/api/jobs/{id}`, samt hook med jobbpollning. |
+| `frontend/src/lib/underlay.ts`, `underlayApi.ts`, `useUnderlay.ts` | Underlag: texter och format, anrop mot `/api/settings`, `/api/preparation`, `/api/source-check` och mappväljaren, samt hook som följer serverns jobb (även efter omladdning) och förhandskontrollerar sökvägen. |
 | `frontend/src/lib/testing/jointFixture.ts`, `paramFixture.ts` | Syntetiska händelser och parametrar som bara används av testerna. Appkod får aldrig importera dem. |
 | `frontend/src/lib/testing/contract/*.json` | Riktiga API-svar (sammanfattning, jämförelse, händelser, valmöjligheter) som ögonblicksbilder av kontraktet. `tests/test_joint_contract_snapshots.py` jämför deras form mot backend och `jointContract.test.ts` matar dem genom klientens adaptrar. |
 | `frontend/src/lib/*.test.ts` | Tester (`npm test`, endast Node): kontraktsform, tillståndsavledning, ärliga texter, parametervalidering och enhetsomräkning, ändringsberäkning, jämförelse, körval, underlag och en gränskontroll som fäller bygget om appkod importerar testdata eller anropar borttagna rutter. |
@@ -199,7 +205,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `frontend/src/components/joint/run-timeline.tsx`, `timeline-detail.tsx`, `timeline-look.tsx` | Tidslinje över det som körs: ett block per varv med segment efter körordning, bredd efter tid, pulserande pågående segment och detaljer per segment. Används i livevy, resultat och förlopp i efterhand. |
 | `frontend/src/components/joint/result-view.tsx`, `summary-card.tsx`, `compare-section.tsx`, `verdict-cards.tsx`, `warm-start-card.tsx`, `how-to-read.tsx`, `replay.tsx`, `status-chip.tsx` | Resultatvy: sammanfattning, jämförelse mot föregående körning, de tre domarna isär, beslut om start från förra körningen, förklaring av hur resultatet läses och uppspelning av en avslutad körning. |
 | `frontend/src/components/joint/underlay-notice.tsx` | Ruta när underlaget saknas, med knapp till sidan Underlag. |
-| `frontend/src/components/underlay/` | Sidan Underlag: val av källdatakatalog och förberedelse av underlaget. |
+| `frontend/src/components/underlay/` | Sidan Underlag: källdatakatalog med Bläddra och filkontroll, förberedelse med steg och tillstånd, och sammanfattning ur manifestet. |
 
 ## Rapporter och genererade filer
 
