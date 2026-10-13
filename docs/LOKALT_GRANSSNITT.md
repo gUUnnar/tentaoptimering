@@ -31,17 +31,19 @@ Före leverans ska distributionen provas på en dator utan utvecklingsverktyg oc
 
 ## Sidor
 
-Menyn har två sidor: **Optimering** (startsida) och **Underlag**. Båda hålls monterade när man byter sida, så att ändringar, en pågående körning och en pågående förberedelse inte tappas.
+Menyn har tre sidor: **Optimering** (startsida), **Lokaler** och **Underlag**. Båda hålls monterade när man byter sida, så att ändringar, en pågående körning och en pågående förberedelse inte tappas.
 
 ## Underlag
 
-Sidan **Underlag** gör det som krävs före en optimering och har två steg.
+Sidan **Underlag** gör det som krävs före en optimering och har två steg samt en sammanfattning.
 
-**1. Källdatakatalog.** Mappen med Excel-källorna väljs och sparas i användarprofilen (`GET` och `PUT /api/settings`). Originalfilerna läses bara och ändras aldrig. Sökvägen kan inte ändras medan en förberedelse pågår.
+**1. Källdatakatalog.** Mappen med Excel-källorna skrivs in eller väljs med **Bläddra…** (öppnar Windows mappväljare i den lokala Pythonprocessen, `POST /api/settings/choose-source-directory`; en webbläsare kan inte själv ge en sökväg). Valet fyller bara fältet. Sökvägen sparas i användarprofilen först med **Spara sökväg** (`GET` och `PUT /api/settings`; filen skrivs atomärt). Medan du skriver görs en **förhandskontroll** (`GET /api/source-check?path=…`) som visar vilka av de tre förväntade filerna som finns, med storlek och ändringsdatum, och namnger de som saknas. Kontrollen listar inget annat och läser inga filinnehåll. Filnamnen är fasta i `paths.py` (`SourceFiles`). Originalfilerna läses bara och ändras aldrig. Sökvägen kan inte ändras medan en förberedelse pågår.
 
-**2. Förbered underlaget.** `POST /api/preparation` startar ett jobb som läser källfilerna (tentaplaceringar, Ladok-uppgifter om tentander och lokalhyror), rensar och kopplar ihop dem och sparar det bearbetade underlag som optimeringen räknar på. Förberedelsen använder den *sparade* katalogen, så knappen är avstängd tills sökvägen är sparad. Jobbet följs via `GET /api/jobs/{id}` en gång i sekunden; misslyckas det visas serverns felmeddelande. Förberedelsen krävs före en optimering: scenarier som väljer sina tentor efter regler (till exempel "Alla tentor i underlaget (12 jan–31 mars 2026)") hämtar dem ur det förberedda underlaget. Den körs första gången och igen när källfilerna har bytts ut.
+**2. Förbered underlaget.** `POST /api/preparation` startar ett jobb, men bara om förhandskontrollen av den *sparade* katalogen är godkänd (annars 422 med de saknade filnamnen). Jobbet bygger i en tillfällig katalog (`<användarprofil>\.staging`) och ersätter det gamla underlaget först när allt, inklusive manifestet, är färdigt: ett fel eller avbrott lämnar det tidigare underlaget orört. Sidan följer jobbet via `GET /api/preparation` en gång i sekunden och visar sju steg med det pågående markerat. Svaret innehåller det senaste jobbet, så ett jobb som pågår känns igen efter en omladdning. Är underlaget redan aktuellt heter knappen **Förbered om** och frågar först. Efter en lyckad förberedelse hämtar Optimerings- och Lokalsidorna sina data på nytt, och en knapp leder till Optimering.
 
-Sidan visar också om underlaget verkar finnas. API:et har ingen särskild fråga för det, så det avgörs ur scenariolistan: ett regelbaserat urval får sitt antal tentor ur det förberedda underlaget, och saknas antalet saknas underlaget. När en förberedelse är klar hämtar Optimeringssidan scenarierna på nytt.
+**Underlagets tillstånd.** `GET /api/preparation` svarar också med `underlay.state`: `current` (stämmer med källfilerna), `stale` (en källfil har ändrats eller försvunnit, katalogen är en annan eller konfigurationen i `config/` har ändrats; skälen listas), `incomplete` (en fil saknas eller har ändrats), `unverified` (underlag utan manifest, till exempel från en äldre version) eller `missing`. Tillståndet bygger på manifestet `data/processed/underlay.json` (`underlay_manifest.py`): förberedelsetid, källkatalog, källfilernas storlek, ändringstid och SHA-256, konfigurationens SHA-256, radantal per tabell, bokningarnas period och en kvalitetssammanfattning. Sammanfattningen visas under knappen "Förbered". Föråldring bedöms på filstorlek och ändringstid, inte på innehåll; en fil som skrivs över med samma storlek och tid upptäcks inte.
+
+Sidan visar alltså inte längre underlagets finns-status ur scenariolistan. Optimeringssidans eget besked om saknat underlag (se nedan) är oförändrat.
 
 ## Optimering
 
