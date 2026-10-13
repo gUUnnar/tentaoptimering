@@ -34,7 +34,7 @@ export default function App() {
       {/* Båda sidorna hålls monterade när man byter sida, så att ändringar, en pågående körning och en pågående förberedelse inte tappas. */}
       <div hidden={page !== "joint"}><JointPage onOpenUnderlay={() => setPage("underlay")} reloadKey={underlayVersion}/></div>
       <div hidden={page !== "rooms"}><RoomsPage reloadKey={underlayVersion}/></div>
-      <div hidden={page !== "underlay"}><UnderlayPage active={page === "underlay"} onPrepared={onPrepared}/></div>
+      <div hidden={page !== "underlay"}><UnderlayPage active={page === "underlay"} onPrepared={onPrepared} onOpenJoint={() => setPage("joint")}/></div>
     </main>
   </div>
 }

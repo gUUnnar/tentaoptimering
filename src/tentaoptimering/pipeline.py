@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 import pandas as pd
 
@@ -84,18 +85,27 @@ def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     frame.to_csv(path, index=False, encoding="utf-8-sig")
 
 
-def run_pipeline(source_dir: Path, processed_dir: Path, report_dir: Path) -> PipelineOutputs:
+def run_pipeline(
+    source_dir: Path, processed_dir: Path, report_dir: Path, step: Callable[[str], None] | None = None
+) -> PipelineOutputs:
+    """Prepare the underlay; `step(key)` is told when each phase (see `underlay_steps.STEPS`) begins."""
+    notify = step or (lambda _key: None)
     sources = SourceFiles(source_dir=source_dir)
     sources.validate()
+    notify("read")
 
-    bookings = normalize_bookings(load_bookings(sources.bookings))
-    ladok = normalize_ladok(load_ladok(sources.ladok))
-    leases = normalize_leases(load_leases(sources.leases))
+    bookings = load_bookings(sources.bookings)
+    ladok = load_ladok(sources.ladok)
+    leases = load_leases(sources.leases)
+    notify("normalize")
+    bookings, ladok, leases = normalize_bookings(bookings), normalize_ladok(ladok), normalize_leases(leases)
+    notify("link")
     linkage = candidate_linkage(bookings, ladok)
     parameter_path = REPO_ROOT / "config" / "data_preparation.toml"
     demand_measure = load_demand_measure(parameter_path)
     poc_policy = load_poc_policy(parameter_path)
     official_rooms = load_room_register(REPO_ROOT / "config" / "room_register.toml")
+    notify("model")
     model_inputs = build_optimization_inputs(
         bookings, ladok, leases, demand_measure, official_rooms, poc_policy
     )
@@ -103,6 +113,7 @@ def run_pipeline(source_dir: Path, processed_dir: Path, report_dir: Path) -> Pip
         ladok, provisional_scope_decisions(ladok, model_inputs.activity_booking_candidates)
     )
 
+    notify("write")
     outputs = output_paths(processed_dir, report_dir)
     _write_csv(bookings, outputs.bookings_csv)
     _write_csv(ladok, outputs.ladok_csv)
@@ -116,6 +127,7 @@ def run_pipeline(source_dir: Path, processed_dir: Path, report_dir: Path) -> Pip
     _write_csv(model_inputs.optimization_placements, outputs.optimization_placements_csv)
     _write_csv(scope_report.activities, outputs.demand_scope_csv)
 
+    notify("reports")
     results = {
         "Bokningsplaceringar": validate_bookings(bookings),
         "Ladok-aktiviteter": validate_ladok(ladok),
