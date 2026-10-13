@@ -110,6 +110,17 @@ def create_app(storage_root: Path | None = None) -> FastAPI:
         except Exception as error:
             raise _error(error) from error
 
+    @app.get("/api/joint-runs/period")
+    def joint_period(
+        scenario: str = Query(..., pattern=r"^[a-z0-9][a-z0-9_-]{0,79}$"),
+        date_from: str | None = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$"), date_to: str | None = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    ) -> dict[str, Any]:
+        """Which periods the data allows (coverage), and with both dates the check of that period."""
+        try:
+            return joint_api.period_payload_for(storage, scenario, date_from, date_to)
+        except Exception as error:
+            raise _error(error) from error
+
     @app.post("/api/joint-runs")
     def start_joint_run(request: joint_api.JointRunRequest) -> dict[str, Any]:
         """Start a joint run as a background job; follow it with `/api/joint-runs/{job_id}/events`."""

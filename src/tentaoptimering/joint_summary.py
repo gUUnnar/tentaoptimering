@@ -10,6 +10,7 @@ from typing import Any
 
 from .app_storage import AppStorage
 from .joint_progress import EVENTS_FILE, read_events
+from .joint_period import PLANNING_BASIS
 from .joint_scenarios import scenario_id_for_problem
 from .joint_validation import validate_run
 
@@ -87,6 +88,8 @@ def run_summary(storage: AppStorage, run_id: str, bundled_dir: Path | None = Non
         "problem_id": result.get("problem_id"),
         "scenario_id": scenario_id_for_problem(storage, result.get("problem_id"), bundled_dir),
         "created_at": created_at(run_id),
+        "period": _period(directory),
+        "planning_basis": PLANNING_BASIS,
         "parameters_changed_from_default": changed_ids,
         "parameters_changed_count": len(changed_ids),
         "solver_outcome": solver.get("outcome"),
@@ -120,6 +123,13 @@ def run_summary(storage: AppStorage, run_id: str, bundled_dir: Path | None = Non
             "source": "validated_now",
         },
     }
+
+
+def _period(directory: Path) -> dict[str, Any]:
+    """The dates a run was planned for, read from its frozen parameters; the exams' own dates when no calendar was fixed."""
+    items = (read_json(directory / "joint_input.json") or {}).get("parameters", ())
+    values = {item.get("parameter_id"): item.get("value") for item in items if isinstance(item, dict)}
+    return {"date_from": values.get("calendar.start_date") or None, "date_to": values.get("calendar.end_date") or None}
 
 
 def _unverified_reason(solver: dict[str, Any], coverage: dict[str, Any], technical: str, verdict: dict[str, Any]) -> str:

@@ -1,5 +1,5 @@
 import type {
-  CompareResult, DigitalSupport, EventsResponse, FieldError, JointEvent, JointOptions, JointScenario, JointSummary, ParametersResponse, SavedRun,
+  CompareResult, DigitalSupport, PeriodResponse, PlanningBasis, EventsResponse, FieldError, JointEvent, JointOptions, JointScenario, JointSummary, ParametersResponse, SavedRun,
   SaveScenarioBody, StartJointRunBody, WarmStartCandidate, WarmStartRecord,
 } from "./jointTypes.ts"
 import { toCompareResult } from "./jointCompare.ts"
@@ -10,6 +10,8 @@ export interface JointApi {
   parameters(scenarioId: string): Promise<ParametersResponse>
   /** Salar och tentamenstyper som finns i underlaget (för kryssrutorna). */
   options(scenarioId: string): Promise<JointOptions>
+  /** Datatäckning för periodvalet; med båda datumen också kontrollen av den valda perioden. */
+  period(scenarioId: string, dateFrom?: string, dateTo?: string): Promise<PeriodResponse>
   saveScenario(body: SaveScenarioBody): Promise<JointScenario>
   listCandidates(problemId: string): Promise<WarmStartCandidate[]>
   startRun(body: StartJointRunBody): Promise<{ job_id: string }>
@@ -70,6 +72,7 @@ export type BackendSummary = {
   wall_time_seconds: number | null; first_solution_seconds: number | null
   first_solution_basis?: string | null; first_solution_source?: string | null
   cancelled: boolean; warm_start_decision?: string | null
+  period?: { date_from?: string | null; date_to?: string | null }; planning_basis?: PlanningBasis | null
   parameters_changed_from_default?: unknown; parameters_changed_count?: number | null; unverified_reason?: string | null
   verdicts: { technical_validation: string; business_verification: string; provenance: string; technically_validated?: boolean; source?: string }
 }
@@ -100,6 +103,7 @@ export function toJointSummary(raw: BackendSummary): JointSummary {
     outcome, proven_optimum: verified && (raw.cost_is_proven_optimum === true || outcome === "optimal"),
     has_verified_solution: verified, cancelled: raw.cancelled === true,
     warm_start_decision: raw.warm_start_decision ?? null,
+    period: { date_from: raw.period?.date_from ?? null, date_to: raw.period?.date_to ?? null }, planning_basis: raw.planning_basis ?? null,
     parameters_changed_from_default: normalizeChangedParameters(raw.parameters_changed_from_default),
     parameters_changed_count: typeof raw.parameters_changed_count === "number" ? raw.parameters_changed_count : null,
     unverified_reason: typeof raw.unverified_reason === "string" && raw.unverified_reason ? raw.unverified_reason : null,
@@ -144,6 +148,7 @@ export const jointApi: JointApi = {
   listScenarios: async () => (await request<{ scenarios: JointScenario[] }>("/api/joint-runs/scenarios")).scenarios.map(toJointScenario),
   parameters: scenarioId => request(`/api/joint-runs/parameters?scenario=${enc(scenarioId)}`),
   options: async scenarioId => toJointOptions(await request<unknown>(`/api/joint-runs/options?scenario=${enc(scenarioId)}`)),
+  period: (scenarioId, dateFrom, dateTo) => request(`/api/joint-runs/period?scenario=${enc(scenarioId)}${dateFrom && dateTo ? `&date_from=${enc(dateFrom)}&date_to=${enc(dateTo)}` : ""}`),
   saveScenario: async body => toJointScenario(await request<JointScenario>("/api/joint-runs/scenarios", { method: "POST", body: JSON.stringify(body) })),
   listCandidates: async problemId => (await request<{ candidates: WarmStartCandidate[] }>(`/api/joint-runs/warm-start-candidates?problem_id=${enc(problemId)}`)).candidates,
   startRun: body => request("/api/joint-runs", { method: "POST", body: JSON.stringify(body) }),

@@ -79,7 +79,32 @@ export type StartJointRunBody = {
   memory_mb: number | null
   parallel_day_checks: boolean
   parameters?: Record<string, unknown>
+  /** Vald planeringsperiod (inklusive datum, ÅÅÅÅ-MM-DD). Utelämnad = scenariots egen period. */
+  period?: { date_from: string; date_to: string }
 }
+
+// ---- Planeringsperiod ----------------------------------------------------------------------------------------------
+
+/** Hur en körning ska läsas: explorativ planering känner inte till bokningar utanför de valda tentorna. */
+export type PlanningBasis = { mode: string; fixed_bookings_considered: boolean; label: string; note: string; cost_note: string }
+
+export type PeriodCoverage = {
+  data_available: boolean
+  demand: { first: string; last: string; source: string; ready_events: number; not_ready_events: number } | null
+  /** Dagar med tentor: antal klara respektive utan deltagarantal. */
+  days: { date: string; ready: number; not_ready: number }[]
+  bookings: { first: string; last: string; source: string; rows: number; note: string } | null
+  planning_basis: PlanningBasis
+}
+
+export type PeriodCheck = {
+  date_from: string; date_to: string
+  ready_events: number; not_ready_events: number
+  planned_from: string | null; planned_to: string | null
+  warnings: string[]; error: string | null; can_plan: boolean
+}
+
+export type PeriodResponse = PeriodCoverage & { scenario_id: string; check: PeriodCheck | null }
 
 export type JointJobStatus = "running" | "completed" | "failed" | "cancelled"
 
@@ -167,6 +192,9 @@ export type JointSummary = {
   /** Parametrar som skiljer sig från katalogens standardvärde (inte från scenariot). */
   parameters_changed_from_default: { id: string; label: string | null }[]
   parameters_changed_count: number | null
+  /** Datum som körningen planerades för; null om inget datumfönster är fryst i körningen. */
+  period: { date_from: string | null; date_to: string | null }
+  planning_basis: PlanningBasis | null
   /** Skälet till att körningen saknar verifierad lösning. Text när has_verified_solution är false, annars null. */
   unverified_reason: string | null
   technical_validation: VerdictValue

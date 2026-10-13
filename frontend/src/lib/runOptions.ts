@@ -1,4 +1,5 @@
 import type { StartJointRunBody } from "./jointTypes.ts"
+import type { PeriodChoice } from "./period.ts"
 
 // Val som inte är verksamhetsparametrar: start från förra körningen och datorresurser.
 
@@ -23,7 +24,7 @@ export function checkRunOptions(options: RunOptions): RunOptionsCheck {
 
 export const runOptionsValid = (options: RunOptions): boolean => Object.values(checkRunOptions(options)).every(item => item === null)
 
-export function toStartBody(scenario: string, options: RunOptions, parameters: Record<string, unknown>): StartJointRunBody {
+export function toStartBody(scenario: string, options: RunOptions, parameters: Record<string, unknown>, period?: PeriodChoice | null): StartJointRunBody {
   const body: StartJointRunBody = {
     scenario,
     warm_start: options.mode === "specific" ? options.specific : options.mode,
@@ -32,5 +33,6 @@ export function toStartBody(scenario: string, options: RunOptions, parameters: R
     parallel_day_checks: options.parallel,
   }
   if (Object.keys(parameters).length) body.parameters = parameters
+  if (period) body.period = { date_from: period.from, date_to: period.to }
   return body
 }

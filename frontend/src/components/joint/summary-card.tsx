@@ -37,6 +37,7 @@ export function SummaryCard({ summary, labels }: { summary: JointSummary; labels
           </div>
           <Stats stats={view.stats}/>
         </>}
+        <PlanningNote summary={summary}/>
         <div className="text-xs text-slate-900">
           <p className="font-semibold">{changedParametersHeading(summary)}</p>
           {changed.length > 0 && <ul className="mt-1 flex flex-wrap gap-1.5" aria-label="Parametrar som avviker från standardvärdet">
@@ -53,4 +54,16 @@ function Stats({ stats }: { stats: StatView[] }) {
   return <dl className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
     {stats.map(stat => <div key={stat.label} className="rounded-md border p-2.5"><dt className="text-xs text-slate-900">{stat.label}</dt><dd className="mt-0.5 text-base font-semibold tabular-nums">{stat.value}</dd>{stat.hint && <p className="mt-0.5 text-[11px] text-slate-800">{stat.hint}</p>}</div>)}
   </dl>
+}
+
+/** Perioden körningen planerades för och hur resultatet ska läsas: explorativt, utan kännedom om bokningar utanför de valda tentorna. */
+function PlanningNote({ summary }: { summary: JointSummary }) {
+  const { date_from: from, date_to: to } = summary.period
+  const basis = summary.planning_basis
+  if (!from && !to && !basis) return null
+  return <div className="rounded-md bg-slate-100 p-2.5 text-xs text-slate-900">
+    {(from || to) && <p><strong>Planeringsperiod:</strong> {from ?? "början"} – {to ?? "slutet"}</p>}
+    {basis && <p className="mt-0.5"><strong>{basis.label}.</strong> {basis.note}</p>}
+    {basis && <p className="mt-0.5">{basis.cost_note}</p>}
+  </div>
 }

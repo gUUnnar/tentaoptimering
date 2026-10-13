@@ -8,7 +8,10 @@ import { isMissingUnderlayMessage, scenarioNeedsUnderlay } from "@/lib/underlay"
 import type { RunChangeText } from "@/lib/jointJobMemory"
 import type { JointScenario, StartJointRunBody } from "@/lib/jointTypes"
 import { DEFAULT_RUN_OPTIONS, runOptionsValid, toStartBody, type RunOptions } from "@/lib/runOptions"
+import { periodInputError, type PeriodChoice } from "@/lib/period"
 import { useParameterEditor } from "@/lib/useParameterEditor"
+import { usePeriod } from "@/lib/usePeriod"
+import { PeriodPicker } from "./period-picker"
 import { ParamList } from "./params/param-list"
 import { RunOptionsPanel } from "./run-options"
 import { SaveScenario } from "./save-scenario"
@@ -29,13 +32,15 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
   const [options, setOptions] = useState<RunOptions>(DEFAULT_RUN_OPTIONS)
   const [submitting, setSubmitting] = useState(false)
   const [startError, setStartError] = useState("")
+  const [period, setPeriod] = useState<PeriodChoice | null>(null)
   const editor = useParameterEditor(scenarioId, scenarios)
+  const periodState = usePeriod(scenarioId, period)
 
   useEffect(() => {
     if (!scenarios.length) return
     setScenarioId(current => current && scenarios.some(item => item.id === current) ? current : scenarios[0].id)
   }, [scenarios])
-  useEffect(() => { setOptions(current => ({ ...current, specific: "" })); setStartError("") }, [scenarioId])
+  useEffect(() => { setOptions(current => ({ ...current, specific: "" })); setStartError(""); setPeriod(null) }, [scenarioId])
 
   const scenario = scenarios.find(item => item.id === scenarioId)
   const estimate = runtimeEstimate(scenario?.subset?.exam_count)
@@ -43,8 +48,10 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
   const optionsOk = runOptionsValid(options)
   const problems = useMemo(() => editor.params.filter(param => editor.errors[param.id]).map(param => ({ id: param.id, label: param.label, message: editor.errors[param.id] })), [editor.params, editor.errors])
   const missingUnderlay = scenarioNeedsUnderlay(scenario) || isMissingUnderlayMessage(startError) || isMissingUnderlayMessage(loadError)
-  const canStart = !busy && !submitting && !!scenarioId && ready && !editor.hasErrors && optionsOk && !scenarioNeedsUnderlay(scenario)
-  const why = busy ? "En körning pågår redan." : scenarioNeedsUnderlay(scenario) ? "Förbered underlaget under Underlag först." : !ready ? "Parametrarna har inte hämtats än." : editor.hasErrors ? "Rätta felen i parametrarna först." : !optionsOk ? "Rätta valen för start och resurser först." : null
+  const namedExams = scenario?.subset?.selection === "event_list"
+  const periodOk = !period || (!periodInputError(period) && periodState.check?.can_plan === true)
+  const canStart = !busy && !submitting && !!scenarioId && ready && !editor.hasErrors && optionsOk && periodOk && !scenarioNeedsUnderlay(scenario)
+  const why = busy ? "En körning pågår redan." : scenarioNeedsUnderlay(scenario) ? "Förbered underlaget under Underlag först." : !ready ? "Parametrarna har inte hämtats än." : editor.hasErrors ? "Rätta felen i parametrarna först." : !optionsOk ? "Rätta valen för start och resurser först." : !periodOk ? "Välj en period som går att planera först." : null
 
   const changeScenario = (id: string) => {
     if (id === scenarioId) return
@@ -56,7 +63,8 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
     if (!canStart) return
     setSubmitting(true); setStartError("")
     const texts = editor.changes.filter(change => !change.error).map(({ id, label, oldText, newText }) => ({ id, label, oldText, newText }))
-    try { await onStart(toStartBody(scenarioId, options, editor.request), texts) }
+    if (period) texts.unshift({ id: "period", label: "Planeringsperiod", oldText: "Scenariots egen period", newText: `${period.from} – ${period.to}` })
+    try { await onStart(toStartBody(scenarioId, options, editor.request, period), texts) }
     catch (error) {
       if (error instanceof ApiError && error.errors.length) { editor.applyServerErrors(error.errors); setStartError("Servern avvisade några parametervärden. Se markeringarna vid raderna ovan.") }
       else setStartError((error as Error).message)
@@ -93,9 +101,11 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
     </div>}
     {startError && !isMissingUnderlayMessage(startError) && <p role="alert" className="flex items-start gap-1.5 text-sm text-red-900"><CircleAlert size={16} className="mt-0.5 shrink-0" aria-hidden="true"/>{startError}</p>}
 
+    <Card><CardContent className="pt-4"><PeriodPicker state={periodState} choice={period} onChange={setPeriod} disabledReason={namedExams ? "Det här scenariot anger namngivna tentor och tar inget periodval. Välj ett scenario som planerar alla klara tentor i en period, till exempel Alla tentor i underlaget." : null}/></CardContent></Card>
+
     <section aria-label="Parametrar" className="space-y-3">
       <div>
-        <h2 className="text-sm font-semibold">2. Ändra parametrar (valfritt)</h2>
+        <h2 className="text-sm font-semibold">3. Ändra parametrar (valfritt)</h2>
         <p className="mt-0.5 text-xs text-slate-800">Det du ändrar gäller bara den här körningen och ändrar aldrig originalscenariot. Du kan spara dina ändringar som ett nytt scenario längst ner.</p>
       </div>
       {editor.load.status === "loading" && <p className="text-sm text-slate-800" role="status">Hämtar parametrar …</p>}
@@ -107,7 +117,7 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
     </section>
 
     <Card>
-      <CardHeader><CardTitle>3. Inställningar för körningen och spara som scenario</CardTitle></CardHeader>
+      <CardHeader><CardTitle>4. Inställningar för körningen och spara som scenario</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <RunOptionsPanel problemId={scenario?.problem_id ?? ""} options={options} onChange={setOptions} hasChanges={editor.changes.length > 0}/>
         {estimate && <p className="flex items-start gap-2 rounded-md bg-slate-100 p-2.5 text-sm text-slate-900"><Clock size={16} className="mt-0.5 shrink-0" aria-hidden="true"/>{estimate.text}</p>}
