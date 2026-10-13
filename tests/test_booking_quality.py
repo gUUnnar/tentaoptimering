@@ -172,9 +172,9 @@ class ConfigTests(unittest.TestCase):
         path.write_text(text, encoding="utf-8")
         return load_config(path)
 
-    def test_the_bundled_configuration_is_valid_and_has_no_pattern_rules_verified(self) -> None:
+    def test_the_bundled_configuration_is_valid_and_only_confirmed_rules_are_verified(self) -> None:
         config = load_config()
-        self.assertEqual({r.id for r in config.rules if r.verified}, {"status-avbokad", "status-klar"})
+        self.assertEqual({r.id for r in config.rules if r.verified}, {"status-avbokad", "status-klar", "candidate-hemma", "candidate-hemtenta"})  # home exams: confirmed by the user 2026-10-13
         self.assertEqual(config.rules_of("address_level"), ())  # absence of a room name is not a declaration
         self.assertEqual(len(config.digest), 64)
         under_review = {r.value_class for r in config.rules_of("status")}
@@ -236,7 +236,9 @@ class RealDataTests(unittest.TestCase):
         report = assess(processed)
         live = raw[raw["status"] != "Avbokad"]
         self.assertEqual(report["rows_not_cancelled"], len(live))
-        self.assertEqual(report["resource_identification"]["address_only"], int(((live["room"] == "") & (live["address"] != "")).sum()))
+        home = (live["address"] == "Hemma") | (live["room"] == "Hemtenta")  # confirmed non-physical: declared_non_physical, not address_only
+        self.assertEqual(report["resource_identification"]["address_only"], int(((live["room"] == "") & (live["address"] != "") & ~home).sum()))
+        self.assertEqual(report["resource_identification"]["declared_non_physical"], int(home.sum()))
         self.assertEqual(sum(report["resource_identification"].values()), len(live))
         self.assertEqual(sum(report["link_certainty"].values()), len(live))
         self.assertEqual(report["declared_address_level_rows"], 0)

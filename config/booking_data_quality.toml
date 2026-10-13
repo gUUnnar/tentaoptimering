@@ -71,14 +71,14 @@ source = "Statusvärdets klartext. Dataägaren har inte uttryckligen bekräftat.
 [[non_physical_rule]]
 id = "candidate-hemma"
 address = "Hemma"
-verified = false
-source = "Observation i bokningsuttaget. Behöver bekräftas av dataägaren."
+verified = true
+source = "Bekräftat av användaren 2026-10-13: hemtentor är aldrig med i lokalplaneringen och spärrar ingen fysisk sal."
 
 [[non_physical_rule]]
 id = "candidate-hemtenta"
 room = "Hemtenta"
-verified = false
-source = "Observation i bokningsuttaget. Behöver bekräftas av dataägaren."
+verified = true
+source = "Bekräftat av användaren 2026-10-13: hemtentor är aldrig med i lokalplaneringen och spärrar ingen fysisk sal."
 
 # Adressfältets innehåll är inte en adress. Verifierad regel: raden får identifieringen `no_address` och flaggan
 # `address_field_not_an_address`. Overifierad regel: bara en notering.
