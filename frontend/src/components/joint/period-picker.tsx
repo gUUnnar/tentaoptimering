@@ -30,7 +30,7 @@ export function PeriodPicker({ state, choice, onChange, disabledReason }: Props)
 
   return <section aria-label="Planeringsperiod" className="space-y-2.5">
     <div>
-      <h2 className="flex items-center gap-1.5 text-sm font-semibold">2. Välj planeringsperiod
+      <h2 className="flex items-center gap-1.5 text-base font-bold">2. Välj planeringsperiod
         <InfoTip label="Om planeringsperioden">Välj datum eller en genväg för att planera en kortare period. En kort period ger en mycket snabb körning med samma motor och kontroller. Utan val gäller scenariots egen period.</InfoTip></h2>
       <p className="mt-0.5 text-xs text-slate-800">{choice ? "Du planerar för perioden nedan." : "Scenariots egen period gäller."}</p>
     </div>

@@ -45,7 +45,7 @@ export function LiveView({ job, state, nowT, onCancel, onShowResult, onOpenUnder
     </CardContent></Card>
 
     <Card><CardContent className="pt-4">
-      <h3 className="text-sm font-semibold">Parametrar som den här körningen har ändrat</h3>
+      <h3 className="text-base font-bold">Parametrar som den här körningen har ändrat</h3>
       {job.changes.length === 0
         ? <p className="mt-1 text-sm text-slate-900">Inga. Körningen använder scenariots egna värden.</p>
         : <ul className="mt-2 space-y-1 text-sm" aria-label="Ändrade parametrar i körningen">

@@ -17,9 +17,9 @@ const WHAT = <>
 export function SavingsCard({ runId }: { runId: string }) {
   const { state, error, running, start } = useSavings(runId)
   if (!state) return error ? <Card><CardContent className="pt-4 text-sm text-slate-900" role="status">Besparingspotentialen kan inte hämtas: {error}</CardContent></Card> : null
-  return <Card className="border-sky-300">
+  return <Card>
     <CardContent className="space-y-2 pt-4">
-      <div className="flex items-center gap-1.5 text-sm font-semibold"><TrendingDown size={16} aria-hidden="true"/>Besparingspotential, teoretisk
+      <div className="flex items-center gap-1.5 text-base font-bold"><TrendingDown size={16} aria-hidden="true"/>Besparingspotential, teoretisk
         <InfoTip label="Vad är besparingspotential?">{WHAT}</InfoTip></div>
       {state.state === "ready" && <Ready state={state}/>}
       {state.state === "missing" && !running && <div className="flex flex-wrap items-center gap-3">
@@ -36,11 +36,11 @@ export function SavingsCard({ runId }: { runId: string }) {
 function Ready({ state }: { state: SavingsReady }) {
   const head = savingsHeadline(state)
   return <>
-    <div className={`text-3xl font-semibold tabular-nums ${head.positive ? "text-emerald-900" : "text-slate-900"}`}>{head.positive ? head.amount : "Ingen besparing mot Nuläge"}</div>
+    <div className="text-3xl font-bold tabular-nums">{head.positive ? head.amount : "Ingen besparing mot Nuläge"}</div>
     <p className="text-sm text-slate-900">{head.versus}</p>
     {head.range && <p className="text-xs text-slate-800">{head.range}</p>}
     {state.components.length > 0 && <details className="text-sm">
-      <summary className="cursor-pointer text-xs font-medium text-sky-900">Var kommer skillnaden från?</summary>
+      <summary className="cursor-pointer text-xs font-medium underline">Var kommer skillnaden från?</summary>
       <table className="mt-2 w-full max-w-xl text-sm">
         <thead><tr className="border-b text-left text-xs text-slate-900"><th className="p-1.5">Kostnad per år</th><th className="p-1.5 text-right">Nuläge</th><th className="p-1.5 text-right">Denna körning</th><th className="p-1.5 text-right">Skillnad</th></tr></thead>
         <tbody>{state.components.map(row => <tr key={row.key} className="border-b">

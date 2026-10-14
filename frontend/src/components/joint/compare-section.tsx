@@ -14,7 +14,7 @@ const MISSING = "–"
 const stamp = (ref: CompareRunRef) => `${ref.run_id}${ref.created_at ? ` (${ref.created_at.slice(0, 16).replace("T", " ")})` : ""}`
 
 const TONE: Record<InterpretationView["tone"], { box: string; icon: JSX.Element; label: string }> = {
-  interpretable: { box: "border-emerald-700 bg-emerald-50 text-emerald-950", icon: <CircleCheck size={18} aria-hidden="true"/>, label: "Tolkningsbar" },
+  interpretable: { box: "border-slate-300 bg-white text-slate-900", icon: <CircleCheck size={18} className="text-emerald-700" aria-hidden="true"/>, label: "Tolkningsbar" },
   not_interpretable: { box: "border-slate-300 bg-slate-50 text-slate-900", icon: <Info size={18} aria-hidden="true"/>, label: "Går inte att tolka" },
   unknown: { box: "border-slate-300 bg-slate-50 text-slate-900", icon: <CircleHelp size={18} aria-hidden="true"/>, label: "Kan inte bedömas" },
 }
@@ -81,7 +81,7 @@ export function Comparison({ result }: { result: CompareResult }) {
     </Notice>}
 
     <div>
-      <h4 className="text-sm font-semibold">Vad ändrades</h4>
+      <h4 className="text-base font-bold">Vad ändrades</h4>
       {changes.length === 0
         ? <p className="mt-1 text-sm text-slate-900">Inga parametrar. Skillnader i måtten kommer från sökningen, inte från reglerna.</p>
         : <ul className="mt-1 divide-y rounded-md border text-sm" aria-label="Ändrade parametrar">{changes.map(row => <li key={row.id} className="flex flex-wrap items-center gap-x-2 px-2.5 py-1.5">
@@ -96,7 +96,7 @@ export function Comparison({ result }: { result: CompareResult }) {
           {rows.map(row => <tr key={row.key} className="border-b">
             <th scope="row" className="p-2 text-left font-medium">
               <span className="inline-flex items-center gap-1.5">{row.label}
-                {row.physical && <span className="rounded bg-sky-100 px-1 text-[11px] font-semibold text-sky-900">Fysiskt mått</span>}
+                {row.physical && <span className="rounded border px-1 text-[11px] font-semibold">Fysiskt mått</span>}
                 {row.hint && <InfoTip label={`Om måttet ${row.label}`}>{row.hint}</InfoTip>}</span></th>
             <td className="p-2 text-right tabular-nums">{row.old}</td>
             <td className="p-2 text-right tabular-nums">{row.new}</td>

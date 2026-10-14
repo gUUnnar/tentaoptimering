@@ -1,4 +1,4 @@
-import { CircleX } from "lucide-react"
+import { CircleCheck, CircleHelp, CircleX } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { COST_NAME, COST_SCOPE, describeVerdict } from "@/lib/jointFormat"
 import { changedParameters, changedParametersHeading, summaryView, type StatView } from "@/lib/jointSummaryView"
@@ -29,10 +29,17 @@ export function SummaryCard({ summary, labels }: { summary: JointSummary; labels
       <CardHeader><CardTitle className="flex items-center gap-1.5">Sammanfattning<InfoTip label="Så läser du resultatet"><HowToRead/></InfoTip></CardTitle></CardHeader>
       <CardContent className="space-y-3">
         {view.verified ? <>
-          <div className={view.statement.proven ? "rounded-md bg-emerald-50 p-3 text-emerald-900" : "rounded-md bg-amber-50 p-3 text-amber-900"}>
-            <div className="text-xs">{view.statement.proven ? `${COST_NAME} ${COST_SCOPE} (verifierad; lägsta möjliga i modellen är bevisad)` : `${COST_NAME} ${COST_SCOPE}: intervall från undre gräns till verifierad kostnad`}</div>
-            <div className="mt-0.5 text-2xl font-semibold tabular-nums">{view.statement.headline}</div>
-            <div className="mt-1 text-xs">{view.statement.note}</div>
+          <div className="rounded-md border p-3">
+            <div className="flex items-center gap-2 text-sm font-bold">
+              {view.statement.proven ? <CircleCheck size={18} className="text-emerald-700" aria-hidden="true"/> : <CircleHelp size={18} className="text-amber-700" aria-hidden="true"/>}
+              {view.statement.proven ? "Lägsta kostnad i modellen, bevisad" : "Lägsta funna kostnad, inte bevisat lägsta"}
+              <InfoTip label="Om kostnaden">
+                <span className="block">{COST_NAME} {COST_SCOPE}.</span>
+                <span className="block">{view.statement.note}</span>
+                <span className="block">Det är en modellkostnad. Faktisk kostnad och verifierad realiserbar besparing redovisas separat.</span>
+              </InfoTip>
+            </div>
+            <div className="mt-1 text-3xl font-bold tabular-nums">{view.statement.headline}</div>
           </div>
           <Stats stats={view.stats}/>
           <p className="text-xs text-slate-900">Utfall: <strong>{view.outcomeText}</strong></p>

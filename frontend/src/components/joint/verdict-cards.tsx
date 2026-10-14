@@ -10,7 +10,7 @@ export function VerdictCards({ summary }: { summary: JointSummary }) {
   const business = describeVerdict(summary.business_verification)
   const provenance = describeVerdict(summary.provenance)
   return <section className="space-y-4" aria-label="De tre bedömningarna">
-    <h3 className="flex items-center gap-1.5 text-sm font-semibold">Bedömningar
+    <h3 className="flex items-center gap-1.5 text-base font-bold">Bedömningar
       <InfoTip label="Teknisk korrekthet och genomförbarhet">Teknisk korrekthet är inte verksamhetsmässig genomförbarhet. Den tekniska eftervalideringen visar att placeringen följer de regler modellen kan uttrycka, inte att schemat går att genomföra i verksamheten. Data eller modellstöd som saknas räknas aldrig som godkänt.</InfoTip></h3>
     <div className="grid gap-4 lg:grid-cols-3">
       <Card><CardHeader><CardTitle className="flex items-center gap-1.5">Teknisk eftervalidering<InfoTip label="Vad är det här?">Fristående kontroll av att placeringen är fullständig och följer de hårda villkoren.</InfoTip></CardTitle></CardHeader><CardContent className="space-y-2 text-xs">

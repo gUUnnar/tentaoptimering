@@ -106,7 +106,7 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
 
     <section aria-label="Parametrar" className="space-y-3">
       <div>
-        <h2 className="flex items-center gap-1.5 text-sm font-semibold">3. Ändra parametrar (valfritt)
+        <h2 className="flex items-center gap-1.5 text-base font-bold">3. Ändra parametrar (valfritt)
           <InfoTip label="Om ändringar">Det du ändrar gäller bara den här körningen och ändrar aldrig originalscenariot. Du kan spara dina ändringar som ett nytt scenario längst ner.</InfoTip></h2>
       </div>
       {editor.load.status === "loading" && <p className="text-sm text-slate-800" role="status">Hämtar parametrar …</p>}
