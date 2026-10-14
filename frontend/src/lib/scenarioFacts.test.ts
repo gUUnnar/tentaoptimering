@@ -3,6 +3,7 @@ import { describe, it } from "node:test"
 import { toJointScenario } from "./jointApi.ts"
 import type { PeriodCheck } from "./jointTypes.ts"
 import { FEATURED_PARAM_IDS, featuredParameters, otherParameters } from "./featuredParams.ts"
+import { defaultScenarioId, referenceFirst } from "./jointScenarioInfo.ts"
 import { scenarioFacts } from "./scenarioFacts.ts"
 
 const scenario = toJointScenario({ id: "s", name: "S", description: "Alla tentor i underlaget, 12 januari till 31 mars 2026.", subset: { plan_area: "Uppsala", selection: "rule", exam_count: 1172, description: "Alla tentor 2026-01-12 till 2026-03-31" } })
@@ -41,4 +42,14 @@ describe("utvalda parametrar", () => {
     assert.deepEqual(otherParameters(all).map(item => (item as { id: string }).id), ["solver.seed", "okänd.parameter"])
   })
   it("listan har inga dubbletter", () => assert.equal(new Set(FEATURED_PARAM_IDS).size, FEATURED_PARAM_IDS.length))
+})
+
+describe("förvalt scenario", () => {
+  it("referensen är förvald och står först, annars det första", () => {
+    const list = [{ id: "joint_real_subset" }, { id: "joint_reference" }, { id: "joint_underlay_period" }]
+    assert.equal(defaultScenarioId(list), "joint_reference")
+    assert.deepEqual(referenceFirst(list).map(item => item.id), ["joint_reference", "joint_real_subset", "joint_underlay_period"])
+    assert.equal(defaultScenarioId([{ id: "a" }, { id: "b" }]), "a")
+    assert.equal(defaultScenarioId([]), "")
+  })
 })

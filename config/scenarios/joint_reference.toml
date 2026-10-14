@@ -1,0 +1,22 @@
+schema_version = "joint-real-subset-v1"
+
+[scenario]
+id = "joint_reference"
+name = "Referens: alla tentor i underlaget"
+description = "Utgångspunkt för egna experiment. Alla klara tentor i Uppsala i hela underlaget, med katalogens standardvärden för allt utom fyra motiverade antaganden: ett flyttfönster på en dag åt vardera hållet och två explorativa prisvärden. Ändra en parameter och jämför; allt annat är standard."
+
+[subset]
+plan_area = "Uppsala"
+selection = "all_ready"
+
+[parameters]
+"window.earlier_days" = 1
+"window.later_days" = 1
+"cost.room_annual_per_seat_ore" = 100000
+"cost.staff_annual_ore" = 5000000
+
+[rationales]
+"window.earlier_days" = "Katalogens standard är 0 dagar, vilket inte flyttar någon tentamen och gör varje ändring verkningslös. En dag åt vardera hållet är ett minsta flyttutrymme för experiment."
+"window.later_days" = "Se window.earlier_days."
+"cost.room_annual_per_seat_ore" = "Katalogens standard är 0 kr, vilket ger kostnad 0. Explorativ proxy 1 000 kr per plats och år; inte avtalskostnad."
+"cost.staff_annual_ore" = "Katalogens standard är 0 kr, vilket ger kostnad 0. Explorativ proxy 50 000 kr per dimensionerande anonym resurs och år."

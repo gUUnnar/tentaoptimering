@@ -3,7 +3,7 @@ import { CircleAlert, Play } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ApiError } from "@/lib/jointApi"
-import { runtimeEstimate } from "@/lib/jointScenarioInfo"
+import { defaultScenarioId, runtimeEstimate } from "@/lib/jointScenarioInfo"
 import { isMissingUnderlayMessage, scenarioNeedsUnderlay } from "@/lib/underlay"
 import type { RunChangeText } from "@/lib/jointJobMemory"
 import type { JointScenario, StartJointRunBody } from "@/lib/jointTypes"
@@ -45,7 +45,7 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
 
   useEffect(() => {
     if (!scenarios.length) return
-    setScenarioId(current => current && scenarios.some(item => item.id === current) ? current : scenarios[0].id)
+    setScenarioId(current => current && scenarios.some(item => item.id === current) ? current : defaultScenarioId(scenarios))
   }, [scenarios])
   useEffect(() => { setOptions(current => ({ ...current, specific: "" })); setStartError(""); setPeriod(null) }, [scenarioId])
 

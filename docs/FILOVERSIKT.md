@@ -27,6 +27,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `config/booking_data_quality.toml` | Regler och kolumnnamn för datakvalitetslagret med `verified`, `source` per regel. Nya verifierade uppgifter eller andra kolumnnamn i ett nytt uttag läggs till här utan kodändring. Inga adress- eller salmönster är verifierade. |
 | `config/source_files.toml` | Namn, blad och rubrikrad för de tre lästa källexporterna. |
 | `config/scenarios/joint_real_subset.toml` | Reproducerbart avgränsat verkligt datafall för den nya gemensamma CP-SAT-kärnan. |
+| `config/scenarios/joint_reference.toml` | Referensscenario och förval: alla klara tentor i Uppsala i hela underlaget, katalogens standardvärden för allt utom fyra motiverade antaganden (flyttfönster en dag åt vardera hållet, två explorativa prisvärden). Utgångspunkt för egna experiment där bara en parameter ska skilja. Testat i `tests/test_joint_reference.py`. |
 | `config/scenarios/joint_underlay_period.toml` | Befintligt avgränsat scenariourval i Uppsala (`joint_underlay_period_2026`), 12 januari–31 mars 2026: regel `selection = "all_ready"` med datumintervall, 1 172 tentor. Ingen generell minsta terminslängd; framtida användarstyrt periodval är krav. |
 
 ## Dokumentation

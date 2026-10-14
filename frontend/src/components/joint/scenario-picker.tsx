@@ -1,5 +1,6 @@
 import { useId } from "react"
 import { TriangleAlert } from "lucide-react"
+import { referenceFirst } from "@/lib/jointScenarioInfo"
 import type { JointScenario } from "@/lib/jointTypes"
 
 type Props = { scenarios: JointScenario[]; value: string; onChange: (id: string) => void; loadError: string }
@@ -7,7 +8,7 @@ type Props = { scenarios: JointScenario[]; value: string; onChange: (id: string)
 /** Välj scenario. */
 export function ScenarioSelect({ scenarios, value, onChange, loadError }: Props) {
   const id = useId()
-  const bundled = scenarios.filter(item => item.origin !== "user")
+  const bundled = referenceFirst(scenarios.filter(item => item.origin !== "user"))
   const own = scenarios.filter(item => item.origin === "user")
   return <div>
     <label className="label" htmlFor={id}>Scenario</label>
