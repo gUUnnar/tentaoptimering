@@ -1,5 +1,8 @@
 # Struktur för kostnadsmodellen
 
+**Dokumenttyp:** styrande kostnadssemantik.
+**Status:** gällande; verifierad realiserbar besparing är ännu datablockerad.
+
 Kostnadsmodellen ska hålla isär tre resultat:
 
 1. minskat resursbehov, exempelvis färre samtidiga salar eller färre externa bokningar
@@ -20,6 +23,6 @@ Resultatvyn redovisar en **teoretisk årlig besparingspotential**: modellkostnad
 
 [Presentation 2026-10-02](VERKSAMHETSUNDERLAG_2026-10-02.md) använder ”pengar i sjön” för kostnaden av skillnaden mellan **beställda platser** och **anmälda i Ladok** under januari–juni 2026. Två tabeller på samma bild ger **1 687 819,38 kr** respektive **1 779 583 kr**; slutbilden avrundar till **ca 1,8 mnkr/16 %**. Beräkningsskillnaden och beloppens komponenter måste verifieras. Ingen av siffrorna är ett belägg för hur mycket hyreskostnad universitetet kan säga upp.
 
-Bemanningsbilden redovisar **1 228,5 timmar bomtid** och **191,5 timmar ”Övt”** under 2025, samt ungefär **250 000 + 44 000 = 294 000 kr** i bomtids-/mer- eller övertidskostnad. Definitionen av den senare posten är oklar i källan. Detta är historiska observations-/kalkylvärden och får inte utan motfaktiskt nuläge, tillämpade personalavtal och faktisk undvikbarhet bli en sparpost.
+Bemanningsbilden redovisar **1 228,5 timmar bomtid** och **191,5 timmar ”Övt”** under 2025, samt ungefär **250 000 + 44 000 = 294 000 kr** i bomtids-/mer- eller övertidskostnad. Definitionen av den senare posten är oklar i källan. Detta är historiska observations-/kalkylvärden och får inte utan en jämförbar motfaktisk referens, tillämpade personalavtal och faktisk undvikbarhet bli en sparpost.
 
 Modellen behöver därför särredovisa **överbeställning/utnyttjande**, **optimerat resursbehov**, **modellkostnad med oförändrad prisprofil** samt **faktiskt avvecklingsbar årskostnad**. Om två körningar använder olika kostnadsantaganden ska skillnaden inte rubriceras som effektivisering.

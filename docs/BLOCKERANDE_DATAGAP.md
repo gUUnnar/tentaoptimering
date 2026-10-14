@@ -1,6 +1,9 @@
 # Blockerande datagap
 
-> **Historisk datakvalitetsinventering (första checkpointen).** Ordet ”blockerande” avser tillförlitliga/verifierade slutsatser – inte att den explorativa PoC:n måste stå stilla. Enligt [aktuella krav](KONCEPTUELL_KRAVSPECIFIKATION.md) ska optimeraren kunna köras med dokumenterade, kvalificerade och lätt utbytbara antaganden medan kompletterande uppgifter inväntas. Aktuell arbetsordning framgår av [Codex-uppdraget](KODGRANSKNING_OCH_CODEX_UPPDRAG_2026-10-08.md).
+**Dokumenttyp:** aktuell datagapförteckning.
+**Status:** gällande tills respektive uppgift är verifierad och statusmatrisen uppdaterad.
+
+> Ordet ”blockerande” avser tillförlitliga eller verifierade slutsatser – inte att den explorativa PoC:n måste stå stilla. Enligt [aktuella krav](KONCEPTUELL_KRAVSPECIFIKATION.md) ska optimeraren kunna köras med dokumenterade, kvalificerade och lätt utbytbara antaganden medan kompletterande uppgifter inväntas. Genomförandestatus och prioritering finns i [kravstatusen](KRAV_OCH_STATUS.md).
 
 Följande behöver lösas innan ett optimeringsresultat kan anses operativt tillförlitligt eller användas för en verifierad besparingsberäkning. De hindrar inte en tydligt märkt explorativ PoC:
 

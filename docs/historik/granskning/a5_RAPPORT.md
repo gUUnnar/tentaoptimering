@@ -1,5 +1,8 @@
 # Testrevision (A5): mutationstestning och handräknade kontrollexempel
 
+> **Historisk delrapport.** Granskar den senare borttagna motorn. Aktuell status
+> finns i [kravstatusen](../../KRAV_OCH_STATUS.md).
+
 > Den äldre kapacitets- och termmotorn är borttagen (finns i Git-historiken före den här grenen). Hänvisningar nedan till dess moduler, scenarier, kommandon och rutter beskriver därför det tidigare läget.
 
 Repo oförändrat. Alla körningar mot kopian `...\audit\a5\repo_copy` (`mut_work`). Verifierat: `tentaoptimering.__file__` pekar på kopian (se första raden i `mut_log.txt` och `handcalc`-utskriften). Sviten: 62 tester, alla gröna, ca 3 s.

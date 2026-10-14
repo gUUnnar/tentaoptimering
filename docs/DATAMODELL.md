@@ -1,4 +1,8 @@
-# Datamodell för första checkpointen
+# Datamodell
+
+**Dokumenttyp:** teknisk referens.
+**Status:** gällande datakorn och separationsprinciper; provisoriska nycklar är
+fortfarande provisoriska.
 
 Modellen skiljer tre korn som inte får blandas:
 
@@ -29,7 +33,11 @@ Lokal- och kostnadskällan modelleras på `lease_row_id`. En rad kan vara sal, d
 
 Normaliseringen bevarar källfälten men standardiserar rubriker, blanktecken, datum, heltal och tekniska nycklar. Den försöker inte lösa tvetydiga verksamhetsdefinitioner automatiskt.
 
-Se `docs/OPTIMERINGSUNDERLAG.md` för gränserna för vad tabellerna får användas till före motorbygge.
+Gränserna för hur tabellerna får användas följer av denna datamodell,
+[arkitekturprinciperna för datakvalitet](ARKITEKTURPRINCIPER_DATAKVALITET.md)
+och [den aktuella kravstatusen](KRAV_OCH_STATUS.md). En diagnostisk
+kandidatrelation får aldrig uppgraderas till verifierad verksamhetsrelation av
+optimeringsmotorn.
 
 
 ## Verksamhetens önskemål (`exam_wishes.csv`)

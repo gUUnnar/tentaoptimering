@@ -1,5 +1,10 @@
 # Dataanalys inför S0
 
+> **Historisk dataanalys.** Siffrorna beskriver S0-underlaget och får inte
+> användas som aktuell körningspopulation. Aktuell population läses ur den
+> frusna körningens underlag; övergripande status finns i
+> [kravstatusen](../KRAV_OCH_STATUS.md).
+
 **Underlag:** `data/processed/` (härlett ur originalfilerna i `C:\lokalt\tentalokaler\underlag`, som är oförändrade). Bokningar 2025-09-01 till 2026-08-29 (8 466 rader, 5 506 bokningsordrar), Ladok 1 525 aktiviteter (terminen 12 januari-31 mars 2026), 1 283 behovsposter. Analyserna är engångsberäkningar; de skapar inga produktionsmoduler. Siffrorna blir golden-master-värden i S1 (`requires_local_data`).
 
 ## 1. Population (B7/F4)

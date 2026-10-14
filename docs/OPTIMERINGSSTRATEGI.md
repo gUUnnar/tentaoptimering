@@ -1,6 +1,10 @@
 # Optimeringsstrategi: aggregerad relaxation och exakt kontroll dag för dag
 
-**Status:** analys och avgränsad prototyp; avsnitt 9 beskriver PR #10 (parallella dagkontroller och varmstart). Prototypen är lösningsstrategin `solver.strategy = "decomposed"`; den monolitiska modellen finns kvar som `"monolithic"`. Mätningarna i avsnitt 5 gjordes 2026-10-11–12 med koden frusen i commit `5080899`. Rättningarna efter granskningen av PR #9 och deras riktade kontroller redovisas i avsnitt 8.
+**Dokumenttyp:** teknisk strategi och mätprotokoll.
+**Status:** `solver.strategy = "decomposed"` är den implementerade
+standardstrategin; `"monolithic"` finns kvar som alternativ. Mätningarna i
+avsnitt 5 gjordes 2026-10-11–12 med koden frusen i commit `5080899` och ska
+tolkas som reproducerbara historiska mätvärden, inte som aktuella prestandalöften.
 
 PoC:n ska svara på två frågor: hur mycket lokalbehovet kan minska med bättre schemaläggning, och vad det motsvarar ekonomiskt. I modellen avgörs svaret av två storheter:
 

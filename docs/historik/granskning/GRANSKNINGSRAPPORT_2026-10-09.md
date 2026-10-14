@@ -1,8 +1,13 @@
 # Modell- och kodrevision (sammanställning)
 
+> **Historisk revision.** Rapporten granskar en senare borttagen motor och är
+> inte aktuell krav- eller statuskälla. Se
+> [dokumentationsingången](../../README.md) och
+> [kravstatusen](../../KRAV_OCH_STATUS.md).
+
 > Den äldre kapacitets- och termmotorn är borttagen (finns i Git-historiken före den här grenen). Hänvisningar nedan till dess moduler, scenarier, kommandon och rutter beskriver därför det tidigare läget.
 
-**Datum:** 2026-10-09. **Status:** S1 pausad, ingen produktionskod skriven. Sex oberoende granskare arbetade skrivskyddat. Fem lämnade slutrapport (`docs/granskning/a2…a6_RAPPORT.md`). Granskaren för problemformulering (a1) stoppades före slutrapport; dess delresultat nedan bygger på experimentloggar och är **ofullständiga**. Siffror i S0-dokumenten (`MALARKITEKTUR_ANALYS`, `DATAANALYS_S0`, `docs/prototyp`) ska betraktas som **ersatta av denna rapport** där de skiljer sig.
+**Datum:** 2026-10-09. **Status då:** S1 pausad, ingen produktionskod skriven. Sex oberoende granskare arbetade skrivskyddat. Fem lämnade delrapport (`a2_RAPPORT.md`–`a6_RAPPORT.md`). Granskaren för problemformulering (a1) stoppades före slutrapport; dess delresultat byggde på experimentloggar och var **ofullständiga**. Referenser till borttagna S0-dokument och prototypen avser filer som finns i Git-historiken.
 
 ## 1. Fel i mina egna S0-underlag (måste rättas)
 

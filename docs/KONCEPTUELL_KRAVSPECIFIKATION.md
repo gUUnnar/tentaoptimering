@@ -6,7 +6,7 @@
 
 ## 1. Syfte och förväntat resultat
 
-PoC:n ska beräkna hur tentamensverksamhetens långsiktiga **årliga totalkostnad** kan minskas genom att tentamenstillfällen, tentamenslokaler och tentamensvakter planeras gemensamt. Den ska ge ett beräknat ekonomiskt optimum eller den bästa hittade genomförbara lösningen inom tillgänglig beräkningstid, redovisa osäkerhet och jämföra med en tydligt beskriven nulägeskostnad.
+PoC:n ska beräkna hur tentamensverksamhetens långsiktiga **årliga totalkostnad** kan minskas genom att tentamenstillfällen, tentamenslokaler och tentamensvakter planeras gemensamt. Den ska ge ett beräknat ekonomiskt optimum eller den bästa hittade genomförbara lösningen inom tillgänglig beräkningstid, redovisa osäkerhet och jämföra modellkostnaden med en tydligt beskriven referensoptimering. Den faktiska bokningen A redovisas separat och får ingen konstruerad kostnad.
 
 **Planeringsperioden väljs av användaren** inom den dokumenterade tidsmässiga täckningen för dataunderlaget: en vecka, en månad, valfria datumintervall eller en eller flera terminer. En hel termin är alltså inte en minsta gräns. Om en viss kostnad ska tolkas som **kronor per år** från ett kortare intervall måste tidsnormalisering och antaganden redovisas öppet; kortperiodens modellkostnad får inte påstås vara en direkt årlig besparing. PoC:n avser i första hand långsiktig strukturell potential: faktisk genomförbarhet enligt hyresavtal, uppsägningstider och omställningskostnader kan utredas separat.
 
@@ -59,7 +59,7 @@ Bemanningskrav anges som verifierbara eller preliminära regler kopplade till **
 
 En vakt kan arbeta vid flera tentamenstillfällen och i olika byggnader under samma dag inom samma ort. Modellen ska respektera restider, förberedelse, avslut, rast, vila, tillämpliga avtal, arbetspass och eventuell betald bomtid. Förflyttning och förberedelse får inte överlappa andra tilldelade arbetsuppgifter.
 
-Dagens uppgifter om cirka 86 aktiva vakter, varav cirka 20 anställda, är **indata för nulägesbeskrivningen**, inte en begränsning av framtida bemanningsvolym. Bemanningsintervall som anges i verksamhetens presentationer behöver valideras och hanteras som lätt utbytbara regeldata.
+Dagens uppgifter om cirka 86 aktiva vakter, varav cirka 20 anställda, är **historisk kontext**, inte en begränsning av framtida bemanningsvolym. Bemanningsintervall som anges i verksamhetens presentationer behöver valideras och hanteras som lätt utbytbara regeldata.
 
 ## 7. Efterfrågan och framtidsscenarier
 
@@ -127,7 +127,7 @@ Användaren ska utan kunskap om konfigurationsfiler, JSON, modellversioner, fils
 - **UX-2** skapa en simulering med begripliga standardvärden;
 - **UX-3** ändra verksamhetsförutsättningar, och se vilka värden som är verifierade, hämtade ur data, antaganden eller experiment;
 - **UX-4** köra beräkningen, följa status och avbryta;
-- **UX-5** undersöka resultat, antaganden och begränsningar, med resursbehov alltid jämfört mot Nuläge;
+- **UX-5** undersöka resultat, antaganden och begränsningar, med resursbehov jämfört mot faktisk bokning A och, när modellkostnad jämförs, mot referensoptimeringen med låsta datum;
 - **UX-6** ändra förutsättningar och köra igen utan att tidigare körningar förändras;
 - **UX-7** jämföra körningar, där bara jämförbara körningar får jämföras och skillnaden i förutsättningar redovisas;
 - **UX-8** namnge, organisera, kopiera och radera simuleringar; radering visar vad som tas bort;
@@ -145,9 +145,12 @@ Användaren ska utan kunskap om konfigurationsfiler, JSON, modellversioner, fils
 
 ### 11.4 Krav på referenser och jämförelse
 
-> *Nuläge* i kraven nedan avser den **referensoptimering med låsta datum** som beskrivs ovan. Den faktiska historiska bokningen (A) optimeras aldrig och är en separat referens, se [ABC_SCENARIOMODELL.md](ABC_SCENARIOMODELL.md).
+> Krav-id:n med prefix `N-` behålls för spårbarhet. De avser
+> **referensoptimeringen med låsta datum**, inte den faktiska bokningen A. A
+> optimeras aldrig och är en separat historisk referens, se
+> [ABC_SCENARIOMODELL.md](ABC_SCENARIOMODELL.md).
 
-- **N-1** Nuläge beräknas med samma kod, data, omfattning, efterfrågemått, lokalbestånd, bemanningsregler och kostnadsantaganden som simuleringen. Endast uttryckligt definierade flexibilitetsparametrar och efterfrågevariation får skilja.
+- **N-1** Referensoptimeringen beräknas med samma kod, data, omfattning, efterfrågemått, lokalbestånd, bemanningsregler och kostnadsantaganden som körningen. Endast uttryckligt definierade flexibilitetsparametrar och efterfrågevariation får skilja.
 - **N-2** Faktisk historik (till exempel bokade platser och lokaler utanför beståndet) redovisas som kontext, inte som baslinje.
 - **N-3** Vid efterfrågevariation särskiljs efterfrågeeffekt från planeringseffekt.
 - **N-4** Datumflyttar simuleras fritt inom användarens parametrar; avsaknad av studentöverlappsdata begränsar inte optimeringen. Resultatvyn har en diskret fotnot: "Simuleringen tar inte hänsyn till individuella studenters eventuella tentamenskrockar." Antaganden och begränsningar visas tydligt men får inte dominera analysen; verktyget undersöker möjligheter och godkänner inget färdigt schema.
@@ -161,7 +164,7 @@ Användaren ska utan kunskap om konfigurationsfiler, JSON, modellversioner, fils
 
 ### 11.5 Avgränsning av första användbara leverans
 
-Första leveransen ska möjliggöra experiment med: **självvald planeringsperiod inom dataunderlaget**, datum- och veckodagsflexibilitet inklusive flexibilitet per tentamenstyp, starttidsflexibilitet, efterfrågevariation och jämförelse av resursbehov (platser, lokaler, vaktbehov, tidsmått) mot Nuläge. Den ska dessutom låta användaren **inspektera en lokals användning under valfri tillgänglig period och slå upp historiskt schema för en viss bokad tentamen**. Faktisk beläggning visas separat när mätdata finns; annars anges att uppgiften saknas. Digital andel, externhyra, ersättningslokaler, maximal skrivtid och avancerad kostnadsoptimering ingår i målbilden men tillkommer först när motor och data stöder dem. Varje krav i denna specifikation redovisas i `docs/KRAVUPPFYLLNAD.md` som uppfyllt, delvis uppfyllt eller saknas, med bevisande test.
+Första leveransen ska möjliggöra experiment med: **självvald planeringsperiod inom dataunderlaget**, datum- och veckodagsflexibilitet inklusive flexibilitet per tentamenstyp, starttidsflexibilitet, efterfrågevariation och jämförelse av resursbehov (platser, lokaler, vaktbehov, tidsmått) mot referensoptimeringen med låsta datum. Den ska dessutom låta användaren **inspektera en lokals användning under valfri tillgänglig period och slå upp historiskt schema för en viss bokad tentamen**. Faktisk beläggning visas separat när mätdata finns; annars anges att uppgiften saknas. Digital andel, externhyra, ersättningslokaler, maximal skrivtid och avancerad kostnadsoptimering ingår i målbilden men tillkommer först när motor och data stöder dem. Varje krav i denna specifikation redovisas i `docs/KRAV_OCH_STATUS.md` med en enda aktuell status, begränsning och bevis.
 
 ### 11.6 Krav på kodbasen
 

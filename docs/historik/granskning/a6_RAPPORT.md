@@ -1,5 +1,8 @@
 # Revision av förprovet (platstopp under flyttfönster) – A6
 
+> **Historisk delrapport.** Granskar den senare borttagna motorn. Aktuell status
+> finns i [kravstatusen](../../KRAV_OCH_STATUS.md).
+
 > Den äldre kapacitets- och termmotorn är borttagen (finns i Git-historiken före den här grenen). Hänvisningar nedan till dess moduler, scenarier, kommandon och rutter beskriver därför det tidigare läget.
 
 Alla skript och utdata ligger i samma mapp som den här filen. Repot är orört.

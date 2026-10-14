@@ -1,8 +1,11 @@
 # A, B och C: faktisk bokning, grundoptimering och egna körningar
 
+**Dokumenttyp:** styrande begreppsmodell.
+**Status:** gällande.
+
 Syftet med PoC:n är att undersöka hur mycket användningen av tentamenslokaler kan optimeras och vilken ekonomisk potential det innebär. Användaren ska kunna ändra ett verksamhetsvillkor, se effekten direkt och jämföra med både historiken och sina tidigare körningar. Utgångspunkten är verkliga bokningar och verksamhetens ursprungliga önskemål, inte ett antal på förhand konstruerade scenarier.
 
-Det här dokumentet är den gällande begreppsmodellen. Där äldre dokument (till exempel `KONCEPTUELL_KRAVSPECIFIKATION.md`, `DOMANMODELL.md`) talar om *Nuläge*, gäller det som står här.
+Det här dokumentet är den gällande begreppsmodellen. Där äldre dokument i Git-historiken eller under `docs/historik/` talar om *Nuläge*, gäller det som står här.
 
 ## De tre alternativen
 

@@ -1,5 +1,10 @@
 # Första leverans – gemensam CP-SAT-kärna
 
+> **Historisk ögonblicksbild.** Dokumentet beskriver läget efter PR #7 och är
+> ersatt som statuskälla av [kravstatusen](../KRAV_OCH_STATUS.md),
+> [optimeringsdesignen](../GEMENSAM_OPTIMERINGSDESIGN.md) och
+> [eftervalideringen](../OBEROENDE_EFTERVALIDERING.md).
+
 Detta dokument beskriver kärnan efter kodgranskningen av PR #7. Det anger faktisk omfattning, uppmätt prestanda och kvarstående begränsningar.
 
 ## Levererat

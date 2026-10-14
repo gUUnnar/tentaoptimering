@@ -29,3 +29,4 @@ frontend/*.tsbuildinfo
 
 # Lokal granskningsarkiv, ska inte versionshanteras
 docs/granskning.zip
+docs/historik/granskning.zip
