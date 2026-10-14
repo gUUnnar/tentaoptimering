@@ -2,6 +2,7 @@ schema_version = "joint-real-subset-v1"
 
 [scenario]
 id = "joint_real_subset_2026"
+name = "Provfall: 12 tentor, 12–14 jan (snabbtest)"
 description = "Avgränsat verkligt bevisfall för gemensam kostnadsoptimering."
 
 [subset]

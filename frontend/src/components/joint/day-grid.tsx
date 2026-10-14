@@ -51,7 +51,7 @@ function KindGrid({ state, kind }: { state: JointState; kind: string }) {
   const total = batch?.total ?? cells.length
   return <section aria-label={kindLabel(kind)} className="space-y-2">
     <div className="flex flex-wrap items-baseline justify-between gap-2">
-      <div><h4 className="text-sm font-semibold">{kindLabel(kind)}</h4><p className="text-xs text-slate-800">{kindText(kind).explanation}</p></div>
+      <div><h4 className="text-base font-bold">{kindLabel(kind)}</h4><p className="text-xs text-slate-800">{kindText(kind).explanation}</p></div>
       <div className="flex items-center gap-2 text-xs text-slate-900">
         <span className="tabular-nums">{done} av {total} klara</span>
         <div role="progressbar" aria-label={`${kindLabel(kind)}: ${done} av ${total} klara`} aria-valuemin={0} aria-valuemax={total} aria-valuenow={done} className="h-2 w-28 overflow-hidden rounded-full bg-slate-200"><div className="h-full bg-sky-800" style={{ width: total ? `${(done / total) * 100}%` : "0%" }}/></div>

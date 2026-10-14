@@ -83,8 +83,18 @@ describe("sammanfattning: riktiga svar genom adaptern", () => {
     if (!view.verified) return
     assert.equal(view.statement.proven, true)
     assert.equal(view.statement.headline, formatKr(9000))
-    assert.equal(view.stats.find(item => item.label === "Verifierad kostnad")?.value, formatKr(9000))
+    // Bevisat lägsta: rubriken räcker, verifierad kostnad, undre gräns och gap visas inte en gång till.
+    for (const label of ["Verifierad kostnad", "Undre gräns", "Gap"]) assert.equal(view.stats.some(item => item.label === label), false)
     assert.equal(view.stats.find(item => item.label === "Vaktpool")?.value, "1")
+  })
+
+  it("kostnad som inte är bevisat lägsta visar verifierad kostnad, undre gräns och gap", () => {
+    const view = summaryView(toJointSummary({ ...load("summary_verified"), cost_is_proven_optimum: false, solver_outcome: "feasible_not_proven", lower_bound_ore: 8000, gap_relative: 0.1, gap_ore: 1000 } as BackendSummary))
+    assert.equal(view.verified, true)
+    if (!view.verified) return
+    assert.equal(view.statement.proven, false)
+    assert.equal(view.stats.find(item => item.label === "Verifierad kostnad")?.value, formatKr(9000))
+    assert.equal(view.stats.some(item => item.label === "Undre gräns"), true)
   })
 
   it("körning utan verifierad lösning visar bara skälet, aldrig en kostnad eller ett intervall", () => {

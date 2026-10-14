@@ -153,8 +153,10 @@ def _requested_period(directory: Path) -> dict[str, Any]:
 
 
 def _unverified_reason(solver: dict[str, Any], coverage: dict[str, Any], technical: str, verdict: dict[str, Any]) -> str:
+    if solver.get("outcome") == "infeasible":
+        return "Solvern har bevisat att det inte finns någon lösning: tentorna ryms inte med de valda salarna, kalendern och reglerna."
     if solver.get("outcome") not in ("optimal", "feasible_not_proven") or not coverage.get("technical_placement_complete"):
-        return "Körningen har ingen fullständig placering."
+        return "Körningen hittade ingen fullständig placering inom tidsgränsen, och det är inte bevisat att den saknas."
     if verdict.get("provenance") == "fail":
         return "Körningens filer stämmer inte med manifestet: de har ändrats efter körningen."
     return f"Den oberoende tekniska eftervalideringen godkänner inte körningen (status: {technical})."

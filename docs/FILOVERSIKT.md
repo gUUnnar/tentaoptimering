@@ -27,6 +27,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `config/booking_data_quality.toml` | Regler och kolumnnamn för datakvalitetslagret med `verified`, `source` per regel. Nya verifierade uppgifter eller andra kolumnnamn i ett nytt uttag läggs till här utan kodändring. Inga adress- eller salmönster är verifierade. |
 | `config/source_files.toml` | Namn, blad och rubrikrad för de tre lästa källexporterna. |
 | `config/scenarios/joint_real_subset.toml` | Reproducerbart avgränsat verkligt datafall för den nya gemensamma CP-SAT-kärnan. |
+| `config/scenarios/joint_reference.toml` | Referensscenario och förval: alla klara tentor i Uppsala i hela underlaget, katalogens standardvärden för allt utom fyra motiverade antaganden (flyttfönster en dag åt vardera hållet, två explorativa prisvärden). Utgångspunkt för egna experiment där bara en parameter ska skilja. Testat i `tests/test_joint_reference.py`. |
 | `config/scenarios/joint_underlay_period.toml` | Befintligt avgränsat scenariourval i Uppsala (`joint_underlay_period_2026`), 12 januari–31 mars 2026: regel `selection = "all_ready"` med datumintervall, 1 172 tentor. Ingen generell minsta terminslängd; framtida användarstyrt periodval är krav. |
 
 ## Dokumentation
@@ -83,6 +84,11 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `joint_toml.py` | Skriver ett gemensamt scenario tillbaka till TOML (citerade nycklar med punkt, listor av inline-tabeller). |
 | `joint_parameters.py` | Parameterkatalogen så som gränssnittet visar den: sex grupper i fast ordning, ordning inom grupp, avancerade parametrar och nyttolasten för `GET /api/joint-runs/parameters`. |
 | `parameter_validation.py` | `validate_overrides`: kontrollerar okända parametrar, `contract_only`, värdetyp, intervall, tillåtna val, bemanningstrappans stigande ordning och datum/tid mot katalogen; svarar med `{id, message}` på svenska. |
+| `joint_precheck.py`, `joint_precheck_api.py` | Förkontroll före körning: bygger problemet som en körning, räknar tentor utan tillåtet tillfälle och tentor som måste flyttas, och låter lösaren försöka bevisa omöjlighet i högst 20 s. Sparar ingenting. |
+| `joint_diagnosis.py` | Utredning av en körning utan lösning: vad körningen ändrade jämfört med sitt scenario, och prov (utgångsscenariot, sedan en ändring i taget, högst 30 s) som visar vilken ändring som bevisat gör problemet omöjligt. Sparas som `joint_diagnosis.json`. |
+| `joint_diagnosis_api.py` | Rutterna `GET/POST /api/joint-runs/{run_id}/diagnosis`. |
+| `joint_savings.py` | Besparingspotential: bygger Nuläge (scenariot utan flyttbara tentor), löser och sparar det under `baselines/`, och räknar potentialen (Nuläge minus körning) med intervall och kostnadsposter. |
+| `joint_savings_api.py` | Rutterna `GET/POST /api/joint-runs/{run_id}/savings`. |
 | `joint_summary.py` | Sammanfattning av en sparad körning ur dess artefakter: kostnad, undre gräns, gap, flyttade tentor, tre domar, scenario, starttid och antal ändrade parametrar. |
 | `joint_compare.py` | Jämförelse mellan två sparade körningar: parameterändringar, nyckeltal, osäkerhet (största gapet) och en klartextbedömning; jämför aldrig körningar med olika dataunderlag eller tentamängd. |
 | `joint_warm_start.py` | Tidigare sparade körningar som startpunkt: val av körning (`auto`, `none` eller körnings-id), kontroll av filernas integritet och ny oberoende teknisk eftervalidering, samt beslutsfilen `joint_warm_start.json` i den nya körningen. Placeringen kontrolleras alltid mot de nya reglerna av lösaren. |
@@ -129,6 +135,9 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `tests/test_joint_cancel_regressions.py` | Avbrott: ostartad lösare läses aldrig, ett avbrutet dagbeslut är `unknown` och aldrig ogenomförbart, och den monolitiska strategin stoppar i båda faserna och bevarar en verifierad lösning men aldrig en ofullständig. |
 | `tests/test_joint_warm_start.py` | Varmstart: accepteras och avvisas med redovisade skäl, kostnaden räknas om med de nya priserna, sparad verifieringsstatus godtas aldrig, körningsval via sparade artefakter och CLI. |
 | `tests/test_joint_progress.py` | Händelseström: trådsäker ordning, fil per rad, svalda fel, identiskt lösarresultat med och utan sink, händelser för faser/dagkontroller/lösningar/gränser/varmstart, samt samma artefakter plus `joint_events.jsonl`. |
+| `tests/test_joint_precheck.py` | Förkontrollen: går att köra, tentor utan tillåtet tillfälle, felaktigt värde nekas per parameter, inget sparas. |
+| `tests/test_joint_diagnosis.py` | Ändringar jämfört med scenariot, att ett prov tillämpar exakt en ändring, att bara bevisad omöjlighet räknas som orsak och att en avbruten utredning sparas som ofullständig. |
+| `tests/test_joint_savings.py` | Nuläge flyttar ingen tentamen och rör inte scenariot, återanvänds bara för samma scenario och underlag, potentialen och dess intervall, och att körning eller Nuläge utan verifierad lösning inte ger någon besparing. |
 | `tests/test_joint_api.py` | Gemensamma körningar via API-lagret: start, händelser med `after`, avbrott (fullständigt verifierat resultat eller inget), uppspelning, sammanfattning, id-validering och rutter över HTTP. |
 | `tests/test_joint_period.py` | Periodval på syntetiskt underlag: täckning, dag och vecka, period utanför eller delvis utanför underlaget, tomma och omvända perioder, scenario med namngivna tentor, oförändrat originalscenario och unika körnings-id inom samma sekund. |
 | `tests/test_joint_period_run.py` | Körning för en dag och en vecka mot det riktiga underlaget genom ordinarie API, motor och eftervalidering (kräver `data/processed`): antal tentor mot oberoende räkning, märkning som explorativ, ojämförbara perioder, avvisad period utanför underlaget. |
@@ -187,6 +196,14 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `frontend/src/lib/bookingView.test.ts` | Test av datum, tidslinje, intervall och mått (verklig närvaro okänd, aldrig noll). |
 | `frontend/src/lib/period.ts` | Planeringsperiod: genvägar (dag, vecka, månad, hela underlaget), kontroll av valet och texter om täckning och kontroll. |
 | `frontend/src/lib/usePeriod.ts` | Hämtar underlagets täckning och serverns kontroll av vald period. |
+| `frontend/src/components/joint/savings-card.tsx` | Besparingspotentialen överst i resultatet: belopp, jämförelse mot Nuläge, intervall och kostnadsposter; knapp som beräknar Nuläge. |
+| `frontend/src/lib/savingsApi.ts`, `savingsView.ts`, `useSavings.ts` | Anrop, rubriktexter (testade) och hook som följer Nuläge-jobbet. |
+| `frontend/src/components/joint/scenario-facts.tsx`, `params/params-section.tsx` | Raden med det som körs (en gång per uppgift) och parametersektionen med de vanligaste parametrarna överst och resten hopfällt. |
+| `frontend/src/lib/featuredParams.ts`, `scenarioFacts.ts`, `useUnderlayInfo.ts` | Vilka parametrar som visas överst, uppgifterna om det som körs (testade) och underlagets datum. |
+| `frontend/src/components/joint/diagnosis-card.tsx`, `constraint-list.tsx` | "Vad gick fel?" för en körning utan lösning och hopfälld lista för en med: begränsningarna som gällde (ditt val markerat), utredningsknapp, förlopp och slutsats. |
+| `frontend/src/components/joint/precheck-result.tsx`, `lib/precheckApi.ts`, `precheckView.ts`, `usePrecheck.ts` | Förkontrollen på startfliken: knapp, utfall och hook (utfallet försvinner när inställningarna ändras). |
+| `frontend/src/components/ui/info-tip.tsx`, `notice.tsx` | ⓘ-ikon som visar en förklaring vid klick, och varning/fel med hopfällda detaljer. |
+| `frontend/src/lib/diagnosisApi.ts`, `diagnosisView.ts`, `useDiagnosis.ts` | Anrop, namn och slutsats i klartext (testade) samt hook som följer utredningsjobbet, även efter omladdning. |
 | `frontend/src/components/joint/period-picker.tsx` | Periodval i gränssnittet: datum, genvägar, täckning, kontrollresultat och märkningen som explorativ planering. |
 | `frontend/src/lib/underlay.ts`, `underlayApi.ts`, `useUnderlay.ts` | Underlag: texter och format, anrop mot `/api/settings`, `/api/preparation`, `/api/source-check` och mappväljaren, samt hook som följer serverns jobb (även efter omladdning) och förhandskontrollerar sökvägen. |
 | `frontend/src/lib/testing/jointFixture.ts`, `paramFixture.ts` | Syntetiska händelser och parametrar som bara används av testerna. Appkod får aldrig importera dem. |
@@ -195,7 +212,8 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `frontend/src/components/joint/joint-page.tsx` | Sidan Optimering med flikarna Ställ in och kör, Körning och Resultat och jämförelse. |
 | `frontend/src/components/joint/scenario-picker.tsx`, `start-panel.tsx`, `run-options.tsx`, `save-scenario.tsx` | Val av scenario med urval i klartext, startpanel med Kör, start från förra körningen med datorresurser, och sparande av ändringarna som nytt scenario. |
 | `frontend/src/components/joint/params/` | Parameterredigeringen: lista per grupp, rad med enhet, hjälptext och återställning, inmatning per typ, listor, bemanningstrappa och fältet med antalet ändringar. |
-| `frontend/src/components/joint/live-view.tsx`, `run-panels.tsx`, `cost-panel.tsx`, `day-grid.tsx`, `resource-box.tsx` | Livevy: status och stopp, kostnadsgraf, dagrutnät med verkligt "pågår" och resursruta. |
+| `frontend/src/components/joint/live-run.tsx`, `run-panels.tsx`, `cost-panel.tsx`, `day-grid.tsx`, `resource-box.tsx` | Pågående körning överst i Resultat: status och stopp, kostnadsgraf, dagrutnät med verkligt "pågår" och resursruta; besked när en körning inte gav något resultat. |
+| `frontend/src/lib/runLabel.ts` | Körningens namn för användaren: scenario och klockslag. |
 | `frontend/src/components/joint/run-timeline.tsx`, `timeline-detail.tsx`, `timeline-look.tsx` | Tidslinje över det som körs: ett block per varv med segment efter körordning, bredd efter tid, pulserande pågående segment och detaljer per segment. Används i livevy, resultat och förlopp i efterhand. |
 | `frontend/src/components/joint/result-view.tsx`, `summary-card.tsx`, `compare-section.tsx`, `verdict-cards.tsx`, `warm-start-card.tsx`, `how-to-read.tsx`, `replay.tsx`, `status-chip.tsx` | Resultatvy: sammanfattning, jämförelse mot föregående körning, de tre domarna isär, beslut om start från förra körningen, förklaring av hur resultatet läses och uppspelning av en avslutad körning. |
 | `frontend/src/components/joint/underlay-notice.tsx` | Ruta när underlaget saknas, med knapp till sidan Underlag. |

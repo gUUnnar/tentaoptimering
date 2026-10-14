@@ -1,9 +1,12 @@
-import { CircleX } from "lucide-react"
+import { CircleCheck, CircleHelp, CircleX } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { COST_NAME, COST_SCOPE, describeVerdict } from "@/lib/jointFormat"
-import { changedParameters, changedParametersHeading, summaryView, type StatView } from "@/lib/jointSummaryView"
+import { summaryView, type StatView } from "@/lib/jointSummaryView"
 import type { JointSummary } from "@/lib/jointTypes"
 import { VerdictChip } from "./status-chip"
+import { InfoTip } from "@/components/ui/info-tip"
+import { Notice } from "@/components/ui/notice"
+import { HowToRead } from "./how-to-read"
 
 /**
  * Sammanfattningen. Med verifierad lösning: kostnad som intervall (utan bevisat optimum) och de viktigaste måtten.
@@ -11,39 +14,39 @@ import { VerdictChip } from "./status-chip"
  */
 export function SummaryCard({ summary, labels }: { summary: JointSummary; labels: Record<string, string> }) {
   const view = summaryView(summary)
-  const changed = changedParameters(summary, labels)
+  const Extras = () => <PlanningNote summary={summary}/>
   return <section className="space-y-3" aria-label="Sammanfattning av körningen">
     <Card>
-      <CardHeader><CardTitle>Sammanfattning</CardTitle></CardHeader>
+      <CardHeader><CardTitle className="flex items-center gap-1.5">Sammanfattning<InfoTip label="Så läser du resultatet"><HowToRead/></InfoTip></CardTitle></CardHeader>
       <CardContent className="space-y-3">
         {view.verified ? <>
-          <div className={view.statement.proven ? "rounded-md bg-emerald-50 p-3 text-emerald-900" : "rounded-md bg-amber-50 p-3 text-amber-900"}>
-            <div className="text-xs">{view.statement.proven ? `${COST_NAME} ${COST_SCOPE} (verifierad; lägsta möjliga i modellen är bevisad)` : `${COST_NAME} ${COST_SCOPE}: intervall från undre gräns till verifierad kostnad`}</div>
-            <div className="mt-0.5 text-2xl font-semibold tabular-nums">{view.statement.headline}</div>
-            <div className="mt-1 text-xs">{view.statement.note}</div>
-            <div className="mt-1 text-xs">Det är en modellkostnad. Faktisk kostnad, teoretisk årlig potential och verifierad realiserbar besparing redovisas separat och framgår inte av denna siffra.</div>
+          <div className="rounded-md border p-3">
+            <div className="flex items-center gap-2 text-sm font-bold">
+              {view.statement.proven ? <CircleCheck size={18} className="text-emerald-700" aria-hidden="true"/> : <CircleHelp size={18} className="text-amber-700" aria-hidden="true"/>}
+              {view.statement.proven ? "Lägsta kostnad i modellen, bevisad" : "Lägsta funna kostnad, inte bevisat lägsta"}
+              <InfoTip label="Om kostnaden">
+                <span className="block">{COST_NAME} {COST_SCOPE}.</span>
+                <span className="block">{view.statement.note}</span>
+                <span className="block">Det är en modellkostnad. Faktisk kostnad och verifierad realiserbar besparing redovisas separat.</span>
+              </InfoTip>
+            </div>
+            <div className="mt-1 text-3xl font-bold tabular-nums">{view.statement.headline}</div>
           </div>
           <Stats stats={view.stats}/>
           <p className="text-xs text-slate-900">Utfall: <strong>{view.outcomeText}</strong></p>
         </> : <>
-          <div role="alert" className="rounded-md border-2 border-red-700 bg-red-50 p-3 text-red-950">
+          <div role="alert" className="rounded-md border border-red-700 bg-red-50 p-3 text-red-950">
             <p className="flex items-center gap-2 text-base font-semibold"><CircleX size={20} className="shrink-0" aria-hidden="true"/>Körningen har ingen verifierad lösning{summary.cancelled ? " (den stoppades)" : ""}</p>
             <p className="mt-1 text-sm">{view.reason}</p>
-            <p className="mt-1 text-xs">Därför redovisas ingen kostnad, inget kostnadsintervall och inga mått för en lösning. En placering som inte är kontrollerad räknas inte som lösning.</p>
-            <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs" aria-label="Domar">
-              <div className="flex items-center gap-1.5"><dt>Teknisk eftervalidering:</dt><dd><VerdictChip status={describeVerdict(summary.technical_validation).status}/></dd></div>
-              <div className="flex items-center gap-1.5"><dt>Verksamhetsmässig verifiering:</dt><dd><VerdictChip status={describeVerdict(summary.business_verification).status}/></dd></div>
-            </dl>
+            <p className="mt-1 text-xs">Därför redovisas ingen kostnad, inget kostnadsintervall och inga mått för en lösning.</p>
           </div>
           <Stats stats={view.stats}/>
         </>}
-        <PlanningNote summary={summary}/>
-        <div className="text-xs text-slate-900">
-          <p className="font-semibold">{changedParametersHeading(summary)}</p>
-          {changed.length > 0 && <ul className="mt-1 flex flex-wrap gap-1.5" aria-label="Parametrar som avviker från standardvärdet">
-            {changed.map(item => <li key={item.id} title={item.id} className="rounded border bg-slate-50 px-1.5 py-0.5">{item.label ?? <span className="font-mono text-[11px]">{item.id}</span>}</li>)}
-          </ul>}
-        </div>
+        {view.verified ? <Extras/> : <details className="text-xs text-slate-900"><summary className="cursor-pointer font-medium">Planering och domar</summary><div className="mt-2 space-y-3"><Extras/>
+          <dl className="flex flex-wrap gap-x-5 gap-y-1" aria-label="Domar">
+            <div className="flex items-center gap-1.5"><dt>Teknisk eftervalidering:</dt><dd><VerdictChip status={describeVerdict(summary.technical_validation).status}/></dd></div>
+            <div className="flex items-center gap-1.5"><dt>Verksamhetsmässig verifiering:</dt><dd><VerdictChip status={describeVerdict(summary.business_verification).status}/></dd></div>
+          </dl></div></details>}
       </CardContent>
     </Card>
   </section>
@@ -61,11 +64,15 @@ function PlanningNote({ summary }: { summary: JointSummary }) {
   const { date_from: from, date_to: to } = summary.period
   const basis = summary.planning_basis
   if (!from && !to && !basis) return null
-  return <div className="rounded-md bg-slate-100 p-2.5 text-xs text-slate-900">
-    {(from || to) && <p><strong>Planeringsperiod:</strong> {from ?? "början"} – {to ?? "slutet"}</p>}
-    {summary.period.partial && <p className="mt-0.5 rounded bg-amber-100 p-1.5 font-medium text-amber-950">Delvis planerad period: du valde {summary.period.requested_from} – {summary.period.requested_to}, men underlaget täcker bara {from} – {to} (godkänd kortare period). Resultatet gäller inte hela den valda perioden.</p>}
-    {basis && <p className="mt-0.5"><strong>{basis.label}.</strong> {basis.reasons.length > 0 ? "Skäl:" : basis.note}</p>}
-    {basis && basis.reasons.length > 0 && <ul className="ml-4 list-disc">{basis.reasons.map(reason => <li key={reason.code}>{reason.text}</li>)}</ul>}
-    {basis && <p className="mt-0.5"><strong>{basis.cost_name}.</strong> {basis.cost_note}</p>}
+  return <div className="space-y-2">
+    <p className="flex items-center gap-1.5 rounded-md bg-slate-100 p-2.5 text-xs text-slate-900">
+      {(from || to) && <span><strong>Planeringsperiod:</strong> {from ?? "början"} – {to ?? "slutet"}</span>}
+      {basis && <><span aria-hidden="true">·</span><strong>{basis.label}</strong>
+        <InfoTip label="Om planeringsunderlaget">
+          {basis.reasons.length > 0 ? <><span className="block font-semibold">Skäl:</span>{basis.reasons.map(reason => <span key={reason.code} className="block">• {reason.text}</span>)}</> : <span className="block">{basis.note}</span>}
+          <span className="block"><strong>{basis.cost_name}.</strong> {basis.cost_note}</span>
+        </InfoTip></>}
+    </p>
+    {summary.period.partial && <Notice tone="warning" title="Delvis planerad period"><p>Du valde {summary.period.requested_from} – {summary.period.requested_to}, men underlaget täcker bara {from} – {to} (godkänd kortare period). Resultatet gäller inte hela den valda perioden.</p></Notice>}
   </div>
 }

@@ -34,17 +34,18 @@ export function summaryView(summary: JointSummary): SummaryView {
   const gap = summary.gap ?? gapFraction(summary.cost_ore, summary.bound_ore)
   const basis = firstSolutionBasisText(summary.first_solution_basis)
   const firstHint = [basis, summary.first_solution_source ? `från ${sourceLabel(summary.first_solution_source)}` : ""].filter(Boolean).join(", ")
-  return {
-    verified: true, reason: null, outcomeText: outcomeLabel(summary.outcome),
-    statement: costStatement(summary.cost_ore, summary.bound_ore, summary.proven_optimum),
-    stats: [
+  const statement = costStatement(summary.cost_ore, summary.bound_ore, summary.proven_optimum)
+  const costStats: StatView[] = [
       { label: "Verifierad kostnad", hint: `Lägsta kontrollerade ${COST_NAME.toLowerCase()} ${COST_SCOPE}`, value: formatKr(summary.cost_ore) },
       { label: "Undre gräns", hint: "Lägsta kostnad som bevisats möjlig", value: formatKr(summary.bound_ore) },
       { label: "Gap", hint: summary.gap_ore !== null ? `${formatKr(summary.gap_ore)} över undre gräns` : "Avstånd mellan de två", value: formatGap(gap) },
+  ]
+  const otherStats: StatView[] = [
       { label: "Flyttade tentor", hint: summary.exams_total !== null ? `av ${formatCount(summary.exams_total)}` : undefined, value: formatCount(summary.changed_exams) },
       { label: "Vaktpool", hint: "Antal vakter", value: formatCount(summary.staff_pool_size) },
       { label: "Tid till första lösning", hint: firstHint || undefined, value: formatDuration(summary.first_solution_seconds) },
       { label: "Total tid", value: formatDuration(summary.wall_seconds) },
-    ],
-  }
+  ]
+  // Är kostnaden bevisat lägsta är verifierad kostnad, undre gräns och gap samma sak som rubriken och visas inte en gång till.
+  return { verified: true, reason: null, outcomeText: outcomeLabel(summary.outcome), statement, stats: statement.proven ? otherStats : [...costStats, ...otherStats] }
 }

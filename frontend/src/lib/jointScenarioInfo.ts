@@ -52,3 +52,12 @@ export function scenarioDetails(scenario: JointScenario | undefined): ScenarioDe
   const note = NO_LATER.exec(description)?.[0] ?? null
   return { period, coverageNote: note, description: note ? description.replace(note, "").replace(/\s{2,}/g, " ").trim() : description.trim() }
 }
+
+/** Referensscenariot: katalogens standardvärden utom några motiverade antaganden. Det är förvalt och står först i listan. */
+export const REFERENCE_SCENARIO_ID = "joint_reference"
+
+/** Scenariot som är förvalt: referensen om den finns, annars det första. */
+export const defaultScenarioId = (scenarios: { id: string }[]): string => scenarios.find(item => item.id === REFERENCE_SCENARIO_ID)?.id ?? scenarios[0]?.id ?? ""
+
+/** De inbyggda scenarierna med referensen först; övriga behåller sin ordning. */
+export const referenceFirst = <T extends { id: string }>(scenarios: T[]): T[] => [...scenarios].sort((a, b) => Number(b.id === REFERENCE_SCENARIO_ID) - Number(a.id === REFERENCE_SCENARIO_ID))

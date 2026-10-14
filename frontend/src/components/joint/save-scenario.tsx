@@ -43,7 +43,7 @@ export function SaveScenario({ baseId, baseName, parameters, changeCount, disabl
       <p id={`${id}-why`} className="mt-1 text-xs text-slate-800">{disabledReason ?? `Sparar ${changeCount} ${changeCount === 1 ? "ändring" : "ändringar"} som ett eget scenario. Originalet "${baseName}" ändras inte.`}</p>
     </div>
   }
-  return <form onSubmit={submit} className="space-y-3 rounded-md border-2 border-sky-700 bg-sky-50 p-3" aria-label="Spara som nytt scenario">
+  return <form onSubmit={submit} className="space-y-3 rounded-md border bg-white p-3" aria-label="Spara som nytt scenario">
     <p className="text-sm font-semibold">Spara som nytt scenario</p>
     <p className="text-xs text-slate-900">Det nya scenariot byggs på "{baseName}" med dina {changeCount} {changeCount === 1 ? "ändring" : "ändringar"}. <strong>Originalscenariot ändras aldrig.</strong></p>
     <div>

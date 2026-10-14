@@ -30,7 +30,7 @@ export default function App() {
       <div className="mt-auto rounded-md bg-slate-50 p-3 text-xs text-slate-500">Servern lyssnar endast på <code>127.0.0.1</code>.</div>
     </aside>
     <main className="min-w-0 flex-1 overflow-auto p-6">
-      <h1 className="mb-5 text-xl font-semibold">{TITLES[page]}</h1>
+      <h1 className="mb-5 text-2xl font-bold">{TITLES[page]}</h1>
       {/* Båda sidorna hålls monterade när man byter sida, så att ändringar, en pågående körning och en pågående förberedelse inte tappas. */}
       <div hidden={page !== "joint"}><JointPage onOpenUnderlay={() => setPage("underlay")} reloadKey={underlayVersion}/></div>
       <div hidden={page !== "rooms"}><RoomsPage reloadKey={underlayVersion}/></div>

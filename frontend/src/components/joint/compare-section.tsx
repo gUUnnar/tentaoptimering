@@ -1,23 +1,27 @@
 import { useEffect, useId, useMemo, useState } from "react"
-import { ArrowDown, ArrowRight, ArrowUp, Ban, CircleCheck, CircleHelp, FlaskConical, Info, Minus, TriangleAlert } from "lucide-react"
+import { ArrowDown, ArrowRight, ArrowUp, Ban, CircleCheck, CircleHelp, Info, Minus, TriangleAlert } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { InfoTip } from "@/components/ui/info-tip"
+import { Notice } from "@/components/ui/notice"
 import { jointApi } from "@/lib/jointApi"
 import { NO_PREVIOUS_RUN_TEXT, assumptionView, changeRows, interpretationView, metricRows, type InterpretationView, type MetricRow } from "@/lib/jointCompare"
 import { formatKr } from "@/lib/jointFormat"
-import type { CompareResult, CompareRunRef, SavedRun } from "@/lib/jointTypes"
+import type { CompareResult, CompareRunRef, JointScenario, SavedRun } from "@/lib/jointTypes"
+import { runLabel } from "@/lib/runLabel"
 
 type Load = { status: "loading" | "ready" | "error"; result: CompareResult | null; error: string }
 
+const MISSING = "–"
 const stamp = (ref: CompareRunRef) => `${ref.run_id}${ref.created_at ? ` (${ref.created_at.slice(0, 16).replace("T", " ")})` : ""}`
 
 const TONE: Record<InterpretationView["tone"], { box: string; icon: JSX.Element; label: string }> = {
-  interpretable: { box: "border-emerald-700 bg-emerald-50 text-emerald-950", icon: <CircleCheck size={20} aria-hidden="true"/>, label: "Tolkningsbar" },
-  not_interpretable: { box: "border-amber-700 bg-amber-50 text-amber-950", icon: <TriangleAlert size={20} aria-hidden="true"/>, label: "Går inte att tolka" },
-  unknown: { box: "border-slate-500 bg-slate-100 text-slate-950", icon: <CircleHelp size={20} aria-hidden="true"/>, label: "Kan inte bedömas" },
+  interpretable: { box: "border-slate-300 bg-white text-slate-900", icon: <CircleCheck size={18} className="text-emerald-700" aria-hidden="true"/>, label: "Tolkningsbar" },
+  not_interpretable: { box: "border-slate-300 bg-slate-50 text-slate-900", icon: <Info size={18} aria-hidden="true"/>, label: "Går inte att tolka" },
+  unknown: { box: "border-slate-300 bg-slate-50 text-slate-900", icon: <CircleHelp size={18} aria-hidden="true"/>, label: "Kan inte bedömas" },
 }
 
 /** Jämförelse av en körning mot föregående körning av samma scenario, eller mot en vald körning. */
-export function CompareSection({ runId, runs }: { runId: string; runs: SavedRun[] }) {
+export function CompareSection({ runId, runs, scenarios }: { runId: string; runs: SavedRun[]; scenarios: JointScenario[] }) {
   const id = useId()
   const [base, setBase] = useState("previous")
   const [load, setLoad] = useState<Load>({ status: "loading", result: null, error: "" })
@@ -39,7 +43,7 @@ export function CompareSection({ runId, runs }: { runId: string; runs: SavedRun[
         <label className="label" htmlFor={`${id}-base`}>Jämför med</label>
         <select id={`${id}-base`} className="field max-w-xl" value={base} onChange={event => setBase(event.target.value)}>
           <option value="previous">Föregående körning av samma scenario</option>
-          {others.map(run => <option key={run.run_id} value={run.run_id}>{run.run_id} · {run.scenario_id}</option>)}
+          {others.map(run => <option key={run.run_id} value={run.run_id} title={run.run_id}>{runLabel(run, scenarios)}</option>)}
         </select>
       </div>
       <div aria-live="polite">
@@ -57,58 +61,57 @@ export function Comparison({ result }: { result: CompareResult }) {
   const view = interpretationView(result)
   const tone = TONE[view.tone]
   const changes = useMemo(() => changeRows(result.parameter_changes), [result.parameter_changes])
-  const rows = useMemo(() => metricRows(result), [result])
+  const allRows = useMemo(() => metricRows(result), [result])
+  const rows = allRows.filter(row => !(row.old === MISSING && row.new === MISSING))
   const assumptions = useMemo(() => assumptionView(result), [result])
+  const detail = !result.comparable && result.reason && result.reason !== view.text ? result.reason : null
   return <div className="space-y-4">
-    <p className="text-xs text-slate-900">Körning <span className="font-mono">{stamp(result.run)}</span> jämförd med <span className="font-mono">{result.base ? stamp(result.base) : ""}</span>.</p>
-
-    <div className={`rounded-md border-2 p-3 ${tone.box}`} role="status">
-      <div className="flex items-start gap-2">
-        <span className="mt-0.5 shrink-0">{tone.icon}</span>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide">{tone.label}</p>
-          <p className="text-base font-semibold">{view.text || view.title}</p>
-          <p className="mt-1 text-xs">{view.title}.{!result.comparable && result.reason && result.reason !== view.text ? ` ${result.reason}` : ""}</p>
-        </div>
-      </div>
+    <div className={`flex items-start gap-2 rounded-md border p-2.5 text-sm ${tone.box}`} role="status">
+      <span className="mt-0.5 shrink-0">{tone.icon}</span>
+      <p className="min-w-0 flex-1 font-medium">{view.text || view.title}</p>
+      <InfoTip label="Om jämförelsen" align="right">
+        <span className="block">{view.title}.{detail ? ` ${detail}` : ""}</span>
+        <span className="block">Körning <span className="font-mono">{stamp(result.run)}</span> jämförd med <span className="font-mono">{result.base ? stamp(result.base) : ""}</span>.</span>
+      </InfoTip>
     </div>
 
-    {assumptions && <div className="rounded-md border-2 border-amber-700 bg-amber-50 p-3 text-amber-950" role="note" aria-label={assumptions.title}>
-      <p className="flex items-center gap-2 text-sm font-semibold"><FlaskConical size={18} className="shrink-0" aria-hidden="true"/>{assumptions.title}</p>
-      {assumptions.groups.map(group => <div key={group.label} className="mt-1.5 text-xs"><p className="font-semibold">{group.label}:</p>
+    {assumptions && <Notice tone="warning" title={assumptions.title}>
+      {assumptions.groups.map(group => <div key={group.label}><p className="font-semibold">{group.label}:</p>
         <ul className="list-disc pl-5">{group.items.map(item => <li key={item}>{item}</li>)}</ul></div>)}
-      <p className="mt-1.5 text-xs">{assumptions.text}</p>
-    </div>}
+      <p>{assumptions.text}</p>
+    </Notice>}
 
     <div>
-      <h4 className="text-sm font-semibold">Vad ändrades mellan körningarna</h4>
+      <h4 className="text-base font-bold">Vad ändrades</h4>
       {changes.length === 0
-        ? <p className="mt-1 text-sm text-slate-900">Inga parametrar ändrades. Skillnader i måtten kommer då från sökningen, inte från reglerna.</p>
-        : <ul className="mt-1 space-y-1 text-sm" aria-label="Ändrade parametrar">{changes.map(row => <li key={row.id} className="flex flex-wrap items-center gap-x-2 border-t border-slate-200 pt-1">
-          <strong>{row.label}:</strong><span>{row.oldText}</span><ArrowRight size={13} aria-hidden="true"/><span className="sr-only">till</span><strong>{row.newText}</strong></li>)}</ul>}
+        ? <p className="mt-1 text-sm text-slate-900">Inga parametrar. Skillnader i måtten kommer från sökningen, inte från reglerna.</p>
+        : <ul className="mt-1 divide-y rounded-md border text-sm" aria-label="Ändrade parametrar">{changes.map(row => <li key={row.id} className="flex flex-wrap items-center gap-x-2 px-2.5 py-1.5">
+          <span className="font-medium">{row.label}</span><span className="text-slate-800">{row.oldText}</span><ArrowRight size={13} aria-hidden="true"/><span className="sr-only">till</span><strong>{row.newText}</strong></li>)}</ul>}
     </div>
 
-    <div className="overflow-x-auto">
+    {rows.length > 0 && <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <caption className="sr-only">Mått för de två körningarna och skillnaden mellan dem</caption>
-        <thead><tr className="border-b text-left text-xs text-slate-900"><th scope="col" className="p-2">Mått</th><th scope="col" className="p-2 text-right">Tidigare körning</th><th scope="col" className="p-2 text-right">Denna körning</th><th scope="col" className="p-2 text-right">Skillnad</th></tr></thead>
+        <thead><tr className="border-b text-left text-xs text-slate-900"><th scope="col" className="p-2">Mått</th><th scope="col" className="p-2 text-right">Tidigare</th><th scope="col" className="p-2 text-right">Denna</th><th scope="col" className="p-2 text-right">Skillnad</th></tr></thead>
         <tbody>
-          {rows.map(row => <tr key={row.key} className={row.physical ? "border-b bg-sky-50" : "border-b"}>
-            <th scope="row" className={`p-2 text-left ${row.physical ? "font-bold" : "font-medium"}`}>{row.label}
-              {row.physical && <span className="ml-2 rounded border border-sky-700 px-1 text-[11px] font-semibold text-sky-900">Fysiskt mått, går att jämföra</span>}
-              {row.hint && <span className="block text-[11px] font-normal text-slate-800">{row.hint}</span>}</th>
+          {rows.map(row => <tr key={row.key} className="border-b">
+            <th scope="row" className="p-2 text-left font-medium">
+              <span className="inline-flex items-center gap-1.5">{row.label}
+                {row.physical && <span className="rounded border px-1 text-[11px] font-semibold">Fysiskt mått</span>}
+                {row.hint && <InfoTip label={`Om måttet ${row.label}`}>{row.hint}</InfoTip>}</span></th>
             <td className="p-2 text-right tabular-nums">{row.old}</td>
             <td className="p-2 text-right tabular-nums">{row.new}</td>
-            <td className={`p-2 text-right tabular-nums ${row.physical ? "font-bold" : "font-semibold"}`}><DeltaCell row={row}/></td>
+            <td className="p-2 text-right font-semibold tabular-nums"><DeltaCell row={row}/></td>
           </tr>)}
           {result.uncertainty_ore !== null && <tr className="border-b bg-slate-50">
-            <th scope="row" className="p-2 text-left font-medium">Osäkerhet<span className="block text-[11px] font-normal text-slate-800">Kostnadsskillnader som är mindre än så här kan inte tolkas som verkliga förbättringar.</span></th>
+            <th scope="row" className="p-2 text-left font-medium"><span className="inline-flex items-center gap-1.5">Osäkerhet<InfoTip label="Om osäkerheten">Kostnadsskillnader som är mindre än så här kan inte tolkas som verkliga förbättringar.</InfoTip></span></th>
             <td className="p-2 text-right text-slate-700">–</td><td className="p-2 text-right tabular-nums">{formatKr(result.uncertainty_ore)}</td><td className="p-2 text-right text-slate-700">–</td>
           </tr>}
         </tbody>
       </table>
-      {rows.length === 0 && <p className="p-2 text-sm text-slate-900">Backend skickade inga mått för jämförelsen.</p>}
-    </div>
+      {allRows.length > rows.length && <p className="p-2 text-xs text-slate-800">{allRows.length - rows.length} mått utan värde i båda körningarna visas inte.</p>}
+    </div>}
+    {allRows.length === 0 && <p className="p-2 text-sm text-slate-900">Backend skickade inga mått för jämförelsen.</p>}
   </div>
 }
 

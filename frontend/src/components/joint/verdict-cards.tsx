@@ -1,8 +1,8 @@
-import { TriangleAlert } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { describeVerdict } from "@/lib/jointFormat"
 import type { JointSummary } from "@/lib/jointTypes"
 import { VerdictChip } from "./status-chip"
+import { InfoTip } from "@/components/ui/info-tip"
 
 /** De tre domarna hålls isär. Teknisk korrekthet är aldrig verksamhetsmässig genomförbarhet. */
 export function VerdictCards({ summary }: { summary: JointSummary }) {
@@ -10,29 +10,24 @@ export function VerdictCards({ summary }: { summary: JointSummary }) {
   const business = describeVerdict(summary.business_verification)
   const provenance = describeVerdict(summary.provenance)
   return <section className="space-y-4" aria-label="De tre bedömningarna">
-    <div className="flex items-start gap-2 rounded-md border-2 border-amber-700 bg-amber-50 p-3 text-sm text-amber-950" role="note">
-      <TriangleAlert size={18} className="mt-0.5 shrink-0" aria-hidden="true"/>
-      <p><strong>Teknisk korrekthet är inte verksamhetsmässig genomförbarhet.</strong> Den tekniska eftervalideringen visar att placeringen följer de regler modellen kan uttrycka. Den visar inte att schemat går att genomföra i verksamheten. Data eller modellstöd som saknas räknas aldrig som godkänt.</p>
-    </div>
+    <h3 className="flex items-center gap-1.5 text-base font-bold">Bedömningar
+      <InfoTip label="Teknisk korrekthet och genomförbarhet">Teknisk korrekthet är inte verksamhetsmässig genomförbarhet. Den tekniska eftervalideringen visar att placeringen följer de regler modellen kan uttrycka, inte att schemat går att genomföra i verksamheten. Data eller modellstöd som saknas räknas aldrig som godkänt.</InfoTip></h3>
     <div className="grid gap-4 lg:grid-cols-3">
-      <Card><CardHeader><CardTitle>Teknisk eftervalidering</CardTitle></CardHeader><CardContent className="space-y-2 text-xs">
+      <Card><CardHeader><CardTitle className="flex items-center gap-1.5">Teknisk eftervalidering<InfoTip label="Vad är det här?">Fristående kontroll av att placeringen är fullständig och följer de hårda villkoren.</InfoTip></CardTitle></CardHeader><CardContent className="space-y-2 text-xs">
         <VerdictChip status={technical.status}/>
-        <p className="text-slate-800">Fristående kontroll av att placeringen är fullständig och följer de hårda villkoren.</p>
         {technical.reason && <p>{technical.reason}</p>}
         <Details items={technical.details}/>
       </CardContent></Card>
-      <Card><CardHeader><CardTitle>Verksamhetsmässig verifiering</CardTitle></CardHeader><CardContent className="space-y-2 text-xs">
+      <Card><CardHeader><CardTitle className="flex items-center gap-1.5">Verksamhetsmässig verifiering<InfoTip label="Vad är det här?">Om schemat går att genomföra med faktiska avtal, lagar och arbetstidsvillkor. Normalt ej bedömd i nuläget.</InfoTip></CardTitle></CardHeader><CardContent className="space-y-2 text-xs">
         <VerdictChip status={business.status}/>
-        <p className="text-slate-800">Om schemat går att genomföra med faktiska avtal, lagar och arbetstidsvillkor. Normalt <code>not_evaluated</code> (ej bedömd) i nuläget.</p>
         {business.reason && <p>{business.reason}</p>}
         <Details items={business.details}/>
       </CardContent></Card>
-      <Card><CardHeader><CardTitle>Ursprung</CardTitle></CardHeader><CardContent className="space-y-2 text-xs">
+      <Card><CardHeader><CardTitle className="flex items-center gap-1.5">Ursprung<InfoTip label="Vad är det här?">Visar vilka data och antaganden resultatet vilar på.</InfoTip></CardTitle></CardHeader><CardContent className="space-y-2 text-xs">
         {provenance.status && <p>Status: {provenance.status === "not_evaluated" ? "ej bedömd (not_evaluated)" : provenance.status}</p>}
         {provenance.reason && <p>{provenance.reason}</p>}
         <Details items={provenance.details}/>
         {!provenance.status && !provenance.reason && !provenance.details.length && <p className="text-slate-800">Ursprunget är inte redovisat.</p>}
-        <p className="text-slate-800">Visar vilka data och antaganden resultatet vilar på.</p>
       </CardContent></Card>
     </div>
   </section>
