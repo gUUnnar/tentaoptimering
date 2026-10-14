@@ -112,7 +112,10 @@ Syftet med PoC:n är att kunna **undersöka hur ändrade planeringsförutsättni
 | **Förutsättning** | Ett justerbart värde i en simulering, definierat av parameterkatalogen |
 | **Körning** | Genomförd beräkning av en simulering med frusen specifikation |
 | **Resultat** | Täckning, resursbehov, validering, begränsningar och kostnadsprofil för en körning |
-| **Nuläge** | Referenskörning med samma omfattning, data och beräkningsförutsättningar men utan planeringsflexibilitet |
+| **A – Faktisk bokning** | Den historiska referensen: bokningarna återgivna som de är, utan optimering (se [ABC_SCENARIOMODELL.md](ABC_SCENARIOMODELL.md)) |
+| **B – Grundoptimering** | Optimering utifrån verksamhetens önskemål (önskat datum och reservdatum) med dokumenterade grundvärden |
+| **C – Egen körning** | Optimering med parametrar som användaren valt; obegränsat antal, sparade med alla värden |
+| **Referensoptimering med låsta datum** | En modellkörning (en sorts C) där ingen tentamen flyttas från sitt bokade tillfälle medan sal och bemanning optimeras. Kallades tidigare *Nuläge* men är **inte** A |
 
 Termen *scenario* används inte som produktbegrepp.
 
@@ -140,7 +143,9 @@ Användaren ska utan kunskap om konfigurationsfiler, JSON, modellversioner, fils
 - **P-4 Grund.** Varje värde är *Verifierad*, *Hämtat ur data*, *Antagande* (med motivering) eller *Experiment*.
 - **P-5 Reproducerbarhet.** En körning fryser alla förutsättningsvärden, katalogversion, dataunderlagets hash och motorversion.
 
-### 11.4 Krav på Nuläge och jämförelse
+### 11.4 Krav på referenser och jämförelse
+
+> *Nuläge* i kraven nedan avser den **referensoptimering med låsta datum** som beskrivs ovan. Den faktiska historiska bokningen (A) optimeras aldrig och är en separat referens, se [ABC_SCENARIOMODELL.md](ABC_SCENARIOMODELL.md).
 
 - **N-1** Nuläge beräknas med samma kod, data, omfattning, efterfrågemått, lokalbestånd, bemanningsregler och kostnadsantaganden som simuleringen. Endast uttryckligt definierade flexibilitetsparametrar och efterfrågevariation får skilja.
 - **N-2** Faktisk historik (till exempel bokade platser och lokaler utanför beståndet) redovisas som kontext, inte som baslinje.

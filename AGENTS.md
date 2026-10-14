@@ -12,6 +12,10 @@ Bygg en PoC som uppskattar den lägsta långsiktiga årskostnaden för Uppsala u
 
 7. **Korta planeringsperioder för snabb återkoppling.** Användaren ska kunna välja en dag, en vecka eller valfritt kort intervall inom planeringsbar datatäckning och genomföra en mycket snabb men fullständigt eftervaliderad testkörning. Syften: kortvarselbokning och snabb kontroll av andra UX-/API-funktioner. Ingen manuell scenariofil ska krävas, och fasta bokningar som blockerar lokaler får inte ignoreras.
 
+## Begreppsmodell: A, B och C
+
+Se `docs/ABC_SCENARIOMODELL.md`. **A** är den faktiska bokningen och optimeras aldrig. **B** är grundoptimeringen utifrån verksamhetens önskemål (`config/scenarios/joint_base.toml`). **C** är användarstyrda körningar med valfria parametervärden. B och C använder samma motor; det får inte skapas separata algoritmer eller hårdkodade specialscenarier. Varje körning sparas med namn, typ, alla parametervärden, underlag och modellversion (`joint_run.json`) och skrivs aldrig över. Termen *Nuläge* betyder inte A; en optimering med låsta datum är en parameterinställning i C. Kostnad redovisas som historisk, modellberäknad eller teoretisk potential och blandas aldrig.
+
 ## Läsordning
 1. `README.md`
 2. `docs/KONCEPTUELL_KRAVSPECIFIKATION.md`

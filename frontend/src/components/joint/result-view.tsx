@@ -8,7 +8,7 @@ import type { JointState } from "@/lib/jointState"
 import { runLabel } from "@/lib/runLabel"
 import { InfoTip } from "@/components/ui/info-tip"
 import { foldEvents } from "@/lib/jointState"
-import { CompareSection } from "./compare-section"
+import { Button } from "@/components/ui/button"
 import { SavingsCard } from "./savings-card"
 import { ConstraintsFold, DiagnosisCard } from "./diagnosis-card"
 import { LiveRun } from "./live-run"
@@ -22,7 +22,7 @@ type Loaded = { summary: JointSummary | null; warm: WarmStartRecord | null; even
 
 type Live = { job: JointJob; state: JointState; nowT: number; onCancel: () => void; onOpenUnderlay: () => void }
 
-export function ResultView({ runId: chosen, runs, scenarios, onSelectRun, live }: { runId: string | null; runs: SavedRun[]; scenarios: JointScenario[]; onSelectRun: (runId: string) => void; live: Live }) {
+export function ResultView({ runId: chosen, runs, scenarios, onSelectRun, onCompare, live }: { runId: string | null; runs: SavedRun[]; scenarios: JointScenario[]; onSelectRun: (runId: string) => void; onCompare: (runId: string) => void; live: Live }) {
   // Utan val visas den senaste körningen, men inte medan en körning pågår (då är det den som är aktuell).
   const running = live.job.status === "running" || live.job.status === "starting"
   const runId = chosen ?? (running ? null : runs[0]?.run_id ?? null)
@@ -74,7 +74,9 @@ export function ResultView({ runId: chosen, runs, scenarios, onSelectRun, live }
     {runId && data?.summary?.has_verified_solution && <ConstraintsFold runId={runId}/>}
     {runId && data?.summary && !data.summary.has_verified_solution && !data.summary.cancelled && <DiagnosisCard runId={runId}/>}
     {data && runId && <Fold title={data.summary?.has_verified_solution ? "Jämförelse, domar, förlopp och uppspelning" : "Fler detaljer: jämförelse, förlopp och uppspelning"} open={data.summary?.has_verified_solution === true}>
-      <CompareSection runId={runId} runs={runs} scenarios={scenarios}/>
+      <Card><CardContent className="flex flex-wrap items-center gap-3 pt-4">
+        <p className="text-sm">Jämför den här körningen med A (faktisk bokning), B eller en annan körning: nyckeltal, önskemål, salar, kostnad och vilka parametrar som skiljer.</p>
+        <Button type="button" size="sm" onClick={() => onCompare(runId)}>Öppna jämförelsen</Button></CardContent></Card>
       {data.summary && <VerdictCards summary={data.summary}/>}
       {data.events.length > 0 && <TimelineCard state={foldEvents(data.events)} events={data.events} nowT={Math.max(...data.events.map(event => event.t))}/>}
       <WarmStartCard record={data.warm}/>

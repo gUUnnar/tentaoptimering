@@ -26,6 +26,7 @@ from ortools.sat.python import cp_model
 
 from ..joint_contract import ExamDemand, JointOptimizationInput, Room, SolverSettings, StaffingStep
 from ..joint_optimizer import _conflicts, _overlap, staffing_cut_edges
+from ..joint_preference import has_preference, penalty_weights
 from .resources import CancelToken, solve_cancellable, wall_time
 
 # A cut excludes, or prices, master solutions where every listed exam lies on the listed days and no
@@ -88,7 +89,7 @@ def solve_master(
             for room, var in owned.items():
                 model.Add(var == int(room in economic.owned))
             model.Add(pool <= economic.pool)
-            model.Maximize(sum(kept))
+            model.Minimize(sum(kept))
             # Start from the complete first-phase solution so the search begins feasible.
             model.ClearHints()
             for index in range(len(model.Proto().variables)):
@@ -129,10 +130,8 @@ def cp_solver(time_limit: float, settings: SolverSettings) -> cp_model.CpSolver:
 
 
 def _history_terms(problem: JointOptimizationInput, x: dict[tuple[str, str], Any]) -> list[Any]:
-    return [
-        x[item.exam_demand_id, item.original_slot_id] for item in problem.demands
-        if item.original_slot_id is not None and item.original_slot_id in item.candidate_slot_ids
-    ]
+    """Penalty terms of the second goal (booked occasions, or the business's wishes in order); empty if none can be avoided."""
+    return [weight * x[key] for key, weight in penalty_weights(problem).items()] if has_preference(problem) else []
 
 
 def _room_capacity(problem: JointOptimizationInput) -> dict[str, int]:

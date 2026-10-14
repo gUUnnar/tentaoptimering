@@ -53,11 +53,11 @@ export function scenarioDetails(scenario: JointScenario | undefined): ScenarioDe
   return { period, coverageNote: note, description: note ? description.replace(note, "").replace(/\s{2,}/g, " ").trim() : description.trim() }
 }
 
-/** Referensscenariot: katalogens standardvärden utom några motiverade antaganden. Det är förvalt och står först i listan. */
-export const REFERENCE_SCENARIO_ID = "joint_reference"
+/** Grundoptimeringen (B): verksamhetens önskemål och katalogens standardvärden utom några motiverade antaganden. Förvald och först i listan. */
+export const REFERENCE_SCENARIO_ID = "joint_base"
 
-/** Scenariot som är förvalt: referensen om den finns, annars det första. */
+/** Scenariot som är förvalt: grundoptimeringen om den finns, annars det första. */
 export const defaultScenarioId = (scenarios: { id: string }[]): string => scenarios.find(item => item.id === REFERENCE_SCENARIO_ID)?.id ?? scenarios[0]?.id ?? ""
 
-/** De inbyggda scenarierna med referensen först; övriga behåller sin ordning. */
+/** De inbyggda scenarierna med grundoptimeringen först; övriga behåller sin ordning. */
 export const referenceFirst = <T extends { id: string }>(scenarios: T[]): T[] => [...scenarios].sort((a, b) => Number(b.id === REFERENCE_SCENARIO_ID) - Number(a.id === REFERENCE_SCENARIO_ID))

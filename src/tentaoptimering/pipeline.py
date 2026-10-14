@@ -29,6 +29,7 @@ from .reporting import (
     write_scope_report,
 )
 from .validation import validate_bookings, validate_ladok, validate_leases
+from .wishes import WISHES_FILE, build_exam_wishes
 
 
 @dataclass(frozen=True)
@@ -38,6 +39,7 @@ class PipelineOutputs:
     leases_csv: Path
     candidate_linkage_csv: Path
     exam_events_csv: Path
+    exam_wishes_csv: Path
     activity_booking_candidates_csv: Path
     room_inventory_csv: Path
     optimization_rooms_csv: Path
@@ -62,6 +64,7 @@ def output_paths(processed_dir: Path, report_dir: Path) -> PipelineOutputs:
         leases_csv=processed_dir / "lease_rows.csv",
         candidate_linkage_csv=processed_dir / "candidate_linkage.csv",
         exam_events_csv=processed_dir / "exam_events.csv",
+        exam_wishes_csv=processed_dir / WISHES_FILE,
         activity_booking_candidates_csv=processed_dir / "activity_booking_candidates.csv",
         room_inventory_csv=processed_dir / "room_inventory.csv",
         optimization_rooms_csv=processed_dir / "optimization_rooms.csv",
@@ -109,6 +112,7 @@ def run_pipeline(
     model_inputs = build_optimization_inputs(
         bookings, ladok, leases, demand_measure, official_rooms, poc_policy
     )
+    exam_wishes = build_exam_wishes(bookings, model_inputs.exam_events)
     scope_report = build_scope_report(
         ladok, provisional_scope_decisions(ladok, model_inputs.activity_booking_candidates)
     )
@@ -120,6 +124,7 @@ def run_pipeline(
     _write_csv(leases, outputs.leases_csv)
     _write_csv(linkage.candidate_links, outputs.candidate_linkage_csv)
     _write_csv(model_inputs.exam_events, outputs.exam_events_csv)
+    _write_csv(exam_wishes, outputs.exam_wishes_csv)
     _write_csv(model_inputs.activity_booking_candidates, outputs.activity_booking_candidates_csv)
     _write_csv(model_inputs.room_inventory, outputs.room_inventory_csv)
     _write_csv(model_inputs.optimization_rooms, outputs.optimization_rooms_csv)
@@ -153,6 +158,7 @@ def run_pipeline(
             "lease_rows": (outputs.leases_csv, leases),
             "candidate_linkage": (outputs.candidate_linkage_csv, linkage.candidate_links),
             "exam_events": (outputs.exam_events_csv, model_inputs.exam_events),
+            "exam_wishes": (outputs.exam_wishes_csv, exam_wishes),
             "activity_booking_candidates": (
                 outputs.activity_booking_candidates_csv,
                 model_inputs.activity_booking_candidates,

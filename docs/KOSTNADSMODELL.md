@@ -12,9 +12,9 @@ Preliminär internhyra summeras endast som källprofil och behandlas inte som be
 
 Den äldre kapacitets- och termmotorn, med modulerna `cost_model.py` (blockerat sparresultat) och `cost_comparison.py` (separata kostnadsprofiler), är borttagen (finns i Git-historiken före den här grenen). Den gemensamma motorn redovisar kostnad som modellkostnad med scenariots proxypriser och ger aldrig en verifierad besparing; principen ovan gäller fortsatt för nästa kostnadsmodell.
 
-## Besparingspotential mot Nuläge
+## Besparingspotential mot en referensoptimering med låsta datum
 
-Resultatvyn redovisar en **teoretisk årlig besparingspotential**: modellkostnaden för **Nuläge** minus modellkostnaden för körningen. Nuläge är samma scenario, data, lokalbestånd, bemanningsregler och kostnadsantaganden, men ingen tentamen får flyttas från sitt ursprungstillfälle (`flex.movable_types = []`); salar och bemanning optimeras fortfarande. Skillnaden är därför effekten av planeringsflexibiliteten. Den gäller de valda tentorna och scenariots proxypriser. Verifierad realiserbar besparing förblir `null` tills sal–avtal, undvikbarhet, uppsägningstid och engångskostnad kan beläggas, och källans internhyra jämförs aldrig mot modellkostnaden.
+Resultatvyn redovisar en **teoretisk årlig besparingspotential**: modellkostnaden för en **referensoptimering med låsta datum** (tidigare kallad Nuläge) minus modellkostnaden för körningen. Referensen är en modellkörning, inte den faktiska bokningen (A), som aldrig optimeras och inte har någon kostnad per tentamen i underlaget. Tre sorters kostnad hålls isär: *historisk* (A: saknas), *modellberäknad* (körningar) och *teoretisk besparingspotential* (skillnaden mellan två modellkostnader). Referensen är samma scenario, data, lokalbestånd, bemanningsregler och kostnadsantaganden, men ingen tentamen får flyttas från sitt ursprungstillfälle (`flex.movable_types = []`); salar och bemanning optimeras fortfarande. Skillnaden är därför effekten av planeringsflexibiliteten. Den gäller de valda tentorna och scenariots proxypriser. Verifierad realiserbar besparing förblir `null` tills sal–avtal, undvikbarhet, uppsägningstid och engångskostnad kan beläggas, och källans internhyra jämförs aldrig mot modellkostnaden.
 
 ## Verksamhetskalkyler som ännu inte är besparingsberäkningar
 

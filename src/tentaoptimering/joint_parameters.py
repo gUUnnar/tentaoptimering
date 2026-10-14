@@ -23,13 +23,13 @@ GROUPS: tuple[tuple[str, str], ...] = (
 
 LAYOUT: dict[str, tuple[str, ...]] = {
     "tid": (
-        "window.earlier_days", "window.later_days", "calendar.start_date", "calendar.end_date", "calendar.weekdays",
+        "wish.candidate_policy", "wish.time_policy", "window.earlier_days", "window.later_days", "calendar.start_date", "calendar.end_date", "calendar.weekdays",
         "calendar.start_times", "calendar.earliest_start_time", "calendar.latest_end_time", "calendar.turnaround_minutes",
         "calendar.blocked_ranges", "calendar.exam_periods", "flex.movable_types", "rules.keep_course_order",
         "rules.student_conflicts",
     ),
     "rum": (
-        "rooms.selection", "rooms.allow_split", "rooms.max_rooms_per_exam", "rooms.allow_split_across_buildings",
+        "rooms.selection", "rooms.include_observed_unregistered", "rooms.allow_split", "rooms.max_rooms_per_exam", "rooms.allow_split_across_buildings",
         "rooms.availability_mode", "rooms.capacity_override", "rooms.custom_rooms", "rooms.co_location_rules",
         "digital.partial_support_policy", "digital.unknown_demand_policy", "digital.exam_share_pct",
         "digital.compatibility_matrix",
@@ -44,7 +44,7 @@ LAYOUT: dict[str, tuple[str, ...]] = {
         "cost.annualization_factor", "cost.avoidable_cost_definition",
     ),
     "korning": (
-        "solver.time_limit_seconds", "solver.relative_gap_limit", "solver.strategy", "solver.workers",
+        "wish.tiebreak", "solver.time_limit_seconds", "solver.relative_gap_limit", "solver.strategy", "solver.workers",
         "solver.deterministic", "solver.seed", "objective.weights",
     ),
     "ovrigt": (

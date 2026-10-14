@@ -20,6 +20,11 @@ import unittest
 
 import pandas as pd
 
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from wish_cases import wish_row, write_wishes  # noqa: E402
+
 from tentaoptimering.joint_inputs import _digital_requirement, build_real_subset_problem
 from tentaoptimering.joint_optimizer import _solver, solve_joint_optimization
 from tentaoptimering.parameter_catalog import load_parameter_catalog
@@ -70,7 +75,12 @@ def _toml(value: object) -> str:
     raise TypeError(value)
 
 
-def _solve(directory: Path, events: list[dict[str, object]], rooms: list[tuple], overrides: dict[str, object]):
+def _solve(directory: Path, events: list[dict[str, object]], rooms: list[tuple], overrides: dict[str, object],
+           wishes: list[dict[str, object]] | None = None, inventory: list[dict[str, object]] | None = None):
+    if wishes is not None:
+        write_wishes(directory, wishes)
+    if inventory is not None:
+        pd.DataFrame(inventory).to_csv(directory / "room_inventory.csv", index=False, encoding="utf-8-sig")
     pd.DataFrame(events).to_csv(directory / "optimization_demands.csv", index=False, encoding="utf-8-sig")
     pd.DataFrame([
         {"room_id": room, "reference_address": address, "reference_city": "Uppsala", "capacity_seats": cap,
@@ -189,7 +199,32 @@ class OptimizationEffectTests(unittest.TestCase):
         covered = {parameter for _id, params, *_rest in CASES for parameter in params}
         covered |= {"demand.rounding", "demand.measure", "solver.time_limit_seconds", "solver.seed", "solver.workers", "solver.deterministic",
                     "solver.strategy", "solver.relative_gap_limit"}  # strategies: tests/test_joint_strategy.py
+        covered |= {"wish.tiebreak"}  # changes the chosen date at the same cost: tests/test_joint_wishes.py (TieBreakTests)
+        covered |= {"wish.candidate_policy", "wish.time_policy", "rooms.include_observed_unregistered"}  # proven below (test_wishes_and_observed_rooms_...)
         self.assertEqual(implemented - covered, set(), "implemented parameters without a result-level test")
+
+    def test_wishes_and_observed_rooms_change_what_the_optimiser_can_do(self) -> None:
+        """Pair case again. The wishes name only the booked day, so the policy decides what is allowed on that day."""
+        wished = [wish_row("X", "2026-01-12", booked="2026-01-12"), wish_row("Y", "2026-01-12", booked="2026-01-12")]
+        one_room = [("uu-r1", "Adress 1", 60, "all_places_support_e_exam")]
+        observed = [{"room_id": "uu-fyrishov-d", "observed_addresses": "Fyrishov", "observed_room_names": "Sal D", "observed_cities": "Uppsala",
+                     "observed_placement_count": 3, "observed_booked_places_max": 60, "capacity_seats": None}]
+        cases = [
+            # (case, rooms, overrides, inventory, outcome, cost)
+            ("wishes_any_start_lets_one_exam_use_the_afternoon", TWO_ROOMS, {"wish.candidate_policy": "wishes"}, None, "optimal", 7_000),
+            ("wishes_booked_start_keeps_both_at_08_so_two_rooms", TWO_ROOMS, {"wish.candidate_policy": "wishes", "wish.time_policy": "booked_start"}, None, "optimal", 14_000),
+            ("one_register_room_cannot_hold_both_at_08", one_room, {"wish.candidate_policy": "wishes", "wish.time_policy": "booked_start"}, observed, "infeasible", None),
+            ("the_observed_room_is_a_second_room_at_the_same_price", one_room, {"wish.candidate_policy": "wishes", "wish.time_policy": "booked_start",
+                                                                              "rooms.include_observed_unregistered": True}, observed, "optimal", 14_000),
+        ]
+        for case_id, rooms, overrides, inventory, outcome, cost in cases:
+            with self.subTest(case=case_id), tempfile.TemporaryDirectory() as temp:
+                problem, result = _solve(Path(temp), PAIR, rooms, overrides, wishes=wished, inventory=inventory)
+                self.assertEqual(result.solver.outcome, outcome, case_id)
+                if cost is not None:
+                    self.assertEqual(result.costs.comparable_total_cost_ore, cost, case_id)
+                if overrides.get("rooms.include_observed_unregistered"):
+                    self.assertEqual({room.room_id: room.capacity_basis for room in problem.rooms}["uu-fyrishov-d"], "observed_booked_places_max_lower_bound")
 
     def test_rounding_changes_the_placed_participants(self) -> None:
         totals = {}

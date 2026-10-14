@@ -12,6 +12,11 @@ import unittest
 
 import pandas as pd
 
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from wish_cases import wish_row, write_wishes  # noqa: E402
+
 from tentaoptimering.joint_contract import _jsonable
 from tentaoptimering.joint_inputs import build_real_subset_problem
 from tentaoptimering.joint_optimizer import solve_joint_optimization
@@ -87,6 +92,15 @@ def _write_dataset(path: Path, extra: list[dict[str, object]] | None = None) -> 
          "available_from": "2027-01-01" if city == "Visby" else None, "available_to": None}
         for room, address, city, cap, status in rooms
     ]).to_csv(path / "optimization_rooms.csv", index=False, encoding="utf-8-sig")
+    write_wishes(path, [
+        wish_row("ev1", "2026-01-12", "2026-01-14", "2026-01-15", booked="2026-01-12"), wish_row("ev2", "2026-01-13", None, None, "ingen annan dag", booked="2026-01-12"),
+        wish_row("ev3", "2026-01-13", "2026-01-12", None, booked="2026-01-13"), wish_row("ev4", "2026-01-13", booked="2026-01-13"),
+        wish_row("ev6", "2026-01-14", "2026-01-15", None, booked="2026-01-14"),
+    ])
+    # A room that the bookings used but the register gives no capacity (a named room, booked up to 120 places).
+    pd.DataFrame([{"room_id": "uu-observed", "observed_addresses": "Adress 9", "observed_room_names": "Sal X", "observed_cities": "Uppsala",
+                   "observed_placement_count": 4, "observed_booked_places_max": 120, "capacity_seats": None}]).to_csv(
+        path / "room_inventory.csv", index=False, encoding="utf-8-sig")
     pd.DataFrame({"activity_id": ["a1", "a2", "a3", "a4", "a6", "a7", "x"],
                   "scope_status": ["included"] * 6 + ["unresolved"]}).to_csv(
         path / "demand_scope.csv", index=False, encoding="utf-8-sig")
@@ -164,7 +178,13 @@ EFFECT_CASES: dict[str, object] = {
     "solver.deterministic": True,
     "solver.strategy": "monolithic",
     "solver.relative_gap_limit": 0.0,
+    "wish.candidate_policy": "wishes",
+    "wish.time_policy": "booked_start",
+    "wish.tiebreak": "wish_priority",
+    "rooms.include_observed_unregistered": True,
 }
+# Some parameters only matter together with another one: the comparison is made with this companion value set in both.
+EFFECT_COMPANIONS: dict[str, dict[str, object]] = {"wish.time_policy": {"wish.candidate_policy": "wishes"}}
 
 
 class ParameterEffectTests(unittest.TestCase):
@@ -179,10 +199,11 @@ class ParameterEffectTests(unittest.TestCase):
         implemented = {item.parameter_id for item in catalog.parameters if item.engine_support == "implemented"}
         implemented.discard("demand.measure")  # rejects other values; covered separately
         self.assertEqual(set(EFFECT_CASES), implemented, "implemented parameters and effect cases must match")
-        base = _fingerprint(_build(self.dir))
         for parameter_id, value in EFFECT_CASES.items():
             with self.subTest(parameter=parameter_id):
-                altered = _fingerprint(_build(self.dir, {parameter_id: value}))
+                companion = EFFECT_COMPANIONS.get(parameter_id, {})
+                base = _fingerprint(_build(self.dir, companion))
+                altered = _fingerprint(_build(self.dir, {**companion, parameter_id: value}))
                 self.assertNotEqual(base, altered, f"{parameter_id} is marked implemented but is ignored")
 
     def test_unsupported_demand_measure_is_rejected_not_ignored(self) -> None:

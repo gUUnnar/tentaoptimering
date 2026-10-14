@@ -8,7 +8,7 @@ const ready = (over: Partial<SavingsReady>): SavingsReady =>
   ({ state: "ready", baseline: facts(85_800_000), run: facts(37_900_000), potential_ore: 47_900_000, potential_low_ore: 47_900_000, potential_high_ore: 47_900_000, components: [], job: null, ...over })
 
 describe("besparingspotential", () => {
-  it("andel av Nuläge", () => {
+  it("andel av kostnaden med låsta datum", () => {
     assert.equal(savingsPercent(85_800_000, 47_900_000), 56)
     assert.equal(savingsPercent(0, 10), null)
   })
@@ -23,7 +23,7 @@ describe("besparingspotential", () => {
     const head = savingsHeadline(ready({ potential_low_ore: 40_000_000, potential_high_ore: 50_000_000 }))
     assert.match(head.range ?? "", /Mellan 400\s?000 kr och 500\s?000 kr/)
   })
-  it("ingen besparing redovisas som positiv när Nuläge inte är dyrare", () => {
+  it("ingen besparing redovisas som positiv när Låsta datum inte är dyrare", () => {
     const head = savingsHeadline(ready({ potential_ore: 0, potential_low_ore: 0, potential_high_ore: 0, run: facts(85_800_000) }))
     assert.equal(head.positive, false)
     assert.match(head.versus, /\(0 %\)/)

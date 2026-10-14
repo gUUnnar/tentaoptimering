@@ -150,10 +150,25 @@ def _allowed(
     broken = []
     if slot.reference_only:
         broken.append("referenspass används som alternativ")
-    if demand.original_day is not None:
-        shift = (slot.day - demand.original_day).days
-        if shift < -int(p["window.earlier_days"]) or shift > int(p["window.later_days"]):
+    policy = str(p.get("wish.candidate_policy", "window"))  # runs from before the wishes were read have no such parameter
+    wished = slot.day.isoformat() in demand.wish_dates
+    booked_start_only = str(p.get("wish.time_policy", "any_start")) == "booked_start"
+    wish_time_ok = not booked_start_only or demand.original_start is None or slot.start == int(demand.original_start)
+    shift = None if demand.original_day is None else (slot.day - demand.original_day).days
+    in_window = shift is not None and -int(p["window.earlier_days"]) <= shift <= int(p["window.later_days"])
+    if policy == "window":
+        if shift is not None and not in_window:
             broken.append(f"utanför flyttfönstret ({shift:+d} dagar)")
+    elif policy == "wishes":
+        if not wished:
+            broken.append("inte ett av verksamhetens önskade datum")
+        elif not wish_time_ok:
+            broken.append("annan starttid än den bokade på ett önskat datum")
+    elif policy == "wishes_and_window":
+        if not in_window and not (wished and wish_time_ok):
+            broken.append("varken i flyttfönstret eller ett önskat datum med tillåten starttid")
+    else:
+        broken.append(f"okänd kandidatpolicy {policy}")
     if slot.day.isoweekday() not in {int(item) for item in p["calendar.weekdays"]}:
         broken.append(f"otillåten veckodag {slot.day.isoweekday()}")
     if any(low <= slot.day <= high for low, high in blocked):
@@ -175,6 +190,8 @@ def _allowed(
 
 def _bounds(ctx: Context, p: dict) -> tuple[date, date]:
     originals = [item.original_day for item in ctx.demands.values() if item.original_day is not None]
+    if str(p.get("wish.candidate_policy", "window")) in ("wishes", "wishes_and_window"):  # wished dates widen the calendar like the booked ones
+        originals += [date.fromisoformat(value) for item in ctx.demands.values() for value in item.wish_dates]
     first = date.fromisoformat(str(p["calendar.start_date"])) if p["calendar.start_date"] else (
         min(originals) - timedelta(days=int(p["window.earlier_days"])) if originals else date.min)
     last = date.fromisoformat(str(p["calendar.end_date"])) if p["calendar.end_date"] else (

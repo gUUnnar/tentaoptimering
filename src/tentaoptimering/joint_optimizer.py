@@ -19,6 +19,7 @@ from .joint_contract import (
     SolverSummary,
     validate_problem,
 )
+from .joint_preference import has_preference, penalty_weights
 from .joint_progress import ProgressSink, emit, finished_event
 
 
@@ -425,12 +426,10 @@ def _staff_lookup(capacity: int, problem: JointOptimizationInput) -> list[int]:
 
 
 def _change_terms(problem: JointOptimizationInput, selected: dict[tuple[str, str], cp_model.IntVar]) -> list[Any]:
-    """Only demands whose historical slot is an allowed candidate can avoid a change."""
-    return [
-        1 - selected[demand.exam_demand_id, demand.original_slot_id]
-        for demand in problem.demands
-        if demand.original_slot_id is not None and demand.original_slot_id in demand.candidate_slot_ids
-    ]
+    """The penalty terms of the second goal (see `joint_preference`); empty if no exam can avoid a penalty."""
+    if not has_preference(problem):
+        return []
+    return [weight * selected[key] for key, weight in penalty_weights(problem).items()] or [0]
 
 
 def _is_changed(demand: ExamDemand, slot_id: str, slots: dict[str, Any]) -> bool:

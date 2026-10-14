@@ -40,6 +40,9 @@ exam_event_ids = ["X", "Y"]
 """
 
 
+from wish_cases import wish_row, write_wishes  # noqa: E402
+
+
 def _write_pair_dataset(path: Path) -> Path:
     def row(event: str) -> dict[str, object]:
         return {
@@ -57,6 +60,7 @@ def _write_pair_dataset(path: Path) -> Path:
     ]).to_csv(path / "optimization_rooms.csv", index=False, encoding="utf-8-sig")
     pd.DataFrame({"activity_id": ["act-X", "act-Y"], "scope_status": ["included", "included"]}).to_csv(
         path / "demand_scope.csv", index=False, encoding="utf-8-sig")
+    write_wishes(path, [wish_row("X", "2026-01-12", "2026-01-13", booked="2026-01-12"), wish_row("Y", "2026-01-12", None, None, "samma dag", booked="2026-01-12")])
     scenario = path / "scenario.toml"
     scenario.write_text(PAIR_SCENARIO, encoding="utf-8")
     return scenario
