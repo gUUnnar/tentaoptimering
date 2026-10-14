@@ -18,9 +18,10 @@ Se `docs/ABC_SCENARIOMODELL.md`. **A** är den faktiska bokningen och optimeras 
 
 ## Läsordning
 1. `README.md`
-2. `docs/KONCEPTUELL_KRAVSPECIFIKATION.md`
-3. `docs/GEMENSAM_OPTIMERINGSDESIGN.md` och `docs/OBEROENDE_EFTERVALIDERING.md`
-4. Vid behov: `docs/KODGRANSKNING_OCH_CODEX_UPPDRAG_2026-10-08.md`, `docs/DATAMODELL.md`, `docs/KOSTNADSMODELL.md`, `docs/BLOCKERANDE_DATAGAP.md` och relevanta kod- och konfigurationsfiler.
+2. `docs/README.md`, `docs/ABC_SCENARIOMODELL.md` och `docs/KONCEPTUELL_KRAVSPECIFIKATION.md`
+3. `docs/KRAV_OCH_STATUS.md`
+4. `docs/GEMENSAM_OPTIMERINGSDESIGN.md` och `docs/OBEROENDE_EFTERVALIDERING.md`
+5. Vid behov: `docs/DATAMODELL.md`, `docs/KOSTNADSMODELL.md`, `docs/BLOCKERANDE_DATAGAP.md` och relevanta kod- och konfigurationsfiler. Dokument under `docs/historik/` är revisionsunderlag och aldrig aktuell krav- eller statuskälla.
 
 ## Aktuellt uppdrag
 Utveckla den gemensamma optimeringsmotorn (`joint_*`, kommandot `optimize-joint`) och dess fristående eftervalidering av gemensamma körningar (`joint_validation/`, kommandot `validate-joint-run`). Eftervalideringen läser sparade modellindata, resultat och manifest, redovisar regelvis `pass`, `fail`, `not_evaluated` eller `not_applicable` och skiljer alltid teknisk placeringsfullständighet från verksamhetsmässig genomförbarhet. Avsaknad av data eller modellstöd får aldrig bli ett godkänt krav. Den äldre kapacitets- och termmotorn är borttagen (finns i Git-historiken före den här grenen); den gemensamma motorn är den enda optimeringsvägen.

@@ -8,20 +8,17 @@ Målet är den lägsta **totala årskostnaden** för en fullt genomförbar verks
 
 ## Dokumentation
 
-- [A, B och C: faktisk bokning, grundoptimering och egna körningar](docs/ABC_SCENARIOMODELL.md) – den gällande begreppsmodellen för körningar och jämförelser.
-- [Kravspecifikation](docs/KONCEPTUELL_KRAVSPECIFIKATION.md) – verksamhetskrav, kostnadsmodell, scenarioparametrar och förväntade resultat.
-- [AGENTS.md](AGENTS.md) – arbetsinstruktioner för Codex och aktuellt utvecklingssteg.
-- [Kodgranskning och arbetsuppdrag](docs/KODGRANSKNING_OCH_CODEX_UPPDRAG_2026-10-08.md) – ursprunglig kodinventering och nästa leverans.
-- [Gemensam optimeringsdesign](docs/GEMENSAM_OPTIMERINGSDESIGN.md) – kanoniskt tentamensbehov, salstillfällen, bemanning och årskostnad.
-- [Datamodell](docs/DATAMODELL.md), [kostnadsmodell](docs/KOSTNADSMODELL.md) och [datagap](docs/BLOCKERANDE_DATAGAP.md) – tekniska underlag som stäms av mot kravspecifikationen.
-- [Verksamhetsunderlag 2026-10-02](docs/VERKSAMHETSUNDERLAG_2026-10-02.md) – presentationens lokaler, pass, bemanning, utnyttjande och historiska kostnadskalkyler; källuppgifter är ännu inte verifierade modellregler.
-- [Överlämning till Claude 2026-10-12](docs/OVERLAMNING_CLAUDE_2026-10-12.md) – konkreta nästa steg och verifieringsfrågor för PR #11.
+Utgå från [dokumentationsingången](docs/README.md). Där finns läsordning,
+styrande dokument, tekniska referenser, verksamhetsunderlag och avskild
+historik. [Krav och aktuell status](docs/KRAV_OCH_STATUS.md) är den enda
+aktuella kravuppfyllnadsmatrisen; äldre planer och granskningsrapporter får inte
+användas som nulägesbeskrivning.
 
 ## Valbar period och granskning i gränssnittet
 
 PoC:n ska visa tillgängliga dataperioder och låta användaren välja start- och slutdatum. Nästa dataleverans avses omfatta **1 januari–30 september** inklusive uppgifter om **verklig beläggning**; årtal, fältdefinitioner och täckning fastställs vid import, och denna leverans är ännu inte inläst. Källdata ska gå att utforska separat från optimeringen: användaren ska kunna se hur en viss lokal nyttjas under en vald period och hur en identifierad bokad tentamen är schemalagd (datum, tid, salplacering/ar). Historisk bokning, beläggningsobservation och simulerat schema ska inte förväxlas.
 
-Målbilden är en framtida export som universitetets bokningssystem kan importera. Systemanpassad export ligger **utanför PoC** tills ett importkontrakt finns; en enkel maskinläsbar resultatfil kan prövas utan att påstå kompatibilitet med bokningssystemet. Se [kravspecifikationen](docs/KONCEPTUELL_KRAVSPECIFIKATION.md) och [överlämningen](docs/OVERLAMNING_CLAUDE_2026-10-12.md).
+Målbilden är en framtida export som universitetets bokningssystem kan importera. Systemanpassad export ligger **utanför PoC** tills ett importkontrakt finns; en enkel maskinläsbar resultatfil kan prövas utan att påstå kompatibilitet med bokningssystemet. Se [kravspecifikationen](docs/KONCEPTUELL_KRAVSPECIFIKATION.md) och [kravstatusen](docs/KRAV_OCH_STATUS.md).
 
 ## Källfiler
 
@@ -45,7 +42,7 @@ $env:PYTHONPATH = (Resolve-Path src).Path
 .\.venv\Scripts\python.exe -m tentaoptimering.cli optimize-joint --config config\scenarios\joint_real_subset.toml
 ```
 
-Körningen sparar versionsmärkt modellindata, resultat, manifest och rapport under `runs/` (som inte versionshanteras) och kör eftervalideringen direkt efter lösningen. Se [första gemensamma CP-SAT-leveransen](docs/GEMENSAM_CP_SAT_FORSTA_LEVERANS.md) för statussemantik, handräknade facit, uppmätt verklig körning och kända begränsningar.
+Körningen sparar versionsmärkt modellindata, resultat, manifest och rapport under `runs/` (som inte versionshanteras) och kör eftervalideringen direkt efter lösningen. Se [gemensam optimeringsdesign](docs/GEMENSAM_OPTIMERINGSDESIGN.md), [optimeringsstrategi](docs/OPTIMERINGSSTRATEGI.md) och [kravstatus](docs/KRAV_OCH_STATUS.md) för gällande kontrakt, mätningar och begränsningar.
 
 Den fristående eftervalideringen läser en sparad körnings egna modellindata och placeringsresultat och kan köras utan att optimeringen körs igen. Den redovisar regelvis `pass`, `fail`, `not_evaluated` eller `not_applicable` och skiljer teknisk placeringsfullständighet från verksamhetsmässig verifiering; avsaknad av data eller modellstöd blir aldrig ett godkänt krav. Se [oberoende eftervalidering](docs/OBEROENDE_EFTERVALIDERING.md).
 
@@ -77,7 +74,10 @@ PoC:n har ett lokalt React- och FastAPI-gränssnitt för gemensamma körningar: 
 
 Projektet innehåller ett reproducerbart inläsnings- och analyslager, ett kanoniskt scope-/efterfrågelager och en första gemensam CP-SAT-kärna med full efterfrågetäckning, faktiska salar och bemanningsrelaterad kostnad. Den avgränsade verkliga körningen är ett modellbevis och inte ett operativt schema eller en beräkning av realiserbar besparing. Den äldre kapacitets- och termmotorn är borttagen (finns i Git-historiken före den här grenen); den gemensamma motorn är den enda optimeringsvägen.
 
-Den aktuella scope-rapporten redovisar 1 259 tekniskt inkluderade aktiviteter och 266 oavgjorda. Resultat för den omfattningen får inte beskrivas som täckning av hela verksamheten förrän samtliga aktiviteter fått ett verksamhetsbeslut.
+Population och täckning ska alltid läsas ur det frusna underlaget för den
+aktuella körningen. Resultat för en beräkningsbar delpopulation får inte
+beskrivas som täckning av hela verksamheten innan samtliga aktiviteter fått ett
+verksamhetsbeslut.
 
 ## Datakvalitet
 

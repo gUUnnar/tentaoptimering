@@ -14,8 +14,6 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `frontend/` | Separat byggbar React-, TypeScript-, Vite- och Tailwind-klient för det lokala gränssnittet. |
 | `packaging/build_windows.ps1` | Bygger frontend och paketerar lokal Windowsdistribution med PyInstaller. |
 | `packaging/desktop_entry.py` | Paketvänlig Pythonstartpunkt för den lokala Windowsapplikationen. |
-| `Uppdrag_Claude_Codex_tentalokaler_PoC.md` | Ursprungligt avgränsat uppdrag för första leveransen. |
-| `Slutsatser_tentalokaler_2026-10-06.md` | Dokumenterad krav- och datagenomgång samt rekommenderad fortsatt inriktning. |
 
 ## Konfiguration
 
@@ -34,31 +32,29 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 
 | Fil | Ansvar |
 |---|---|
+| `docs/README.md` | Kanonisk dokumentationsingång med läsordning och gräns mellan styrande dokument, tekniska referenser, verksamhetsunderlag och historik. |
 | `docs/ABC_SCENARIOMODELL.md` | Den gällande begreppsmodellen: A (faktisk bokning, aldrig optimerad), B (grundoptimering utifrån verksamhetens önskemål) och C (egna körningar): vad som sparas, hur körningar jämförs, hur önskemål, kostnad och lokalutnyttjande vägs, datakvalitet och kvarstående begränsningar. |
+| `docs/KONCEPTUELL_KRAVSPECIFIKATION.md` | Bindande verksamhetskrav, målbild och acceptanstester. |
+| `docs/KRAV_OCH_STATUS.md` | Enda aktuella kravuppfyllnadsmatrisen: en status, begränsning och bevis per krav. |
 | `docs/BLOCKERANDE_DATAGAP.md` | Datagap som måste lösas före tillförlitlig optimering eller kronberäkning. |
 | `docs/VERKSAMHETSUNDERLAG_2026-10-02.md` | Källtrogen genomgång av verksamhetspresentationens kapacitet, planerade platser, bemanningsregler och historiska kalkyler, inklusive oklarheter och verifieringsbehov. |
-| `docs/OVERLAMNING_CLAUDE_2026-10-12.md` | Överlämning till Claude om verksamhetsuppgifter, valbar period, salutnyttjande, tentamensuppslag och framtida exportavgränsning. |
 | `docs/DATAMODELL.md` | Korn, nycklar och gränser mellan beställning, placering, Ladokaktivitet och lokalrad; tidsmässig datatäckning och åtskild verklig beläggning. |
 | `docs/FILOVERSIKT.md` | Denna innehållsförteckning och filernas ansvar. |
 | `docs/GEMENSAM_OPTIMERINGSDESIGN.md` | Teknisk specifikation för kanoniskt tentamensbehov, salstillfällen, integrerad bemanning och konsekvent årskostnad. |
-| `docs/GEMENSAM_CP_SAT_FORSTA_LEVERANS.md` | Levererad modell, solverstatus, handräknade facit, verklig delmängdskörning och kvarstående begränsningar. |
 | `docs/OBEROENDE_EFTERVALIDERING.md` | Valideringens design, regelkatalog, verkliga statusar för 12-tentakörningen, kvarstående datagap och hur den körs. |
 | `docs/OPTIMERINGSSTRATEGI.md` | Analys av den monolitiska modellens beräkningskostnad, den rekommenderade strategin (aggregerad relaxation och daglig kontroll), mätningar på frysta verkliga instanser och kvarstående risker. |
 | `docs/PERIODVAL_OCH_SNABBA_KORNINGAR.md` | Valbar planeringsperiod i gränssnittet och dess regler, mätning av snabba körningar och teknisk design (ej implementerad) för hänsyn till redan lagda bokningar vid korttidsplanering. |
-| `docs/VERKSAMHETSPAVERKAN_2026-10-12.md` | Hur verksamhetsunderlaget 2 oktober påverkar modellen: period (Ladok slutar 31 mars), bemanningstrappa, tre pass, lokalbestånd och RPS, kostnadsbegrepp och Nuläge, med körda experiment. Inget preliminärt värde görs till verifierad regel. |
 | `docs/ARKITEKTURPRINCIPER_DATAKVALITET.md` | Principer för att hålla verksamhetsmodell och datakvalitet isär: vad saknad sal är i dagens uttag (mätt), granskning av PR #13–15 mot principerna, föreslagen arkitektur med resurstillstånd och policy per planeringsläge, begränsade korrigeringar, testmatris och frågor till verksamhetsägaren. |
 | `docs/FRAGOR_TILL_DATAAGARE.md` | Frågor till dataägaren om bokningsuttaget (sal, status, icke-fysiska lokaler, salsregister, Ladok-täckning) och om tentavakter, med siffror ur datakvalitetsrapporten och hur svaren läggs in som verifierade regler. |
 | `docs/KOSTNADSMODELL.md` | Avgränsning mellan resursbehov, intern kostnadsfördelning och realiserbar besparing. |
-| `docs/OPTIMERINGSUNDERLAG.md` | Korn, relationsregler och tillåten användning av det maskinläsbara underlaget före motorbygge. |
-| `docs/MALARKITEKTUR_ANALYS_2026-10-09.md` | Beslutsunderlag och leveransplan för omtaget (arkitektur, Nuläge, CP-SAT-restriktioner, steg, rensningsverifiering). Tillfälligt tills omtaget är genomfört. |
 | `docs/PARAMETERKATALOG.md` | Utkast till den enda parameterkatalogen (endast parametrar som motorn läser) med grund och effektfall. |
-| `docs/DOMANMODELL.md` | Domänmodellen: Dataunderlag, Simulering, Förutsättning, Körning, Resultat; valbar period, jämförbarhet samt lokal- och tentamensuppslag. |
-| `docs/KAPACITETSFORTECKNING.md` | Varje funktion i dagens system med beslut (behåll, bygg om, ersätt, ta bort) och beroenden. |
-| `docs/KRAVUPPFYLLNAD.md` | Kravmatris: status idag och efter första leveransen, bevis och datakrav. |
-| `docs/DATAANALYS_S0.md` | Analys av population, delade tillfällen, `canonical_demand`, hemtentor, institution och kapacitetsavvikelser. |
 | `docs/ANALYS_KOLLEKTIVAVTAL.md` | Analys av lokalt kollektivavtal för tentamenspersonal och vad som kan bli verifierat. |
-| `docs/prototyp/index.html` | Fristående klickbar prototyp av användarflödet (ingen produktkod; uppmätta förprovsvärden). |
 | `docs/LOKALT_GRANSSNITT.md` | Arkitektur, API-kontrakt, källkodsutveckling och offlineverifiering av Windowsdistributionen. |
+| `docs/historik/README.md` | Register över bevarade historiska rapporter; slår fast att de inte är aktuella krav- eller statuskällor. |
+| `docs/historik/GEMENSAM_CP_SAT_FORSTA_LEVERANS.md` | Historisk ögonblicksbild av den första gemensamma CP-SAT-kärnan. |
+| `docs/historik/VERKSAMHETSPAVERKAN_2026-10-12.md` | Historisk analys av verksamhetspresentationens påverkan den 12 oktober 2026. |
+| `docs/historik/DATAANALYS_S0.md` | Historisk S0-dataanalys. |
+| `docs/historik/granskning/*.md` | Sammanhållen revisionsrapport och delrapporter från den 9 oktober 2026. |
 
 ## Python-paket: `src/tentaoptimering`
 
@@ -69,7 +65,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `canonical_demand.py` | Validerar fullständiga scope-beslut och explicita relationer från Ladokaktiviteter via delgrupper till unika tentamensbehov. |
 | `joint_contract.py` | Versionsmärkt JSON-kontrakt för gemensamma modellindata och resultat, inklusive delgrupper, stödstatus, kostnader och solvergränser. |
 | `joint_optimizer.py` | Ny CP-SAT-kärna som gemensamt optimerar kalenderpass, faktiska salar, bemanningspool och jämförbar kostnad utan partiell placering. |
-| `joint_inputs.py` | Adapter (inklusive tolkning av tidsintervallet `HH:MM-HH:MM` till minuter) och körningslagring för det verkliga urvalet (namngivna tentor eller hela terminen enligt regel). Sparar den använda scenariofilen som `joint_scenario.toml` i körningsmappen. |
+| `joint_inputs.py` | Adapter (inklusive tolkning av tidsintervallet `HH:MM-HH:MM` till minuter) och körningslagring för det verkliga urvalet (namngivna tentor eller hela vald underlagsperiod enligt regel). Sparar den använda scenariofilen som `joint_scenario.toml` i körningsmappen. |
 | `joint_selection.py` | Urval av tentor ur `[subset]`: antingen `exam_event_ids` eller regeln `selection = "all_ready"` med valfritt `date_from`/`date_to`; exakt ett av sätten, annars svenskt fel. |
 | `joint_period.py` | Valbar planeringsperiod: datatäckning per källa och dag (`GET /api/joint-runs/period`), kontroll av vald period (tentor som kan planeras, saknat deltagarantal, period utanför underlaget), det scenario en period ger (urval och kalender skärs till perioden) och `PLANNING_BASIS` som märker varje resultat som explorativt (känner inte bokningar utanför de valda tentorna). |
 | `wishes.py` | Verksamhetens önskemål ur bokningsexporten (önskat datum, reservdatum 1 och 2, motivering) till `exam_wishes.csv`, ett tentamenstillfälle per rad: status, var det bokade datumet ligger bland önskemålen, motstridiga önskemål och en sammanfattning. Motiveringar tolkas inte. |
@@ -133,6 +129,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `tests/test_cli.py` | Säkrar JSON som standard, statuskontraktet, maskinläsbara fel, att `optimize-joint` och `validate-joint-run` kräver sina argument och att den borttagna motorns kommandon inte finns. |
 | `tests/test_canonical_demand.py` | Säkrar scope-täckning och att flera källaktiviteter kan bilda ett tentamensbehov utan dubbelräkning. |
 | `tests/test_file_policy.py` | Säkrar filstorlekströsklarna och att ingen Python-fil passerat den obligatoriska delningsgränsen. |
+| `tests/test_documentation.py` | Säkrar att kanoniska dokument finns, att pensionerade dokument inte återinförs, att historik är märkt och att lokala Markdown-länkar fungerar. |
 | `tests/test_joint_optimization_effects.py` | Handräknade optimeringsresultat per parameter (kostnad och utfall på tvåtentafall), tolkning av sammanslagna digitala värden och att solverparametrar når CP-SAT. |
 | `tests/test_joint_parameter_effects.py` | Effekttest för varje implementerad parameter, spårning mot gamla registret, startider och referenstillfälle, digital grund och samtentor. |
 | `tests/joint_validation_cases.py` | Delade handräknade referensfall och skrivning av sparade körningar för valideraren. |
@@ -174,6 +171,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `tests/test_normalize.py` | Säkrar central textnormalisering och synliggör blandat bokningskorn. |
 | `tools/inventory.py` | Utvecklingsverktyg: importgraf, nåbarhet, oreferererade symboler, API-rutter, CLI-kommandon och frontendfiler. |
 | `tools/check_code_file_lengths.py` | Fristående kontroll: mål 500 rader, stark varning vid 800 och fel vid 1 000 rader. |
+| `tools/check_documentation.py` | Fristående regressionskontroll för dokumentationsstruktur, historikmärkning, pensionerade filer och lokala Markdown-länkar. |
 | `tools/measure_period_runs.py` | Mäter dag, vecka, månad och hela underlaget genom samma API och motor som gränssnittet (tid till första verifierade lösning och total körtid) i en tillfällig lagringsmapp. |
 
 ## Frontend: vyer för gemensam körning
@@ -215,7 +213,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `frontend/src/lib/bookingView.test.ts` | Test av datum, tidslinje, intervall och mått (verklig närvaro okänd, aldrig noll). |
 | `frontend/src/lib/period.ts` | Planeringsperiod: genvägar (dag, vecka, månad, hela underlaget), kontroll av valet och texter om täckning och kontroll. |
 | `frontend/src/lib/usePeriod.ts` | Hämtar underlagets täckning och serverns kontroll av vald period. |
-| `frontend/src/components/joint/savings-card.tsx` | Besparingspotentialen överst i resultatet: belopp, jämförelse mot referensen med låsta datum, intervall och kostnadsposter; knapp som beräknar Nuläge. |
+| `frontend/src/components/joint/savings-card.tsx` | Besparingspotentialen överst i resultatet: belopp, jämförelse mot referensoptimeringen med låsta datum, intervall och kostnadsposter; knapp som beräknar referensen. |
 | `frontend/src/lib/savingsApi.ts`, `savingsView.ts`, `useSavings.ts` | Anrop, rubriktexter (testade) och hook som följer jobbet för referensen med låsta datum. |
 | `frontend/src/components/joint/scenario-facts.tsx`, `params/params-section.tsx` | Raden med det som körs (en gång per uppgift) och parametersektionen med de vanligaste parametrarna överst och resten hopfällt. |
 | `frontend/src/lib/featuredParams.ts`, `scenarioFacts.ts`, `useUnderlayInfo.ts` | Vilka parametrar som visas överst, uppgifterna om det som körs (testade) och underlagets datum. |

@@ -1,10 +1,13 @@
 # Teknisk specifikation – gemensam optimeringsmotor
 
-Detta dokument specificerar nästa motor innan den byggs för verkliga terminsdata. Den ersätter inte datagap eller verksamhetsbeslut med hårdkodade värden. Alla scenarier ska beskriva sina antaganden i maskinläsbar form.
+**Dokumenttyp:** styrande teknisk specifikation.
+**Status:** gällande för `joint_*`-motorn.
+
+Dokumentet anger motorns kontrakt och godkännandekriterier. Det ersätter inte datagap eller verksamhetsbeslut med hårdkodade värden. Alla körningsunderlag ska beskriva sina antaganden i maskinläsbar form.
 
 ## Syfte och godkännandekriterium
 
-Motorn ska gemensamt välja tentamensdatum/pass, salstillfällen, lokalportfölj och bemanning för en minst terminslång planeringsperiod. En godkänd lösning täcker exakt hela den inkluderade efterfrågan. Om den inte kan göra det ska huvudmodellen rapportera ogenomförbarhet; en separat diagnostikmodell kan peka ut resursbrist men är inte en lösning.
+Motorn ska gemensamt välja tentamensdatum/pass, salstillfällen, lokalportfölj och bemanning för användarens valda sammanhängande planeringsperiod. Perioden får vara en dag, en vecka, en termin eller längre inom dokumenterad datatäckning. En godkänd lösning täcker exakt hela den inkluderade efterfrågan. Om den inte kan göra det ska huvudmodellen rapportera ogenomförbarhet; en separat diagnostikmodell kan peka ut resursbrist men är inte en lösning.
 
 Ekonomiskt resultat uttrycks i öre. Först minimeras jämförbar årskostnad. Bland lösningar med samma kostnad minimeras sedan dokumenterade förändringspreferenser, exempelvis avvikelse från historiska datum och rum.
 
@@ -79,7 +82,12 @@ Om ett sådant antagande saknas redovisas fast årskostnad och simulerad periodk
 
 ## Beräkningsstrategi
 
-Modellen löser hela terminen där lokalportfölj och personalvolym delas. Datumvis dekomponering är inte giltig för den gemensamma kostnadsfunktionen.
+Modellen löser hela den valda perioden med en gemensam lokalportfölj och
+personalvolym. En dekomponerad strategi får kontrollera dagar eller dagblock
+separat endast om den bevarar det gemensamma portfölj- och poolbeslutet,
+producerar en giltig gemensam kostnadsgräns och eftervaliderar den fullständiga
+lösningen. Oberoende dagoptimeringar utan dessa kopplingar är inte giltiga för
+den gemensamma kostnadsfunktionen.
 
 För små och medelstora instanser förgenereras endast giltiga pass- och rumskandidater, dominerade alternativ tas bort, symmetriska resurser bryts och CP-SAT/LNS körs med tidsgräns och dokumenterad optimalitetslucka. Regioner får delas endast när kalender, lokaler och personal bevisligen är oberoende.
 

@@ -1,8 +1,11 @@
 # Valbar planeringsperiod, snabba körningar och redan lagda bokningar
 
-Status: steg 1–2 är genomförda på `feature/valbar-period-snabbkorning` (från PR #11). Steg 3 (hänsyn till redan lagda bokningar) är **designat men inte implementerat**.
+**Dokumenttyp:** teknisk referens och kvarstående design.
+**Status:** periodval och korta körningar är implementerade. Steg 3, hänsyn
+till redan lagda bokningar utanför optimeringspopulationen, är **designat men
+inte implementerat**.
 
-Kravunderlag: `docs/OVERLAMNING_CLAUDE_2026-10-12.md` och `docs/KONCEPTUELL_KRAVSPECIFIKATION.md` (UX-9, §11.8, §11.9) i PR #12. Hela terminen är **inte** längre minsta planeringsenhet: datatäckningen och användarens val styr perioden.
+Kravunderlag: `docs/KONCEPTUELL_KRAVSPECIFIKATION.md` (UX-9, §11.8, §11.9) och `docs/KRAV_OCH_STATUS.md`. Hela terminen är **inte** minsta planeringsenhet: datatäckningen och användarens val styr perioden.
 
 ## 1. Vad som är genomfört
 

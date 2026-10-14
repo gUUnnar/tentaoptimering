@@ -1,5 +1,9 @@
 # Hur verksamhetsunderlaget 2 oktober påverkar modellen (2026-10-12)
 
+> **Historisk analys.** Statuspåståenden gäller den 12 oktober 2026. Aktuell
+> status finns i [kravstatusen](../KRAV_OCH_STATUS.md); källuppgifterna finns i
+> [verksamhetsunderlaget](../VERKSAMHETSUNDERLAG_2026-10-02.md).
+
 **Underlag:** [`VERKSAMHETSUNDERLAG_2026-10-02.md`](https://github.com/gUUnnar/tentaoptimering/blob/docs/verksamhetsunderlag-2026-10-02/docs/VERKSAMHETSUNDERLAG_2026-10-02.md) och [`OVERLAMNING_CLAUDE_2026-10-12.md`](https://github.com/gUUnnar/tentaoptimering/blob/docs/verksamhetsunderlag-2026-10-02/docs/OVERLAMNING_CLAUDE_2026-10-12.md) (PR #12, ännu inte mergad). Presentationens siffror är *återgivna uppgifter*, inte verifierade regler. **Inget i detta dokument har gjort en av dem till en verifierad regel eller ett standardvärde.** Allt som provas är ett experiment med uttryckligt värde.
 
 ## Sammanfattning

@@ -1,5 +1,8 @@
 # Revision A3: Vilka regler upprätthåller beräkningskärnan faktiskt?
 
+> **Historisk delrapport.** Granskar den senare borttagna motorn. Aktuell status
+> finns i [kravstatusen](../../KRAV_OCH_STATUS.md).
+
 > Den äldre kapacitets- och termmotorn är borttagen (finns i Git-historiken före den här grenen). Hänvisningar nedan till dess moduler, scenarier, kommandon och rutter beskriver därför det tidigare läget.
 
 Revisionsdatum 2026-10-09. Gren feature/omtag-simuleringsmodell. Repot är orört (git status rent före och efter). Alla skript och utdata ligger i `...\scratchpad\audit\a3\`.

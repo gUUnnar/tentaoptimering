@@ -1,5 +1,8 @@
 # Oberoende eftervalidering av gemensamma körningar
 
+**Dokumenttyp:** styrande valideringskontrakt.
+**Status:** implementerat kontrakt; verksamhetsregler kan fortfarande vara `not_evaluated`.
+
 Paket: `src/tentaoptimering/joint_validation/`. Gäller `joint-optimization-input-v2` och `joint-optimization-result-v2`.
 
 ## Princip

@@ -1,5 +1,8 @@
 # Revision a4: eftervalidering, resultat och jämförelser
 
+> **Historisk delrapport.** Granskar den senare borttagna motorn. Aktuell status
+> finns i [kravstatusen](../../KRAV_OCH_STATUS.md).
+
 > Den äldre kapacitets- och termmotorn är borttagen (finns i Git-historiken före den här grenen). Hänvisningar nedan till dess moduler, scenarier, kommandon och rutter beskriver därför det tidigare läget.
 
 Datum 2026-10-09. Repo orört (git status ren före och efter). Allt under `...\scratchpad\audit\a4\`. Basrun: `runs\20261009T121351Z-integrated_term_exploratory_2026` (config\scenarios\integrated_term_exploratory.toml mot data\processed; 15 s).
