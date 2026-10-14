@@ -47,6 +47,8 @@ class Demand:
     movable: bool
     group_basis: str
     digital_basis: str
+    # The wished dates (requested, reserve 1 and 2) as written in the input; empty for runs made before wishes were read.
+    wish_dates: tuple[str, ...] = ()
 
     @property
     def participants(self) -> int:
@@ -150,6 +152,7 @@ def build_context(problem: dict[str, Any], result: dict[str, Any]) -> Context:
             bool(item.get("movable", True)),
             str(item.get("participant_group_basis", "single_activity")),
             str(item.get("digital_requirement_basis", "observed")),
+            tuple(str(value) for value in item.get("wish_dates") or () if value),
         )
     rooms = {}
     for item in _need(problem, "rooms", "indata"):

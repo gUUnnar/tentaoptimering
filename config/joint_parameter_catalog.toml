@@ -1,4 +1,4 @@
-catalog_version = "2.3.0"
+catalog_version = "2.4.0"
 
 [[parameter]]
 id = "demand.variation_pct"
@@ -47,6 +47,42 @@ unit = "days"
 default = 0
 default_basis = "assumption"
 help_text = "Antal kalenderdagar efter ursprungligt datum."
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "wish.candidate_policy"
+group = "Tidsflexibilitet"
+label = "Vilka datum en tentamen får flyttas till"
+value_type = "choice"
+default = "window"
+default_basis = "assumption"
+help_text = "Fönster: dagarna kring det bokade datumet enligt Får tidigareläggas/senareläggas. Bara verksamhetens önskemål: önskat datum och reservdatum 1 och 2 som verksamheten själv angav, inga andra dagar. Önskemål och fönster: båda tillsammans. Kräver att underlaget innehåller önskemålen (förbered underlaget igen om det saknas)."
+choices = [{value = "window", label = "Fönster kring bokat datum"}, {value = "wishes", label = "Bara verksamhetens önskemål (önskat datum och reservdatum)"}, {value = "wishes_and_window", label = "Önskemål och fönster kring bokat datum"}]
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "wish.time_policy"
+group = "Tidsflexibilitet"
+label = "Starttid på önskade datum"
+value_type = "choice"
+default = "any_start"
+default_basis = "assumption"
+help_text = "Verksamhetens önskemål anger bara datum, aldrig klockslag. Valfritt pass: alla tillåtna starttider (se Tillåtna starttider) prövas på önskade datum, och bland lika billiga lösningar väljs den bokade starttiden. Bokad starttid: tentamen får bara sin bokade starttid, vilket utesluter önskade datum om den bokade starttiden inte är en tillåten starttid. Gäller bara när önskemålen styr datumen."
+choices = [{value = "any_start", label = "Valfritt tillåtet pass"}, {value = "booked_start", label = "Bara bokad starttid"}]
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "wish.tiebreak"
+group = "Mål"
+label = "Vad som avgör mellan lika billiga lösningar"
+value_type = "choice"
+default = "fewest_changes"
+default_basis = "assumption"
+help_text = "Kostnaden minimeras alltid först. Bland lösningar med samma kostnad väljer motorn antingen så få ändringar som möjligt mot bokningen, eller önskemålen i prioritetsordning (önskat datum, reservdatum 1, reservdatum 2, annat datum). Någon kronviktad avvägning mellan önskemål och kostnad finns inte: önskemål kan inte kosta pengar i modellen."
+choices = [{value = "fewest_changes", label = "Färst ändringar mot bokningen"}, {value = "wish_priority", label = "Verksamhetens önskemål i prioritetsordning"}]
 engine_support = "implemented"
 honored_by = "joint_inputs.build_real_subset_problem"
 
@@ -150,6 +186,17 @@ value_type = "room_id_list"
 default = []
 default_basis = "source_data"
 help_text = "Tom lista betyder alla kompatibla salar i dataunderlaget."
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "rooms.include_observed_unregistered"
+group = "Lokaler"
+label = "Ta med använda salar som saknar registerkapacitet"
+value_type = "boolean"
+default = false
+default_basis = "assumption"
+help_text = "Bokningarna använder namngivna salar (till exempel Fyrishovs hallar) som saknar kapacitet i salsregistret. Utan dem ryms inte ens en dags bokningar i registrets salar. På: salarna läggs till med största antal platser som någonsin bokats i salen som kapacitet. Det är en underkant, inte den verkliga kapaciteten, och de prissätts som övriga salar per plats. Av: bara registrets salar planeras."
 engine_support = "implemented"
 honored_by = "joint_inputs.build_real_subset_problem"
 

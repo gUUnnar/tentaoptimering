@@ -2,6 +2,7 @@ schema_version = "joint-real-subset-v1"
 
 [scenario]
 id = "joint_underlay_period_2026"
+hidden = true
 name = "Alla tentor i underlaget (12 jan–31 mars 2026)"
 description = "Alla tentor som är klara för modellering i Uppsala i underlaget, 12 januari till 31 mars 2026, planerade tillsammans: datum, salar och bemanning. Underlaget innehåller inga tentor efter 31 mars; tentor i april–juni ingår därför inte."
 

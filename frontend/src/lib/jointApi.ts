@@ -118,7 +118,7 @@ export function toJointSummary(raw: BackendSummary): JointSummary {
 export function toJointScenario(raw: Partial<JointScenario> & { id: string; name?: string }): JointScenario {
   return {
     id: raw.id, name: raw.name ?? raw.id, description: raw.description ?? "", problem_id: raw.problem_id ?? raw.name ?? raw.id,
-    origin: raw.origin, subset: raw.subset ?? null,
+    origin: raw.origin, hidden: raw.hidden === true, subset: raw.subset ?? null,
   }
 }
 
@@ -164,7 +164,7 @@ export const jointApi: JointApi = {
   },
   summary: async runId => toJointSummary(await request<BackendSummary>(`/api/joint-runs/${enc(runId)}/summary`)),
   compare: async (runId, base) => toCompareResult(await request<unknown>(`/api/joint-runs/${enc(runId)}/compare?base=${enc(base)}`)),
-  // Körningar listas ur de sparade körningsartefakterna.
-  listRuns: async () => (await request<{ candidates: WarmStartCandidate[] }>("/api/joint-runs/warm-start-candidates")).candidates
-    .map(item => ({ run_id: item.run_id, scenario_id: item.problem_id, status: item.solver_outcome })),
+  // Körningar listas ur de sparade körningsartefakterna, med det namn och den typ (B eller C) de sparades med.
+  listRuns: async () => (await request<{ runs: { run_id: string; problem_id: string | null; solver_outcome: string | null; name: string; named: boolean; kind: "B" | "C"; created_at: string | null }[] }>("/api/abc/runs")).runs
+    .map(item => ({ run_id: item.run_id, scenario_id: item.problem_id ?? "", status: item.solver_outcome ?? "", created_at: item.created_at ?? undefined, name: item.named ? item.name : undefined, kind: item.kind })),
 }

@@ -8,6 +8,7 @@ Målet är den lägsta **totala årskostnaden** för en fullt genomförbar verks
 
 ## Dokumentation
 
+- [A, B och C: faktisk bokning, grundoptimering och egna körningar](docs/ABC_SCENARIOMODELL.md) – den gällande begreppsmodellen för körningar och jämförelser.
 - [Kravspecifikation](docs/KONCEPTUELL_KRAVSPECIFIKATION.md) – verksamhetskrav, kostnadsmodell, scenarioparametrar och förväntade resultat.
 - [AGENTS.md](AGENTS.md) – arbetsinstruktioner för Codex och aktuellt utvecklingssteg.
 - [Kodgranskning och arbetsuppdrag](docs/KODGRANSKNING_OCH_CODEX_UPPDRAG_2026-10-08.md) – ursprunglig kodinventering och nästa leverans.

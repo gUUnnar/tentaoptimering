@@ -14,7 +14,7 @@ export type SavingsState =
 
 const enc = encodeURIComponent
 
-/** Besparingspotential mot Nuläge (samma scenario där ingen tentamen flyttas). */
+/** Besparingspotential mot en referensoptimering med låsta datum (samma scenario där ingen tentamen flyttas; inte den faktiska bokningen). */
 export const savingsApi = {
   state: (runId: string) => request<SavingsState>(`/api/joint-runs/${enc(runId)}/savings`),
   start: (runId: string) => request<{ job_id: string }>(`/api/joint-runs/${enc(runId)}/savings`, { method: "POST" }),

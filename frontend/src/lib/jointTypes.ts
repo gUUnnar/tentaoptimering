@@ -13,7 +13,9 @@ export type ScenarioSubset = {
 // problem_id är scenariots id i TOML-filen (det som körningarna sparas under), inte filnamnet.
 export type JointScenario = {
   id: string; name: string; description: string; problem_id: string
-  origin?: "bundled" | "user" | (string & {})
+  origin?: "bundled" | "user" | "run" | (string & {})
+  /** Test- och utvecklingsscenarier erbjuds inte som utgångspunkt. */
+  hidden?: boolean
   subset?: ScenarioSubset | null
 }
 
@@ -74,6 +76,8 @@ export type WarmStartRequest = "auto" | "none" | (string & {})
 
 export type StartJointRunBody = {
   scenario: string
+  /** Körningens namn; tomt ger ett automatiskt namn. */
+  name?: string
   warm_start: WarmStartRequest
   threads: number // 0 = standard
   memory_mb: number | null
@@ -208,7 +212,7 @@ export type JointSummary = {
   provenance: VerdictValue | Record<string, unknown>
 }
 
-export type SavedRun = { run_id: string; scenario_id: string; status: string; created_at?: string }
+export type SavedRun = { run_id: string; scenario_id: string; status: string; created_at?: string; name?: string; kind?: "B" | "C" }
 
 // ---- Jämförelse mellan två körningar -------------------------------------------------------------------------------
 

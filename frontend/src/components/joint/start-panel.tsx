@@ -13,6 +13,7 @@ import { useParameterEditor } from "@/lib/useParameterEditor"
 import { usePrecheck } from "@/lib/usePrecheck"
 import { useUnderlayInfo } from "@/lib/useUnderlayInfo"
 import { usePeriod } from "@/lib/usePeriod"
+import { BASE_SCENARIO_ID } from "@/lib/abcView"
 import { PeriodPicker } from "./period-picker"
 import { PrecheckResult } from "./precheck-result"
 import { ParamsHeading, ParamsSection } from "./params/params-section"
@@ -30,13 +31,16 @@ type Props = {
   onStart: (body: StartJointRunBody, changes: RunChangeText[]) => Promise<void>
   onSaved: (scenario: JointScenario) => Promise<void>
   onOpenUnderlay: () => void
+  /** Begäran från översikten att utgå från B eller en tidigare körning; `nonce` gör att samma val kan begäras igen. */
+  baseRequest: { id: string; nonce: number } | null
 }
 
-export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpenUnderlay }: Props) {
+export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpenUnderlay, baseRequest }: Props) {
   const [scenarioId, setScenarioId] = useState("")
   const [options, setOptions] = useState<RunOptions>(DEFAULT_RUN_OPTIONS)
   const [submitting, setSubmitting] = useState(false)
   const [startError, setStartError] = useState("")
+  const [runName, setRunName] = useState("")
   const [period, setPeriod] = useState<PeriodChoice | null>(null)
   const editor = useParameterEditor(scenarioId, scenarios)
   const periodState = usePeriod(scenarioId, period)
@@ -47,7 +51,8 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
     if (!scenarios.length) return
     setScenarioId(current => current && scenarios.some(item => item.id === current) ? current : defaultScenarioId(scenarios))
   }, [scenarios])
-  useEffect(() => { setOptions(current => ({ ...current, specific: "" })); setStartError(""); setPeriod(null) }, [scenarioId])
+  useEffect(() => { setOptions(current => ({ ...current, specific: "" })); setStartError(""); setPeriod(null); setRunName("") }, [scenarioId])
+  useEffect(() => { if (baseRequest && scenarios.some(item => item.id === baseRequest.id)) setScenarioId(baseRequest.id) }, [baseRequest, scenarios])
 
   const scenario = scenarios.find(item => item.id === scenarioId)
   const estimate = runtimeEstimate(scenario?.subset?.exam_count)
@@ -58,6 +63,8 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
   const namedExams = scenario?.subset?.selection === "event_list"
   const periodOk = periodRunnable(period, periodState.check)
   const checking = precheck.status === "running"
+  // B är grundoptimeringen exakt som den är definierad; varje annan parameteruppsättning, period eller utgångspunkt är en egen körning (C).
+  const isBase = scenarioId === BASE_SCENARIO_ID && editor.changes.length === 0 && !period
   const canStart = !busy && !submitting && !checking && !!scenarioId && ready && !editor.hasErrors && optionsOk && periodOk && !scenarioNeedsUnderlay(scenario)
   const why = busy ? "En körning pågår redan." : scenarioNeedsUnderlay(scenario) ? "Förbered underlaget under Underlag först." : !ready ? "Parametrarna har inte hämtats än." : editor.hasErrors ? "Rätta felen i parametrarna först." : !optionsOk ? "Rätta valen för start och resurser först." : !periodOk ? (periodState.check?.partial && !period?.accept ? "Godkänn den kortare perioden först." : "Välj en period som går att planera först.") : null
 
@@ -74,7 +81,7 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
     setSubmitting(true); setStartError("")
     const texts = editor.changes.filter(change => !change.error).map(({ id, label, oldText, newText }) => ({ id, label, oldText, newText }))
     if (period) texts.unshift({ id: "period", label: "Planeringsperiod", oldText: "Scenariots egen period", newText: `${period.from} – ${period.to}` })
-    try { await onStart(toStartBody(scenarioId, options, editor.request, period), texts) }
+    try { await onStart({ ...toStartBody(scenarioId, options, editor.request, period), ...(runName.trim() ? { name: runName.trim() } : {}) }, texts) }
     catch (error) {
       if (error instanceof ApiError && error.errors.length) { editor.applyServerErrors(error.errors); setStartError("Servern avvisade några parametervärden. Se markeringarna vid raderna ovan.") }
       else setStartError((error as Error).message)
@@ -106,11 +113,14 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
               </p>
               {estimate && <InfoTip label="Hur lång tid tar körningen?" align="right">{estimate.text}</InfoTip>}
               <Button type="button" size="lg" variant="outline" disabled={!canCheck} onClick={() => void precheck.run(toStartBody(scenarioId, options, editor.request, period))}>{checking ? "Kontrollerar …" : "Kontrollera"}</Button>
-              <Button type="button" size="lg" disabled={!canStart} onClick={() => void submit()} aria-describedby={why ? "start-why" : undefined}><Play size={15} className="mr-1" aria-hidden="true"/>{submitting ? "Startar …" : "Kör"}</Button>
+              <Button type="button" size="lg" disabled={!canStart} onClick={() => void submit()} aria-describedby={why ? "start-why" : undefined}><Play size={15} className="mr-1" aria-hidden="true"/>{submitting ? "Startar …" : isBase ? "Kör B (grundoptimering)" : "Kör som egen körning (C)"}</Button>
             </div>
             {why && <p id="start-why" className="text-xs text-slate-800">{why}</p>}
           </div>
         </div>
+        <div className="max-w-xl"><label className="label" htmlFor="run-name">Namn på körningen</label>
+          <input id="run-name" className="field w-full" type="text" maxLength={120} value={runName} onChange={event => setRunName(event.target.value)}
+            placeholder={isBase ? "Lämna tomt för ”B – Grundoptimering” och klockslag" : "Lämna tomt för ett namn efter det du ändrat"}/></div>
         <ScenarioFacts scenario={scenario} choice={period} check={periodState.check} coverage={periodState.coverage} underlay={underlay}/>
         <PrecheckResult state={precheck}/>
       </CardContent>

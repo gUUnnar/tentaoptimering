@@ -22,6 +22,7 @@ from ortools.sat.python import cp_model
 
 from ..joint_contract import JointOptimizationInput, Room, SolverSettings
 from ..joint_optimizer import _build_variables_and_constraints, _extract
+from ..joint_preference import max_penalty, penalty_weights
 from .aggregate import cp_solver
 from .resources import CancelToken, solve_cancellable, wall_time
 
@@ -87,11 +88,9 @@ def solve_part(
     model = cp_model.CpModel()
     slots = {slot.slot_id: slot for slot in sub.slots}
     variables = _build_variables_and_constraints(model, sub, slots)
-    changes = [
-        1 - variables.selected[item.exam_demand_id, item.original_slot_id] for item in sub.demands
-        if item.original_slot_id is not None and item.original_slot_id in item.candidate_slot_ids
-    ]
-    scale = len(changes) + 1  # cost first, then the fewest changes
+    weights = penalty_weights(sub)  # the second goal: booked occasions, or the business's wishes in order
+    changes = [weight * variables.selected[key] for key, weight in weights.items()]
+    scale = max_penalty(weights) + 1  # cost first, then the preference
     session_cost = sub.staffing.cost_ore_per_staff_session * sum(variables.staff.values()) + sum(
         room.external_session_cost_ore * variables.sessions[room.room_id, slot.slot_id]
         for room in sub.rooms for slot in sub.slots if room.external_session_cost_ore

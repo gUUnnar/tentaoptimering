@@ -95,7 +95,7 @@ class ScenarioListTests(unittest.TestCase):
         self.assertEqual((small["subset"]["selection"], small["subset"]["exam_count"], small["problem_id"]), ("event_list", 12, "joint_real_subset_2026"))
         without_data = {row["id"]: row for row in joint_api.list_scenarios(storage=workspace.storage)}
         self.assertIsNone(without_data["joint_underlay_period"]["subset"]["exam_count"])
-        self.assertEqual(set(term), {"id", "name", "description", "problem_id", "origin", "subset", "schema_version"})
+        self.assertEqual(set(term), {"id", "name", "description", "problem_id", "origin", "subset", "schema_version", "hidden"})
         self.assertEqual(set(term["subset"]), {"plan_area", "selection", "exam_count", "description"})
 
     def test_a_saved_scenario_is_listed_as_the_users_own(self) -> None:
@@ -426,7 +426,7 @@ class RouteTests(unittest.TestCase):
         self.assertEqual((term["origin"], term["subset"]["selection"], term["subset"]["exam_count"]), ("bundled", "rule", 2))
 
         status, payload = self._request("GET", "/api/joint-runs/parameters?scenario=joint_underlay_period")
-        self.assertEqual((status, payload["catalog_version"], payload["scenario_id"], len(payload["parameters"])), (200, "2.3.0", "joint_underlay_period", 55))
+        self.assertEqual((status, payload["catalog_version"], payload["scenario_id"], len(payload["parameters"])), (200, "2.4.0", "joint_underlay_period", 59))
         self.assertEqual(self._request("GET", "/api/joint-runs/parameters?scenario=finns-inte")[0], 404)
         self.assertEqual(self._request("GET", "/api/joint-runs/parameters?scenario=../x")[0], 422)
         self.assertEqual(self._request("GET", "/api/joint-runs/parameters")[0], 422)

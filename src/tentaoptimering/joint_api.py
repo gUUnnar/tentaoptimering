@@ -24,8 +24,10 @@ from .joint_parameters import describe_parameters
 from .joint_progress import EVENTS_FILE, ProgressSink, read_events
 from .joint_scenarios import (
     JOINT_SCENARIO_SCHEMA, ParameterValidationError, ScenarioConflictError, ScenarioCreate, effective_changes,
-    merge_changes, read_scenario, resolve_scenario, save_user_scenario, scenario_rows, scenario_values, write_run_snapshot,
+    merge_changes, read_scenario, resolve_scenario, run_for_scenario_id, save_user_scenario, scenario_rows, scenario_values,
+    write_run_snapshot,
 )
+from .run_meta import KIND_USER, default_name, new_meta, read_meta, run_kind
 from .joint_strategy.resources import CancelToken, ExecutionBudget
 from .joint_summary import run_summary
 from .parameter_catalog import load_parameter_catalog
@@ -39,7 +41,8 @@ RUNNING, COMPLETED, FAILED, CANCELLED = "running", "completed", "failed", "cance
 
 
 class JointRunRequest(BaseModel):
-    scenario: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]{0,79}$")
+    scenario: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]{0,79}$")  # a scenario id, or `run-...` to start from a saved run
+    name: str | None = Field(None, max_length=120)  # what the run is called; a default is made if empty
     warm_start: str = Field("auto", pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,159}$")  # "auto", "none" or a run id
     threads: int = Field(0, ge=0, le=512)
     memory_mb: int | None = Field(None, ge=1)
@@ -141,6 +144,27 @@ def run_config(
     return config, snapshot
 
 
+def run_meta_for(
+    storage: AppStorage, request: JointRunRequest, config: Path, scenarios_dir: Path | None, catalog_file: Path,
+) -> dict[str, Any]:
+    """The record a new run keeps about itself (see `run_meta`): kind, name, base run and the changes the user made."""
+    catalog = load_parameter_catalog(catalog_file)
+    content = read_scenario(resolve_scenario(storage, request.scenario, scenarios_dir)[0]) or {}
+    changes = effective_changes(catalog, content, request.parameters) if request.parameters else {}
+    base_run = run_for_scenario_id(storage, request.scenario)
+    problem_id = str((read_scenario(config) or {}).get("scenario", {}).get("id", ""))
+    if base_run is not None:
+        base_kind = (read_meta(storage.run_directory(base_run)) or {}).get("kind", KIND_USER)
+        kind = base_kind if not changes and not request.period else KIND_USER  # the same values again are the same kind of run
+    else:
+        kind = run_kind(request.scenario, changes, bool(request.period))
+    labels = {item.parameter_id: item.label for item in catalog.parameters}
+    name = default_name(kind, str((read_scenario(config) or {}).get("scenario", {}).get("name", problem_id)), [labels.get(key, key) for key in changes])
+    period = request.period.model_dump(mode="json") if request.period else None
+    return new_meta(name=request.name or name, kind=kind, scenario_id=request.scenario, base_run_id=base_run, changes=changes, period=period,
+                    processed_dir=storage.processed_dir, catalog_path=catalog_file)
+
+
 def start_joint_run(
     jobs: LocalJobManager, storage: AppStorage, request: JointRunRequest,
     scenarios_dir: Path | None = None, catalog_path: Path | None = None,
@@ -151,13 +175,19 @@ def start_joint_run(
     """
     catalog_file = catalog_path or bundled_joint_catalog_path()
     config, snapshot = run_config(storage, request, scenarios_dir, catalog_file)
+    try:
+        meta = run_meta_for(storage, request, config, scenarios_dir, catalog_file)
+    except Exception:
+        if snapshot is not None:
+            snapshot.unlink(missing_ok=True)
+        raise
     cancel, progress = CancelToken(), ProgressSink()
     budget = ExecutionBudget(request.threads, request.memory_mb, request.parallel_day_checks)
 
     def action() -> dict[str, Any]:
         try:
             run = run_real_subset(config, storage.processed_dir, catalog_file, storage.runs_dir, warm_start=request.warm_start,
-                                  budget=budget, cancel=cancel, progress=progress)
+                                  budget=budget, cancel=cancel, progress=progress, meta=meta)
         except Exception as error:
             if not progress.has("finished"):
                 progress.emit("finished", outcome="failed", cost_ore=None, bound_ore=None, cancelled=cancel.cancelled,

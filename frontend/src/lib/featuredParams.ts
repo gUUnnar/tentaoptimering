@@ -5,12 +5,15 @@ import type { ParameterInfo } from "./jointTypes.ts"
  * Det är en rent visuell prioritering: alla parametrar är oförändrat tillgängliga, och bara sådana som finns i katalogen visas.
  */
 export const FEATURED_PARAM_IDS: readonly string[] = [
-  "calendar.weekdays",
-  "calendar.start_times",
+  "wish.candidate_policy",
+  "wish.tiebreak",
   "window.earlier_days",
   "window.later_days",
   "flex.movable_types",
+  "calendar.weekdays",
+  "calendar.start_times",
   "rooms.selection",
+  "rooms.include_observed_unregistered",
   "demand.variation_pct",
   "cost.room_annual_per_seat_ore",
   "cost.staff_annual_ore",

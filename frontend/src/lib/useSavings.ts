@@ -4,7 +4,7 @@ import { jobProgress } from "./underlay"
 
 const POLL_MS = 1000
 
-/** Besparingspotentialen för en körning och det jobb som beräknar Nuläge (följs även efter omladdning). */
+/** Besparingspotentialen för en körning och det jobb som beräknar referensen med låsta datum (följs även efter omladdning). */
 export function useSavings(runId: string) {
   const [state, setState] = useState<SavingsState | null>(null)
   const [error, setError] = useState("")

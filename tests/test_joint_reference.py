@@ -1,4 +1,4 @@
-"""The reference scenario is neutral: apart from a few documented assumptions it uses the catalog defaults."""
+"""B, the base optimisation, is defined by documented values: apart from them it uses the catalog defaults."""
 
 from __future__ import annotations
 
@@ -9,12 +9,12 @@ import unittest
 from tentaoptimering.parameter_catalog import load_parameter_catalog
 
 ROOT = Path(__file__).resolve().parents[1]
-REFERENCE = ROOT / "config" / "scenarios" / "joint_reference.toml"
+REFERENCE = ROOT / "config" / "scenarios" / "joint_base.toml"
 CATALOG = ROOT / "config" / "joint_parameter_catalog.toml"
-ASSUMPTIONS = {"window.earlier_days", "window.later_days", "cost.room_annual_per_seat_ore", "cost.staff_annual_ore"}
+ASSUMPTIONS = {"wish.candidate_policy", "wish.tiebreak", "rooms.include_observed_unregistered", "cost.room_annual_per_seat_ore", "cost.staff_annual_ore"}
 
 
-class ReferenceScenarioTest(unittest.TestCase):
+class BaseScenarioTest(unittest.TestCase):
     def setUp(self) -> None:
         self.content = tomllib.loads(REFERENCE.read_text(encoding="utf-8"))
 

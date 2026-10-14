@@ -32,6 +32,10 @@ Normaliseringen bevarar källfälten men standardiserar rubriker, blanktecken, d
 Se `docs/OPTIMERINGSUNDERLAG.md` för gränserna för vad tabellerna får användas till före motorbygge.
 
 
+## Verksamhetens önskemål (`exam_wishes.csv`)
+
+Bokningsexporten bär verksamhetens ursprungliga önskemål per beställning: `requested_date`, `reserve_date_1`, `reserve_date_2` och `no_reserve_date_reason`. De är *önskemål*, inte bokning: bokningen är `scheduled_date`, sal och tid. `exam_wishes.csv` har en rad per tentamenstillfälle (`exam_event_id`, samma korn som optimeringsbehovet) med de tre datumen, motiveringen som den skrevs, `wish_status` (`reserves_given`, `reason_only`, `neither`, `no_request`), `booked_date_rank` (var det bokade datumet ligger bland önskemålen: `first`, `reserve_1`, `reserve_2`, `other`, `not_booked`), antal tentamenstillfällen per beställning och om beställningens rader har motstridiga önskemål. Önskemålen har datum men aldrig klockslag. Motiveringarna tolkas inte. Se [ABC_SCENARIOMODELL.md](ABC_SCENARIOMODELL.md).
+
 ## Tidsavgränsning, verklig beläggning och läsvyer
 
 Den nya dataleveransen avses omfatta **1 januari–30 september inklusive verklig beläggning**. Årtal, filformat, definition av faktisk beläggning och kopplingsnyckel till bokning/sal är ännu inte fastställda i detta dokument; materialet har **inte** importerats. Den data som finns tillgänglig när användaren kör ska avgöra möjliga planeringsperioder, inte fasta terminsdatum i koden.

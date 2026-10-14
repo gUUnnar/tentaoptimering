@@ -27,7 +27,8 @@ export function scenarioName(scenarios: JointScenario[], problemId: string): str
 }
 
 /** Hur en körning benämns för användaren: scenario och klockslag. Det tekniska id:t visas bara bakom en ikon. */
-export function runLabel(run: Pick<SavedRun, "run_id" | "scenario_id" | "created_at">, scenarios: JointScenario[], now: Date = new Date()): string {
+export function runLabel(run: Pick<SavedRun, "run_id" | "scenario_id" | "created_at"> & { name?: string }, scenarios: JointScenario[], now: Date = new Date()): string {
+  if (run.name) return run.name
   const start = runStart(run.run_id, run.created_at)
   const name = scenarioName(scenarios, run.scenario_id)
   return start ? `${name}, ${startText(start, now)}` : name

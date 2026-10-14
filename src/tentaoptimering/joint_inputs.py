@@ -29,15 +29,19 @@ from .joint_contract import (
     write_result,
 )
 from .joint_optimizer import solve_joint_optimization
+from .joint_observed_rooms import observed_unregistered_rooms, with_price
 from .joint_options import building_id, select_rooms
+from .joint_report import build_report, validation_lines
 from .joint_progress import EVENTS_FILE, ProgressSink, emit, phase
 from .joint_selection import select_ready_demands
 from .joint_strategy.resources import CancelToken, ExecutionBudget
 from .joint_strategy.warm_start import StartReport
 from .joint_validation import write_validation
+from .joint_wishes import EventWish, load_wishes, require_wishes, uses_window, uses_wishes, wish_candidate_ids, wish_for
 from .joint_warm_start import AUTO, decision_record, explain, find_start, report_lines, write_decision
 from .parameter_catalog import freeze_parameter_values, load_parameter_catalog
 from .provenance import sha256_file
+from .run_meta import new_meta, run_kind, write_meta
 
 SCENARIO_COPY = "joint_scenario.toml"
 
@@ -66,12 +70,20 @@ def build_real_subset_problem(
         raise ValueError("Endast efterfrågemåttet registered_count stöds av dataadaptern.")
     earlier, later = int(values["window.earlier_days"]), int(values["window.later_days"])
 
-    events = _prepare_events(ready, values)
+    wishes = load_wishes(processed_dir)
+    require_wishes(wishes, values)
+    events = _prepare_events(ready, values, wishes)
     slots = _slots(values, events, earlier, later)
     slot_by_key = {(item.scheduled_date, item.start_minute): item for item in slots}
     demands = tuple(_demand(event, slot_by_key, slots, values, earlier, later) for event in events)
 
     rooms = _rooms(rooms_frame, config["subset"]["plan_area"], slots, values)
+    if values["rooms.include_observed_unregistered"]:
+        inventory_path = processed_dir / "room_inventory.csv"
+        inventory = pd.read_csv(inventory_path, encoding="utf-8-sig") if inventory_path.is_file() else None
+        price = int(values["cost.room_annual_per_seat_ore"])
+        extra = observed_unregistered_rooms(inventory, config["subset"]["plan_area"], tuple(slot.slot_id for slot in slots), {room.room_id for room in rooms})
+        rooms = rooms + tuple(with_price(room, price) for room in extra)
     ladder = tuple(
         StaffingStep(int(item["max_participants"]), int(item["required_staff"]))
         for item in values["staffing.ladder"]
@@ -79,7 +91,7 @@ def build_real_subset_problem(
     return JointOptimizationInput(
         schema_version=INPUT_SCHEMA_VERSION,
         problem_id=str(config["scenario"]["id"]),
-        dataset_hash=_dataset_hash(processed_dir),
+        dataset_hash=dataset_hash(processed_dir),
         slots=slots,
         demands=demands,
         rooms=rooms,
@@ -104,6 +116,7 @@ def build_real_subset_problem(
             modeled_participants=sum(item.participant_count for item in demands),
         ),
         turnaround_minutes=int(values["calendar.turnaround_minutes"]),
+        preference=str(values["wish.tiebreak"]),
     )
 
 
@@ -121,7 +134,7 @@ def _new_run_directory(runs_dir: Path, problem_id: str) -> tuple[str, Path]:
         return run_id, runs_dir / run_id
 
 
-def _prepare_events(ready: pd.DataFrame, values: dict[str, Any]) -> list[dict[str, Any]]:
+def _prepare_events(ready: pd.DataFrame, values: dict[str, Any], wishes: dict[str, EventWish] | None) -> list[dict[str, Any]]:
     """Resolve each named exam event to one historical occasion, duration and type."""
     events = []
     for event_id, frame in ready.groupby("exam_event_id", sort=True):
@@ -143,7 +156,10 @@ def _prepare_events(ready: pd.DataFrame, values: dict[str, Any]) -> list[dict[st
             "requires_room": not all("hemtenta" in value or "hemma" in value for value in exam_types),
             "movable": any(token in exam_type for token in values["flex.movable_types"]),
             "digital_requirement": requirement, "digital_basis": basis,
+            "wish": wish_for(wishes, str(event_id)),
         })
+        # Wished dates widen the calendar only when the policy lets wishes steer the dates.
+        events[-1]["wish_days"] = events[-1]["wish"].days() if uses_wishes(str(values["wish.candidate_policy"])) else []
     return events
 
 
@@ -186,11 +202,14 @@ def _demand(
     original_slot = slot_by_key.get(original_key)
     if event["movable"]:
         low, high = event["original_date"] - timedelta(days=earlier), event["original_date"] + timedelta(days=later)
+        policy = str(values["wish.candidate_policy"])
+        wished = wish_candidate_ids(event, slots, policy, str(values["wish.time_policy"]), _latest_end_limit(values))
         # The historical occasion competes only if it satisfies every user setting.
         candidates = tuple(
             slot.slot_id for slot in slots
-            if not slot.reference_only and low <= slot.scheduled_date <= high
-            and slot.start_minute + event["duration"] <= _latest_end_limit(values)
+            if not slot.reference_only and slot.slot_id in wished or (
+                uses_window(policy) and not slot.reference_only and low <= slot.scheduled_date <= high
+                and slot.start_minute + event["duration"] <= _latest_end_limit(values))
         )
     else:
         candidates = (original_slot.slot_id,) if original_slot is not None else ()
@@ -226,6 +245,7 @@ def _demand(
         movable=event["movable"],
         participant_group_basis="assumed_disjoint_groups_sum" if len(groups) > 1 else "single_activity",
         digital_requirement_basis=event["digital_basis"],
+        wish_dates=event["wish"].dates, wish_status=event["wish"].status, wish_reason=event["wish"].reason,
     )
 
 
@@ -275,8 +295,12 @@ def run_real_subset(
     budget: ExecutionBudget | None = None,
     cancel: CancelToken | None = None,
     progress: ProgressSink | None = None,
+    meta: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build, solve, save and validate one run.
+
+    `meta` (name, kind, base run, changes; see `run_meta`) is saved as `joint_run.json` before the solve, so that
+    even a run that fails or is cancelled says what it was. Without it the run is described by its scenario alone.
 
     `warm_start` is "auto" (the newest usable earlier run of the same problem), "none", or the run id of an
     earlier run. The earlier placement is only a starting point: the solver re-checks it against the new
@@ -292,6 +316,9 @@ def run_real_subset(
     report = StartReport()
     run_id, run_dir = _new_run_directory(runs_dir, problem.problem_id)
     shutil.copyfile(config_path, run_dir / SCENARIO_COPY)  # the scenario file that this run actually used
+    write_meta(run_dir, {**(meta or new_meta(
+        name=None, kind=run_kind(problem.problem_id, {}, False), scenario_id=problem.problem_id, base_run_id=None, changes={}, period=None,
+        processed_dir=processed_dir, catalog_path=catalog_path)), "dataset_hash": problem.dataset_hash})
     if progress is not None:
         progress.run_id = run_id
         progress.attach(run_dir / EVENTS_FILE)
@@ -329,7 +356,7 @@ def _save_and_validate(
     """Write the artifacts of a solved run and validate them independently."""
     write_problem(problem, run_dir / "joint_input.json")
     write_result(result, run_dir / "joint_result.json")
-    (run_dir / "joint_report.md").write_text(_report(problem, result), encoding="utf-8")
+    (run_dir / "joint_report.md").write_text(build_report(problem, result), encoding="utf-8")
     manifest = {
         "input_sha256": sha256_file(run_dir / "joint_input.json"),
         "result_sha256": sha256_file(run_dir / "joint_result.json"),
@@ -346,7 +373,7 @@ def _save_and_validate(
         run_dir, processed_dir=processed_dir, config_path=config_path, catalog_path=catalog_path
     )
     with (run_dir / "joint_report.md").open("a", encoding="utf-8") as handle:
-        handle.write(chr(10).join(_validation_lines(validation["summary"]) + report_lines(decision)))
+        handle.write(chr(10).join(validation_lines(validation["summary"]) + report_lines(decision)))
     return {
         "run_id": run_id,
         "warm_start": decision,
@@ -354,29 +381,6 @@ def _save_and_validate(
         "validation": validation["summary"],
         "artifacts": {path.name: str(path.resolve()) for path in run_dir.iterdir()},
     }
-
-
-def _proof_lines(solver: Any) -> list[str]:
-    """A solution without an optimality proof is never presented as the largest possible saving."""
-    if solver.outcome != "feasible_not_proven" or solver.best_objective_bound_ore is None:
-        return []
-    return [
-        f"- Kostnaden är en verifierad övre gräns, inte ett bevisat optimum: den lägsta möjliga kostnaden i modellen "
-        f"ligger mellan {solver.best_objective_bound_ore} och {solver.objective_value_ore} öre. "
-        "Besparingen får därför inte redovisas som bevisad maximal besparing.",
-    ]
-
-
-def _validation_lines(summary: dict[str, Any]) -> list[str]:
-    """Report the three verdicts separately; the solver result itself is never altered."""
-    return [
-        "", "## Oberoende eftervalidering (joint_validation.md)", "",
-        f"- Solverns status (återgiven, ej bevisad av valideraren): `{summary['solver_status']['reported_outcome']}`.",
-        f"- Teknisk eftervalidering: `{summary['technical_validation']}`.",
-        f"- Verksamhetsmässig verifiering: `{summary['business_verification']}`.",
-        f"- Filernas ursprung och integritet: `{summary['provenance']}`.",
-        f"- Tekniskt validerad: `{summary['technically_validated']}`.", "",
-    ]
 
 
 def _latest_end_limit(values: dict[str, Any]) -> int:
@@ -387,7 +391,7 @@ def _slots(
     values: dict[str, Any], events: list[dict[str, Any]], earlier: int, later: int
 ) -> tuple[CandidateSlot, ...]:
     """Generate allowed (date, start) occasions, plus reference occasions for fixed exams."""
-    originals = [item["original_date"] for item in events]
+    originals = [item["original_date"] for item in events] + [day for item in events for day in item["wish_days"]]
     first = date.fromisoformat(str(values["calendar.start_date"])) if values["calendar.start_date"] else min(originals) - timedelta(days=earlier)
     last = date.fromisoformat(str(values["calendar.end_date"])) if values["calendar.end_date"] else max(originals) + timedelta(days=later)
     weekdays = set(int(value) for value in values["calendar.weekdays"])
@@ -450,7 +454,7 @@ def _date_available(value: date, available_from: object, available_to: object) -
     return (lower is None or value >= lower) and (upper is None or value <= upper)
 
 
-def _dataset_hash(processed_dir: Path) -> str:
+def dataset_hash(processed_dir: Path) -> str:
     digest = hashlib.sha256()
     for name in ("optimization_demands.csv", "optimization_rooms.csv", "demand_scope.csv"):
         digest.update(bytes.fromhex(sha256_file(processed_dir / name)))
@@ -471,32 +475,3 @@ def _duration_minutes(value: str) -> int:
 
 def _clock_text(value: int) -> str:
     return f"{value // 60:02d}:{value % 60:02d}"
-
-
-def _report(problem: JointOptimizationInput, result: Any) -> str:
-    solver = result.solver
-    costs = result.costs
-    return "\n".join([
-        f"# Gemensam verklig delmängd: {problem.problem_id}", "",
-        f"- Solverutfall: `{solver.outcome}` (`{solver.raw_status}`), strategi `{solver.strategy}`.",
-        f"- Beräkningstid: {solver.wall_time_seconds:.3f} sekunder.",
-        f"- Funnet jämförbart kostnadsmål: {solver.objective_value_ore} öre.",
-        f"- Bästa kostnadsgräns: {solver.best_objective_bound_ore} öre.",
-        f"- Relativt gap: {solver.relative_gap}.",
-        *_proof_lines(solver),
-        f"- Teknisk placeringsfullständighet: {result.coverage.technical_placement_complete}.",
-        f"- Behov/deltagare: {result.coverage.exam_demands_scheduled}/{result.coverage.exam_demands_total}, {result.coverage.participants_total} deltagare.",
-        f"- Bemanningspool: {result.staff_pool_size} anonyma samtidiga resurser.",
-        f"- Ändrade tentamenstillfällen: {result.changed_exam_demands}.", "",
-        "## Verifieringsstatus", "",
-        *[f"- {key}: {value}" for key, value in (result.verification or {}).items()], "",
-        "## Kostnadskomponenter", "",
-        f"- Långsiktiga salar: {costs.annual_room_cost_ore if costs else None} öre.",
-        f"- Externa salstillfällen: {costs.external_room_session_cost_ore if costs else None} öre.",
-        f"- Årlig bemanningspool: {costs.annual_staff_pool_cost_ore if costs else None} öre.",
-        f"- Rörlig salstillfällesbemanning: {costs.staff_session_cost_ore if costs else None} öre.", "",
-        "## Datatäckning och begränsningar", "",
-        f"- Modellerade tentamensbehov: {problem.scope.modeled_exam_demands} av en uttryckligen vald delmängd.",
-        f"- Hela källpopulationen: {problem.scope.source_activities_total} aktiviteter, varav {problem.scope.unresolved_source_activities} oavgjorda.",
-        *[f"- {item}" for item in result.limitations], "",
-    ])

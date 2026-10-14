@@ -30,7 +30,8 @@ JOINT_SCENARIO_SCHEMA = "joint-real-subset-v1"
 SAFE_SCENARIO_ID = re.compile(r"^[a-z0-9][a-z0-9_-]{0,79}$")
 USER_DIR = "joint_scenarios"
 CHANGED_IN_UI = "Ändrat i gränssnittet."
-BUNDLED, USER = "bundled", "user"
+BUNDLED, USER, FROM_RUN = "bundled", "user", "run"
+RUN_PREFIX = "run-"
 
 
 class ParameterValidationError(ValueError):
@@ -83,10 +84,32 @@ def scenario_files(storage: AppStorage | None, bundled_dir: Path | None = None) 
     return found
 
 
+def scenario_id_for_run(run_id: str) -> str:
+    """The scenario id that starts a new run from a saved one (`run-` and the run id in lower case)."""
+    return (RUN_PREFIX + run_id.lower())[:80]
+
+
+def run_for_scenario_id(storage: AppStorage | None, scenario_id: str) -> str | None:
+    """The run id behind a `run-...` scenario id, or None. The run must have a readable scenario copy."""
+    if storage is None or not scenario_id.startswith(RUN_PREFIX) or not storage.runs_dir.is_dir():
+        return None
+    for path in storage.runs_dir.iterdir():
+        if path.is_dir() and scenario_id_for_run(path.name) == scenario_id and read_scenario(path / "joint_scenario.toml") is not None:
+            return path.name
+    return None
+
+
 def resolve_scenario(storage: AppStorage | None, scenario_id: str, bundled_dir: Path | None = None) -> tuple[Path, str]:
-    """(file, origin) of a scenario by id. A badly formed id is a ValueError, an unknown one a FileNotFoundError."""
+    """(file, origin) of a scenario by id. A badly formed id is a ValueError, an unknown one a FileNotFoundError.
+
+    An id made by `scenario_id_for_run` names a saved run: its own scenario copy is the starting point of a new run,
+    which is how a run is repeated or used as the basis of the next one.
+    """
     if not SAFE_SCENARIO_ID.fullmatch(scenario_id):
         raise ValueError("Scenarie-id har ogiltigt format.")
+    run_id = run_for_scenario_id(storage, scenario_id)
+    if run_id is not None and storage is not None:
+        return storage.runs_dir / run_id / "joint_scenario.toml", FROM_RUN
     for found_id, path, origin in scenario_files(storage, bundled_dir):
         if found_id == scenario_id:
             return path, origin
@@ -180,6 +203,8 @@ def scenario_row(scenario_id: str, path: Path, origin: str, demands: pd.DataFram
     return {
         "id": scenario_id, "name": str(scenario.get("name", scenario_id)), "description": str(scenario.get("description", "")),
         "problem_id": str(scenario["id"]), "origin": origin, "schema_version": JOINT_SCENARIO_SCHEMA,
+        # Test and development fixtures are not offered as starting points: a user starts from B, a saved set or a saved run.
+        "hidden": bool(scenario.get("hidden", False)),
         "subset": {"plan_area": str(subset.get("plan_area", "")), "selection": "event_list" if kind == "event_list" else "rule",
                    "exam_count": count, "description": description},
     }

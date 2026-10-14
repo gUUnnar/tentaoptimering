@@ -1,0 +1,24 @@
+schema_version = "joint-real-subset-v1"
+
+[scenario]
+id = "joint_base"
+name = "B – Grundoptimering"
+description = "Grundoptimering utifrån verksamhetens önskemål: alla klara tentor i Uppsala i hela underlaget. Varje tentamen får bara användas på önskat datum eller på de reservdatum verksamheten själv angav, och bland lika billiga lösningar väljs önskemålen i prioritetsordning. Allt annat är katalogens standardvärden utom de antaganden som listas under rationales. Ändra en parameter i en egen körning och jämför med den här och med den faktiska bokningen."
+
+[subset]
+plan_area = "Uppsala"
+selection = "all_ready"
+
+[parameters]
+"wish.candidate_policy" = "wishes"
+"wish.tiebreak" = "wish_priority"
+"rooms.include_observed_unregistered" = true
+"cost.room_annual_per_seat_ore" = 100000
+"cost.staff_annual_ore" = 5000000
+
+[rationales]
+"wish.candidate_policy" = "Grundoptimeringen utgår från verksamhetens önskemål: önskat datum och reservdatum 1 och 2, inga andra dagar. Katalogens standard är ett fönster kring bokat datum."
+"wish.tiebreak" = "Bland lika billiga lösningar väljs önskat datum före reservdatum 1, reservdatum 2 och annat datum. Katalogens standard är så få ändringar som möjligt mot bokningen."
+"rooms.include_observed_unregistered" = "Registrets sju salar i Uppsala ryms inte ens de bokade tentorna en toppdag (dygnstopp över 2 800 tentander mot cirka 1 040 platser per pass). Salar som bokningarna använt men som saknar registerkapacitet (Fyrishovs hallar) tas därför med, med största bokade antal platser som kapacitet (en underkant). Av: bara registrets salar."
+"cost.room_annual_per_seat_ore" = "Katalogens standard är 0 kr, vilket ger kostnad 0. Explorativ proxy 1 000 kr per plats och år; inte avtalskostnad."
+"cost.staff_annual_ore" = "Katalogens standard är 0 kr, vilket ger kostnad 0. Explorativ proxy 50 000 kr per dimensionerande anonym resurs och år; inte avtalskostnad."

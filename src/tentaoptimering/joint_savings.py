@@ -1,9 +1,10 @@
-"""Savings potential of a run: the model cost of Nuläge (no exam is moved) minus the cost of the run.
+"""Savings potential of a run: the model cost of the locked-date reference (no exam is moved) minus the cost of the run.
 
-Nuläge is the same scenario, data and cost assumptions with no exam type movable, so every exam keeps its historical
-occasion while rooms and staffing are still planned as cheaply as possible. The difference is a *theoretical* annual
-potential in model cost. It is not a verified, realisable saving: contracts, notice periods and avoidability of the
-costs are not modelled (see docs/KOSTNADSMODELL.md).
+The reference is the same scenario, data and cost assumptions with no exam type movable, so every exam keeps its booked
+occasion while rooms and staffing are still planned as cheaply as possible. It is an *optimisation run* (a kind of C run with
+the dates locked), not the actual booking: the actual booking (A) is read from the bookings and is never optimised (see
+`profile_actual`). The difference is a *theoretical* annual potential in model cost. It is not a verified, realisable saving:
+contracts, notice periods and avoidability of the costs are not modelled (see docs/KOSTNADSMODELL.md).
 """
 
 from __future__ import annotations
@@ -36,7 +37,7 @@ def baseline_content(content: dict[str, Any]) -> dict[str, Any]:
     parameters["flex.movable_types"] = []
     parameters["solver.time_limit_seconds"] = min(float(parameters.get("solver.time_limit_seconds", BASELINE_TIME_LIMIT_SECONDS)),
                                                   BASELINE_TIME_LIMIT_SECONDS)
-    baseline.setdefault("rationales", {})["flex.movable_types"] = "Nuläge: ingen tentamen flyttas från sitt ursprungstillfälle."
+    baseline.setdefault("rationales", {})["flex.movable_types"] = "Låsta datum: ingen tentamen flyttas från sitt bokade tillfälle (referensoptimering, inte den faktiska bokningen)."
     return baseline
 
 
@@ -48,7 +49,7 @@ def _underlay_id(storage: AppStorage) -> str:
 
 
 def baseline_key(storage: AppStorage, content: dict[str, Any]) -> str:
-    """The same Nuläge is reused for every run with the same scenario and underlay; any change gives a new one."""
+    """The same locked-date reference is reused for every run with the same scenario and underlay; any change gives a new one."""
     text = dump_scenario(baseline_content(content)) + "\n" + _underlay_id(storage)
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
@@ -88,14 +89,14 @@ def savings(storage: AppStorage, run_id: str) -> dict[str, Any]:
     content = read_scenario(directory / SCENARIO_COPY)
     run = _verified(directory)
     if content is None:
-        return {"state": "unavailable", "reason": "Körningen har ingen sparad kopia av scenariot, så Nuläge kan inte beräknas."}
+        return {"state": "unavailable", "reason": "Körningen har ingen sparad kopia av scenariot, så referensen med låsta datum kan inte beräknas."}
     if run is None:
-        return {"state": "unavailable", "reason": "Körningen har ingen verifierad lösning att jämföra med Nuläge."}
+        return {"state": "unavailable", "reason": "Körningen har ingen verifierad lösning att jämföra med referensen med låsta datum."}
     key = baseline_key(storage, content)
     baseline_dir = _baseline_directory(storage, key)
     base = _verified(baseline_dir) if baseline_dir else None
     if baseline_dir is not None and base is None:
-        return {"state": "unavailable", "key": key, "reason": "Nuläge hittade ingen verifierad lösning (till exempel för att ursprungstillfällena inte ryms i de valda salarna), så ingen besparing kan redovisas."}
+        return {"state": "unavailable", "key": key, "reason": "Referensen med låsta datum hittade ingen verifierad lösning (till exempel för att ursprungstillfällena inte ryms i de valda salarna), så ingen besparing kan redovisas."}
     if base is None:
         return {"state": "missing", "key": key}
     low = (base["bound_ore"] if base["bound_ore"] is not None else base["cost_ore"]) - run["cost_ore"]
@@ -107,10 +108,10 @@ def savings(storage: AppStorage, run_id: str) -> dict[str, Any]:
 
 
 def compute_baseline(storage: AppStorage, run_id: str, cancel: CancelToken, catalog_path: Path | None = None) -> dict[str, Any]:
-    """Solve Nuläge for a run (or reuse the saved one). It is kept apart from the user's runs."""
+    """Solve the locked-date reference for a run (or reuse the saved one). It is kept apart from the user's runs."""
     content = read_scenario(storage.run_directory(run_id) / SCENARIO_COPY)
     if content is None:
-        raise FileNotFoundError("Körningen har ingen sparad kopia av scenariot, så Nuläge kan inte beräknas.")
+        raise FileNotFoundError("Körningen har ingen sparad kopia av scenariot, så referensen med låsta datum kan inte beräknas.")
     key = baseline_key(storage, content)
     if _baseline_directory(storage, key) is None:
         target = storage.root / "baselines" / key

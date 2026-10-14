@@ -60,6 +60,11 @@ class ExamDemand:
     movable: bool = True
     participant_group_basis: str = "single_activity"
     digital_requirement_basis: str = "observed"
+    # The business's wishes for this exam: requested date, reserve date 1 and 2 (ISO dates, None where not given).
+    # `wish_status` says whether they were loaded and what they hold; the free-text reason is kept as it was written.
+    wish_dates: tuple[str | None, ...] = ()
+    wish_status: str = "not_loaded"
+    wish_reason: str | None = None
 
     @property
     def participant_count(self) -> int:
@@ -78,6 +83,8 @@ class Room:
     digital_capabilities: tuple[str, ...] = ("paper",)
     available_slot_ids: tuple[str, ...] | None = None
     digital_support_basis: str = "not_stated"
+    # Where the capacity comes from: the published register, or (a lower bound) the largest booking ever seen in the room.
+    capacity_basis: str = "register"
 
 
 @dataclass(frozen=True)
@@ -128,6 +135,9 @@ class JointOptimizationInput:
     parameters: tuple[ParameterValue, ...]
     scope: ScopeSummary
     turnaround_minutes: int = 0
+    # What the engine prefers among equally cheap placements: `fewest_changes` (stay at the booked occasion) or
+    # `wish_priority` (requested date, then reserve 1, then reserve 2, then any other date).
+    preference: str = "fewest_changes"
 
 
 @dataclass(frozen=True)
@@ -197,6 +207,7 @@ def read_problem(path: Path) -> JointOptimizationInput:
                 ),
                 "candidate_slot_ids": tuple(item["candidate_slot_ids"]),
                 "conflict_group_ids": tuple(item.get("conflict_group_ids", ())),
+                "wish_dates": tuple(item.get("wish_dates", ())),
                 "original_date": (
                     date.fromisoformat(item["original_date"]) if item.get("original_date") else None
                 ),
@@ -238,6 +249,7 @@ def read_problem(path: Path) -> JointOptimizationInput:
         parameters=tuple(ParameterValue(**item) for item in payload["parameters"]),
         scope=ScopeSummary(**payload["scope"]),
         turnaround_minutes=int(payload.get("turnaround_minutes", 0)),
+        preference=str(payload.get("preference", "fewest_changes")),
     )
 
 

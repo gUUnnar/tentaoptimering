@@ -26,14 +26,15 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `config/room_register.toml` | Versionsmärkt officiellt rumsreferenslager med publicerade kapaciteter, källadress och tidsmässig osäkerhet. |
 | `config/booking_data_quality.toml` | Regler och kolumnnamn för datakvalitetslagret med `verified`, `source` per regel. Nya verifierade uppgifter eller andra kolumnnamn i ett nytt uttag läggs till här utan kodändring. Inga adress- eller salmönster är verifierade. |
 | `config/source_files.toml` | Namn, blad och rubrikrad för de tre lästa källexporterna. |
-| `config/scenarios/joint_real_subset.toml` | Reproducerbart avgränsat verkligt datafall för den nya gemensamma CP-SAT-kärnan. |
-| `config/scenarios/joint_reference.toml` | Referensscenario och förval: alla klara tentor i Uppsala i hela underlaget, katalogens standardvärden för allt utom fyra motiverade antaganden (flyttfönster en dag åt vardera hållet, två explorativa prisvärden). Utgångspunkt för egna experiment där bara en parameter ska skilja. Testat i `tests/test_joint_reference.py`. |
-| `config/scenarios/joint_underlay_period.toml` | Befintligt avgränsat scenariourval i Uppsala (`joint_underlay_period_2026`), 12 januari–31 mars 2026: regel `selection = "all_ready"` med datumintervall, 1 172 tentor. Ingen generell minsta terminslängd; framtida användarstyrt periodval är krav. |
+| `config/scenarios/joint_real_subset.toml` | Reproducerbart avgränsat verkligt datafall för den nya gemensamma CP-SAT-kärnan. Markerat `hidden = true`: ett test- och utvecklingsscenario som inte erbjuds som utgångspunkt i gränssnittet. |
+| `config/scenarios/joint_base.toml` | B – Grundoptimering och förval: alla klara tentor i Uppsala i hela underlaget, katalogens standardvärden utom fem motiverade antaganden (bara verksamhetens önskemål som datum, önskemålsprioritet bland lika billiga lösningar, observerade salar utan registerkapacitet, två explorativa prisvärden). Utgångspunkt för egna körningar (C). Testat i `tests/test_joint_reference.py`. |
+| `config/scenarios/joint_underlay_period.toml` | Befintligt avgränsat scenariourval i Uppsala (`joint_underlay_period_2026`), 12 januari–31 mars 2026: regel `selection = "all_ready"` med datumintervall, 1 172 tentor. Ingen generell minsta terminslängd; framtida användarstyrt periodval är krav. Markerat `hidden = true`: ett test- och utvecklingsscenario som inte erbjuds som utgångspunkt i gränssnittet. |
 
 ## Dokumentation
 
 | Fil | Ansvar |
 |---|---|
+| `docs/ABC_SCENARIOMODELL.md` | Den gällande begreppsmodellen: A (faktisk bokning, aldrig optimerad), B (grundoptimering utifrån verksamhetens önskemål) och C (egna körningar): vad som sparas, hur körningar jämförs, hur önskemål, kostnad och lokalutnyttjande vägs, datakvalitet och kvarstående begränsningar. |
 | `docs/BLOCKERANDE_DATAGAP.md` | Datagap som måste lösas före tillförlitlig optimering eller kronberäkning. |
 | `docs/VERKSAMHETSUNDERLAG_2026-10-02.md` | Källtrogen genomgång av verksamhetspresentationens kapacitet, planerade platser, bemanningsregler och historiska kalkyler, inklusive oklarheter och verifieringsbehov. |
 | `docs/OVERLAMNING_CLAUDE_2026-10-12.md` | Överlämning till Claude om verksamhetsuppgifter, valbar period, salutnyttjande, tentamensuppslag och framtida exportavgränsning. |
@@ -71,6 +72,17 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `joint_inputs.py` | Adapter (inklusive tolkning av tidsintervallet `HH:MM-HH:MM` till minuter) och körningslagring för det verkliga urvalet (namngivna tentor eller hela terminen enligt regel). Sparar den använda scenariofilen som `joint_scenario.toml` i körningsmappen. |
 | `joint_selection.py` | Urval av tentor ur `[subset]`: antingen `exam_event_ids` eller regeln `selection = "all_ready"` med valfritt `date_from`/`date_to`; exakt ett av sätten, annars svenskt fel. |
 | `joint_period.py` | Valbar planeringsperiod: datatäckning per källa och dag (`GET /api/joint-runs/period`), kontroll av vald period (tentor som kan planeras, saknat deltagarantal, period utanför underlaget), det scenario en period ger (urval och kalender skärs till perioden) och `PLANNING_BASIS` som märker varje resultat som explorativt (känner inte bokningar utanför de valda tentorna). |
+| `wishes.py` | Verksamhetens önskemål ur bokningsexporten (önskat datum, reservdatum 1 och 2, motivering) till `exam_wishes.csv`, ett tentamenstillfälle per rad: status, var det bokade datumet ligger bland önskemålen, motstridiga önskemål och en sammanfattning. Motiveringar tolkas inte. |
+| `joint_wishes.py` | Önskemålen som indata till en körning: kandidatdatum enligt `wish.candidate_policy` och `wish.time_policy`; ett krav som behöver önskemålen vägrar köra om underlaget saknar dem. |
+| `joint_preference.py` | Det andra målet efter kostnaden (`wish.tiebreak`): straffvikter per tentamen och pass, delade av hela modellen, relaxationen och dagdelproblemen. |
+| `joint_observed_rooms.py` | Antagandet `rooms.include_observed_unregistered`: namngivna salar som bokningarna använt men som saknar registerkapacitet, med största bokade antal platser som kapacitet (en underkant, märkt `capacity_basis`). |
+| `joint_report.py` | Textrapporten `joint_report.md` för en körning (utbruten ur `joint_inputs.py`). |
+| `run_meta.py` | Det en körning sparar om sig själv i `joint_run.json`: namn, typ (B eller C), utgångskörning, ändringar, underlag och modellversion; märkning av äldre underlag. |
+| `profile_actual.py` | A – faktisk bokning för ett urval tentor, läst ur bokningarna utan optimering: datum, tid, salar, bokade platser, önskemålsrang, och brister (bara adress, sal utanför registret, avbokad). |
+| `profile_run.py` | B och C – en sparad körning i samma form som A, läst ur körningens egna filer; en körning utan verifierad lösning har ingen placering eller kostnad. |
+| `profile_common.py` | Mått som är gemensamma för A och körningar: salanvändning och kapacitetsutnyttjande per dag. |
+| `profile_compare.py` | Jämförelse av två profiler (A, B eller C): nyckeltal, önskemål, ändrad tid och sal, salar, kostnad per sort, vad som krävs för att kostnaden ska kunna minska, parametrar som skiljer. |
+| `abc_compare.py`, `abc_api.py` | Körningslistan, profiler och jämförelse (`/api/abc/runs`, `/profile`, `/compare`, `/wishes`). |
 | `joint_options.py` | Valmöjligheter för ett scenario (`GET /api/joint-runs/options`): salarna motorn kan överväga i planeringsområdet (samma urval som motorn bygger sina salar av) med läsbar etikett, byggnad, kapacitet och digitalt stöd, samt de observerade tentamenstyperna med antal tentor. Innehåller också kontrollen av `rooms.selection` (okänt sal-id är ett svenskt fel, aldrig tyst ignorerat). Saknas underlaget blir listorna tomma. |
 | `booking_views.py` | Skrivskyddade vyer över historiska bokningar utan optimeringskörning: platser med bokningar, en lokal över ett datumintervall (bokningar, bokad tid utan dubbelräkning av överlapp, bokade platser, högsta samtidiga bokning mot salens kapacitet), sökning av bokade tentamina och en tentamen med alla sina placeringar och Ladok-kopplingens säkerhet. Kapacitet används bara för namngiven sal; verklig närvaro redovisas som okänd. |
 | `booking_api.py` | Rutterna `/api/bookings/locations`, `/location`, `/exams` och `/exams/{id}`; fel som 404 (saknat underlag) eller 422 (ogiltig begäran) med svensk text. |
@@ -87,7 +99,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `joint_precheck.py`, `joint_precheck_api.py` | Förkontroll före körning: bygger problemet som en körning, räknar tentor utan tillåtet tillfälle och tentor som måste flyttas, och låter lösaren försöka bevisa omöjlighet i högst 20 s. Sparar ingenting. |
 | `joint_diagnosis.py` | Utredning av en körning utan lösning: vad körningen ändrade jämfört med sitt scenario, och prov (utgångsscenariot, sedan en ändring i taget, högst 30 s) som visar vilken ändring som bevisat gör problemet omöjligt. Sparas som `joint_diagnosis.json`. |
 | `joint_diagnosis_api.py` | Rutterna `GET/POST /api/joint-runs/{run_id}/diagnosis`. |
-| `joint_savings.py` | Besparingspotential: bygger Nuläge (scenariot utan flyttbara tentor), löser och sparar det under `baselines/`, och räknar potentialen (Nuläge minus körning) med intervall och kostnadsposter. |
+| `joint_savings.py` | Besparingspotential: bygger referensoptimeringen med låsta datum (tidigare referensen med låsta datum: scenariot utan flyttbara tentor; inte den faktiska bokningen A), löser och sparar det under `baselines/`, och räknar potentialen (referensen med låsta datum minus körning) med intervall och kostnadsposter. |
 | `joint_savings_api.py` | Rutterna `GET/POST /api/joint-runs/{run_id}/savings`. |
 | `joint_summary.py` | Sammanfattning av en sparad körning ur dess artefakter: kostnad, undre gräns, gap, flyttade tentor, tre domar, scenario, starttid och antal ändrade parametrar. |
 | `joint_compare.py` | Jämförelse mellan två sparade körningar: parameterändringar, nyckeltal, osäkerhet (största gapet) och en klartextbedömning; jämför aldrig körningar med olika dataunderlag eller tentamängd. |
@@ -137,7 +149,12 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `tests/test_joint_progress.py` | Händelseström: trådsäker ordning, fil per rad, svalda fel, identiskt lösarresultat med och utan sink, händelser för faser/dagkontroller/lösningar/gränser/varmstart, samt samma artefakter plus `joint_events.jsonl`. |
 | `tests/test_joint_precheck.py` | Förkontrollen: går att köra, tentor utan tillåtet tillfälle, felaktigt värde nekas per parameter, inget sparas. |
 | `tests/test_joint_diagnosis.py` | Ändringar jämfört med scenariot, att ett prov tillämpar exakt en ändring, att bara bevisad omöjlighet räknas som orsak och att en avbruten utredning sparas som ofullständig. |
-| `tests/test_joint_savings.py` | Nuläge flyttar ingen tentamen och rör inte scenariot, återanvänds bara för samma scenario och underlag, potentialen och dess intervall, och att körning eller Nuläge utan verifierad lösning inte ger någon besparing. |
+| `tests/test_joint_savings.py` | Referensen med låsta datum flyttar ingen tentamen och rör inte scenariot, återanvänds bara för samma scenario och underlag, potentialen och dess intervall, och att körning eller Referensen med låsta datum utan verifierad lösning inte ger någon besparing. |
+| `tests/wish_cases.py` | Testdata för önskemål: en `exam_wishes.csv` till syntetiska underlag. |
+| `tests/test_wishes.py` | Önskemålsraderna, rang för bokat datum, status utan tolkning, motstridiga önskemål och en oberoende räkning mot verkliga data. |
+| `tests/test_joint_wishes.py` | Önskemålen styr kalendern och avgörandet vid lika kostnad (handräknat), orsakar inget dyrare resultat, vägrar köra utan önskemål och godkänns/underkänns av den oberoende valideringen. |
+| `tests/test_abc_actual.py` | A återger bokningen som den är, utan optimering: flera salar, sal utanför registret, bara adress, avbokad, önskemålsrang och att modulen inte använder optimeraren. |
+| `tests/test_abc_runs.py` | B och C: sparas med namn, typ och värden; en sparad körning ändras inte av nästa; körningar kan köras om och användas som utgångspunkt; jämförelse mot A och mellan körningar; äldre underlag och körning utan lösning; rutterna över HTTP. |
 | `tests/test_joint_api.py` | Gemensamma körningar via API-lagret: start, händelser med `after`, avbrott (fullständigt verifierat resultat eller inget), uppspelning, sammanfattning, id-validering och rutter över HTTP. |
 | `tests/test_joint_period.py` | Periodval på syntetiskt underlag: täckning, dag och vecka, period utanför eller delvis utanför underlaget, tomma och omvända perioder, scenario med namngivna tentor, oförändrat originalscenario och unika körnings-id inom samma sekund. |
 | `tests/test_joint_period_run.py` | Körning för en dag och en vecka mot det riktiga underlaget genom ordinarie API, motor och eftervalidering (kräver `data/processed`): antal tentor mot oberoende räkning, märkning som explorativ, ojämförbara perioder, avvisad period utanför underlaget. |
@@ -164,11 +181,13 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | Fil | Ansvar |
 |---|---|
 | `frontend/src/App.tsx` | Tunn skal med sidorna Optimering (startsida) och Underlag. Båda hålls monterade så att en pågående körning eller förberedelse inte tappas vid sidbyte. |
+| `frontend/src/components/abc/abc-page.tsx`, `compare-view.tsx` | Fliken A, B, C och jämförelse: de tre alternativen, körningshistoriken, hur komplett önskemålen är och jämförelsen av två valfria alternativ. |
+| `frontend/src/lib/abcTypes.ts`, `abcApi.ts`, `abcView.ts`, `abcView.test.ts` | Typer, anrop mot `/api/abc/*` och rena funktioner (testade): körnings-id som utgångspunkt, utfall i klartext, kostnadssidor per sort och beläggningsserie. |
 | `frontend/src/lib/jointTypes.ts` | TypeScript-typer för API-kontraktet `/api/joint-runs`: scenarier, parametrar, händelser, varmstartsbeslut, sammanfattning och jämförelse. |
 | `frontend/src/lib/jointApi.ts` | Tunn typad API-klient med översättning av backendens sammanfattning (saknade domar blir `not_evaluated`, aldrig godkända). |
 | `frontend/src/lib/jointState.ts` | Ren avledning av fasband, kostnadsserier, dagrutnät och gap ur händelselistan (samma kod för live och uppspelning). |
 | `frontend/src/lib/jointFormat.ts` | Svenska etiketter och formatering; ärlig kostnadsredovisning (intervall utan bevisat optimum) och tolkning av domar. |
-| `frontend/src/lib/jointCompare.ts` | Vymodell för jämförelsen mot föregående körning, utan beräknade skillnader när körningarna inte är jämförbara. |
+| `frontend/src/lib/jointCompare.ts` | Vymodell för parameterändringar mellan två körningar (används av jämförelsen), utan beräknade skillnader när körningarna inte är jämförbara. |
 | `frontend/src/lib/jointScenarioInfo.ts` | Urval i klartext och uppgift om körtid för scenariot. |
 | `frontend/src/lib/jointJobMemory.ts` | Minne för pågående körning så att den återupptas efter omladdning. |
 | `frontend/src/lib/runClock.ts` | Körningens klocka: serverns förbrukade tid plus lokal klocka mellan svaren, och visningen går aldrig bakåt. |
@@ -196,8 +215,8 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `frontend/src/lib/bookingView.test.ts` | Test av datum, tidslinje, intervall och mått (verklig närvaro okänd, aldrig noll). |
 | `frontend/src/lib/period.ts` | Planeringsperiod: genvägar (dag, vecka, månad, hela underlaget), kontroll av valet och texter om täckning och kontroll. |
 | `frontend/src/lib/usePeriod.ts` | Hämtar underlagets täckning och serverns kontroll av vald period. |
-| `frontend/src/components/joint/savings-card.tsx` | Besparingspotentialen överst i resultatet: belopp, jämförelse mot Nuläge, intervall och kostnadsposter; knapp som beräknar Nuläge. |
-| `frontend/src/lib/savingsApi.ts`, `savingsView.ts`, `useSavings.ts` | Anrop, rubriktexter (testade) och hook som följer Nuläge-jobbet. |
+| `frontend/src/components/joint/savings-card.tsx` | Besparingspotentialen överst i resultatet: belopp, jämförelse mot referensen med låsta datum, intervall och kostnadsposter; knapp som beräknar Nuläge. |
+| `frontend/src/lib/savingsApi.ts`, `savingsView.ts`, `useSavings.ts` | Anrop, rubriktexter (testade) och hook som följer jobbet för referensen med låsta datum. |
 | `frontend/src/components/joint/scenario-facts.tsx`, `params/params-section.tsx` | Raden med det som körs (en gång per uppgift) och parametersektionen med de vanligaste parametrarna överst och resten hopfällt. |
 | `frontend/src/lib/featuredParams.ts`, `scenarioFacts.ts`, `useUnderlayInfo.ts` | Vilka parametrar som visas överst, uppgifterna om det som körs (testade) och underlagets datum. |
 | `frontend/src/components/joint/diagnosis-card.tsx`, `constraint-list.tsx` | "Vad gick fel?" för en körning utan lösning och hopfälld lista för en med: begränsningarna som gällde (ditt val markerat), utredningsknapp, förlopp och slutsats. |
@@ -209,13 +228,13 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `frontend/src/lib/testing/jointFixture.ts`, `paramFixture.ts` | Syntetiska händelser och parametrar som bara används av testerna. Appkod får aldrig importera dem. |
 | `frontend/src/lib/testing/contract/*.json` | Riktiga API-svar (sammanfattning, jämförelse, händelser, valmöjligheter) som ögonblicksbilder av kontraktet. `tests/test_joint_contract_snapshots.py` jämför deras form mot backend och `jointContract.test.ts` matar dem genom klientens adaptrar. |
 | `frontend/src/lib/*.test.ts` | Tester (`npm test`, endast Node): kontraktsform, tillståndsavledning, ärliga texter, parametervalidering och enhetsomräkning, ändringsberäkning, jämförelse, körval, underlag och en gränskontroll som fäller bygget om appkod importerar testdata eller anropar borttagna rutter. |
-| `frontend/src/components/joint/joint-page.tsx` | Sidan Optimering med flikarna Ställ in och kör, Körning och Resultat och jämförelse. |
+| `frontend/src/components/joint/joint-page.tsx` | Sidan Optimering med flikarna A, B, C och jämförelse, Ställ in och kör och Resultat. |
 | `frontend/src/components/joint/scenario-picker.tsx`, `start-panel.tsx`, `run-options.tsx`, `save-scenario.tsx` | Val av scenario med urval i klartext, startpanel med Kör, start från förra körningen med datorresurser, och sparande av ändringarna som nytt scenario. |
 | `frontend/src/components/joint/params/` | Parameterredigeringen: lista per grupp, rad med enhet, hjälptext och återställning, inmatning per typ, listor, bemanningstrappa och fältet med antalet ändringar. |
 | `frontend/src/components/joint/live-run.tsx`, `run-panels.tsx`, `cost-panel.tsx`, `day-grid.tsx`, `resource-box.tsx` | Pågående körning överst i Resultat: status och stopp, kostnadsgraf, dagrutnät med verkligt "pågår" och resursruta; besked när en körning inte gav något resultat. |
 | `frontend/src/lib/runLabel.ts` | Körningens namn för användaren: scenario och klockslag. |
 | `frontend/src/components/joint/run-timeline.tsx`, `timeline-detail.tsx`, `timeline-look.tsx` | Tidslinje över det som körs: ett block per varv med segment efter körordning, bredd efter tid, pulserande pågående segment och detaljer per segment. Används i livevy, resultat och förlopp i efterhand. |
-| `frontend/src/components/joint/result-view.tsx`, `summary-card.tsx`, `compare-section.tsx`, `verdict-cards.tsx`, `warm-start-card.tsx`, `how-to-read.tsx`, `replay.tsx`, `status-chip.tsx` | Resultatvy: sammanfattning, jämförelse mot föregående körning, de tre domarna isär, beslut om start från förra körningen, förklaring av hur resultatet läses och uppspelning av en avslutad körning. |
+| `frontend/src/components/joint/result-view.tsx`, `summary-card.tsx`, `verdict-cards.tsx`, `warm-start-card.tsx`, `how-to-read.tsx`, `replay.tsx`, `status-chip.tsx` | Resultatvy: sammanfattning, länk till jämförelsen med A, B eller en annan körning, de tre domarna isär, beslut om start från förra körningen, förklaring av hur resultatet läses och uppspelning av en avslutad körning. |
 | `frontend/src/components/joint/underlay-notice.tsx` | Ruta när underlaget saknas, med knapp till sidan Underlag. |
 | `frontend/src/components/underlay/` | Sidan Underlag: källdatakatalog med Bläddra och filkontroll, förberedelse med steg och tillstånd, och sammanfattning ur manifestet. |
 

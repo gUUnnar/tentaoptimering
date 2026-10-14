@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from .abc_api import register_abc_routes
 from .app_paths import bundled_joint_catalog_path, frontend_dist_dir
 from .app_storage import AppStorage
 from .booking_api import register_booking_routes
@@ -74,6 +75,7 @@ def create_app(storage_root: Path | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail=str(error)) from error
 
     register_booking_routes(app, storage)
+    register_abc_routes(app, storage)
     register_underlay_routes(app, storage, jobs)
     register_diagnosis_routes(app, storage, jobs)
     register_savings_routes(app, storage, jobs)

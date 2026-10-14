@@ -46,9 +46,9 @@ describe("utvalda parametrar", () => {
 
 describe("förvalt scenario", () => {
   it("referensen är förvald och står först, annars det första", () => {
-    const list = [{ id: "joint_real_subset" }, { id: "joint_reference" }, { id: "joint_underlay_period" }]
-    assert.equal(defaultScenarioId(list), "joint_reference")
-    assert.deepEqual(referenceFirst(list).map(item => item.id), ["joint_reference", "joint_real_subset", "joint_underlay_period"])
+    const list = [{ id: "joint_real_subset" }, { id: "joint_base" }, { id: "joint_underlay_period" }]
+    assert.equal(defaultScenarioId(list), "joint_base")
+    assert.deepEqual(referenceFirst(list).map(item => item.id), ["joint_base", "joint_real_subset", "joint_underlay_period"])
     assert.equal(defaultScenarioId([{ id: "a" }, { id: "b" }]), "a")
     assert.equal(defaultScenarioId([]), "")
   })

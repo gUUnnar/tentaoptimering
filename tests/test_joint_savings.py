@@ -77,7 +77,7 @@ class SavingsTest(unittest.TestCase):
         self._baseline(cost=None, bound=None, outcome="infeasible", complete=False)
         result = savings(self.storage, RUN)
         self.assertEqual(result["state"], "unavailable")
-        self.assertIn("Nuläge", result["reason"])
+        self.assertIn("låsta datum", result["reason"])
 
     def test_a_run_that_failed_validation_has_no_potential(self) -> None:
         _write_run(self.storage.runs_dir / RUN, 500, 500, valid="fail")
