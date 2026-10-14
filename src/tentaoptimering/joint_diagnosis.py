@@ -28,6 +28,9 @@ SCENARIO_COPY = "joint_scenario.toml"
 PROBE_SECONDS = 30.0
 SOLUTION, INFEASIBLE, INCONCLUSIVE = "solution", "infeasible", "inconclusive"
 _KIND = {"optimal": SOLUTION, "feasible_not_proven": SOLUTION, "infeasible": INFEASIBLE}
+# The settings that limit where and when exams may be placed, in the order they are shown.
+CONSTRAINT_IDS = ("calendar.weekdays", "calendar.start_times", "window.earlier_days", "window.later_days", "calendar.start_date", "calendar.end_date",
+                  "calendar.blocked_ranges", "flex.movable_types", "rooms.selection", "rooms.max_rooms_per_exam", "rooms.allow_split_across_buildings")
 
 
 def _section(content: dict[str, Any], section: str) -> dict[str, Any]:
@@ -57,8 +60,11 @@ def run_changes(storage: AppStorage, run_id: str, catalog_path: Path | None = No
     for key in sorted(set(own_subset) | set(base_subset)):
         if own_subset.get(key) != base_subset.get(key):
             changes.append({"id": f"subset.{key}", "section": "subset", "key": key, "baseline": base_subset.get(key), "run": own_subset.get(key)})
+    changed = {item["id"] for item in changes}
+    constraints = [{"id": key, "value": own.get(key, defaults.get(key)), "source": "changed" if key in changed else "scenario"}
+                   for key in CONSTRAINT_IDS if key in defaults]
     return {"scenario_id": scenario_id, "scenario_name": baseline["scenario"].get("name", scenario_id), "changes": changes,
-            "_baseline": baseline, "_run": content}
+            "constraints": constraints, "_baseline": baseline, "_run": content}
 
 
 class DiagnosisProgress:

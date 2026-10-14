@@ -69,7 +69,7 @@ export function ParamRow({ param, draft, change, error, onChange, onReset, optio
   const defaultText = param.differs_from_default ? formatParamValue(param, param.default) : null
   const wide = optionKind(param) !== null
   return <div className={cn("grid gap-x-6 gap-y-2 border-l-4 py-3 pl-3 pr-2", wide ? "md:grid-cols-[minmax(0,1fr)_minmax(0,38rem)]" : "md:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]",
-    error ? "border-red-700 bg-red-50" : change ? "border-amber-600 bg-amber-50" : "border-transparent", locked && "bg-slate-50")} data-param-id={param.id}>
+    error ? "border-red-700 bg-red-50" : change ? "border-amber-600 bg-amber-50" : "border-transparent", locked && "bg-slate-50")} data-param-id={param.id} data-changed={change ? "true" : undefined}>
     <div>
       <div className="flex flex-wrap items-center gap-2">
         {scalar ? <label htmlFor={id} className="text-sm font-semibold text-slate-900">{param.label}</label>

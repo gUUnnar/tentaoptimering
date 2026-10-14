@@ -1,9 +1,8 @@
-import { useCallback, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { InfoTip } from "@/components/ui/info-tip"
 import { featuredParameters, otherParameters } from "@/lib/featuredParams"
 import type { ParameterEditor } from "@/lib/useParameterEditor"
-import { ChangesBar } from "./changes-bar"
 import { ParamList } from "./param-list"
 import { ParamRow, type OptionsContext } from "./param-row"
 
@@ -19,21 +18,7 @@ export function ParamsSection({ editor, onOpenUnderlay }: { editor: ParameterEdi
   const optionsContext = useMemo<OptionsContext>(() => ({ load: editor.optionsLoad, options: editor.options, onOpenUnderlay, onRetry: editor.reloadOptions }),
     [editor.optionsLoad, editor.options, onOpenUnderlay, editor.reloadOptions])
 
-  const focusRow = useCallback((id: string): boolean => {
-    const target = document.querySelector<HTMLElement>(`[data-param-id="${CSS.escape(id)}"]`)
-    if (!target) return false
-    target.scrollIntoView({ block: "center" })
-    target.querySelector<HTMLElement>("input, select, button")?.focus({ preventScroll: true })
-    return true
-  }, [])
-  const jump = (id: string) => {
-    if (focusRow(id)) return
-    setMoreOpen(true)
-    window.setTimeout(() => focusRow(id), 50)
-  }
-
   return <div className="space-y-3">
-    <div id="changes-bar"><ChangesBar changes={editor.changes} errors={editor.errors} onReset={editor.reset} onResetAll={editor.resetAll} onJump={jump}/></div>
     {editor.generalErrors.length > 0 && <div role="alert" className="rounded-md border border-red-700 bg-red-50 p-3 text-sm text-red-900">
       <strong>Servern avvisade körningen:</strong>
       <ul className="mt-1 list-disc pl-5">{editor.generalErrors.map(message => <li key={message}>{message}</li>)}</ul>

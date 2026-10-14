@@ -1,4 +1,4 @@
-import type { DiagnosisChange, DiagnosisProbe, DiagnosisState, ProbeKind } from "./diagnosisApi.ts"
+import type { Constraint, DiagnosisChange, DiagnosisProbe, DiagnosisState, ProbeKind } from "./diagnosisApi.ts"
 
 /** Namn på en ändring: parameterns etikett, annars id. Periodens datum (urvalet) heter "Planeringsperiod". */
 export function changeLabel(change: DiagnosisChange, labels: Record<string, string>): string {
@@ -32,4 +32,11 @@ export function conclusion(state: DiagnosisState, labels: Record<string, string>
   if (names.length === 1) return { tone: "cause", text: `Ändringen ${names[0]} gör ensam att det inte finns någon lösning.` }
   if (names.length > 1) return { tone: "cause", text: `Var och en av ändringarna ${names.join(", ")} gör ensam att det inte finns någon lösning.` }
   return { tone: "unclear", text: `Ingen enskild ändring kunde bevisas göra problemet omöjligt. Ändringarna kan samverka, eller så hann sökningen inte klart på ${saved.probe_seconds} sekunder per prov.` }
+}
+
+/** Raderna i begränsningslistan: de gällande begränsningarna, och därefter ändringar som inte är en av dem (till exempel vald period). */
+export function constraintRows(state: DiagnosisState): Constraint[] {
+  const known = new Set(state.constraints.map(item => item.id))
+  const extra: Constraint[] = state.changes.filter(change => !known.has(change.id)).map(change => ({ id: change.id, value: change.run, source: "changed" }))
+  return [...state.constraints, ...extra]
 }

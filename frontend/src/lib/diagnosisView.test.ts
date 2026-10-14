@@ -1,13 +1,13 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
 import type { DiagnosisChange, DiagnosisState, SavedDiagnosis } from "./diagnosisApi.ts"
-import { changeLabel, conclusion } from "./diagnosisView.ts"
+import { changeLabel, conclusion, constraintRows } from "./diagnosisView.ts"
 
 const days: DiagnosisChange = { id: "calendar.weekdays", section: "parameters", key: "calendar.weekdays", baseline: [1, 2, 3, 4, 5, 6, 7], run: [1, 2, 3, 4, 5] }
 const times: DiagnosisChange = { id: "calendar.start_times", section: "parameters", key: "calendar.start_times", baseline: ["08:00"], run: ["08:00", "13:00"] }
 const labels = { "calendar.weekdays": "Tillåtna veckodagar", "calendar.start_times": "Starttider" }
 const saved = (over: Partial<SavedDiagnosis>): SavedDiagnosis => ({ run_id: "r", scenario_id: "s", probe_seconds: 30, complete: true, probes: [], culprits: [], baseline_infeasible: false, ...over })
-const state = (over: Partial<SavedDiagnosis> | null): DiagnosisState => ({ scenario_id: "s", scenario_name: "Scenariot", changes: [days, times], saved: over ? saved(over) : null, job: null })
+const state = (over: Partial<SavedDiagnosis> | null): DiagnosisState => ({ scenario_id: "s", scenario_name: "Scenariot", changes: [days, times], constraints: [], saved: over ? saved(over) : null, job: null })
 
 describe("utredning av en körning utan lösning", () => {
   it("namnger ändringar med etikett, annars id, och periodens datum för sig", () => {
@@ -35,4 +35,12 @@ describe("utredning av en körning utan lösning", () => {
     assert.match(result?.text ?? "", /30 sekunder/)
   })
   it("en avbruten utredning ger ingen slutsats", () => assert.equal(conclusion(state({ complete: false, culprits: ["calendar.weekdays"] }), labels)?.tone, "unclear"))
+})
+
+describe("begränsningslistan", () => {
+  it("visar de gällande begränsningarna och därefter ändringar som inte är en av dem", () => {
+    const period: DiagnosisChange = { id: "subset.date_to", section: "subset", key: "date_to", baseline: "2026-03-31", run: "2026-02-27" }
+    const full = { ...state(null), changes: [days, period], constraints: [{ id: "calendar.weekdays", value: [1, 2, 3, 4, 5], source: "changed" as const }, { id: "window.earlier_days", value: 1, source: "scenario" as const }] }
+    assert.deepEqual(constraintRows(full).map(row => [row.id, row.source]), [["calendar.weekdays", "changed"], ["window.earlier_days", "scenario"], ["subset.date_to", "changed"]])
+  })
 })

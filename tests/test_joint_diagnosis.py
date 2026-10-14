@@ -39,6 +39,15 @@ class DiagnosisTest(unittest.TestCase):
         self.assertEqual((changes["calendar.weekdays"]["baseline"], changes["calendar.weekdays"]["run"]), ([1, 2, 3, 4, 5, 6, 7], [1, 2, 3, 4, 5]))
         self.assertEqual(changes["subset.date_to"]["run"], "2026-02-27")
 
+    def test_the_settings_in_force_are_listed_with_where_each_comes_from(self) -> None:
+        text = self.baseline.replace('"calendar.weekdays" = [1, 2, 3, 4, 5, 6, 7]', '"calendar.weekdays" = [1, 2, 3, 4, 5]')
+        found = run_changes(self.storage, self._run(text))
+        constraints = {item["id"]: item for item in found["constraints"]}
+        self.assertEqual((constraints["calendar.weekdays"]["value"], constraints["calendar.weekdays"]["source"]), ([1, 2, 3, 4, 5], "changed"))
+        self.assertEqual(constraints["window.earlier_days"]["source"], "scenario")  # set by the scenario, not by the user
+        self.assertEqual(constraints["window.earlier_days"]["value"], 1)
+        self.assertEqual(found["constraints"][0]["id"], "calendar.weekdays")  # the shown order is fixed
+
     def test_a_run_without_a_saved_scenario_copy_cannot_be_investigated(self) -> None:
         (self.storage.runs_dir / "tom").mkdir()
         with self.assertRaises(FileNotFoundError):

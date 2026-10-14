@@ -83,6 +83,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `joint_toml.py` | Skriver ett gemensamt scenario tillbaka till TOML (citerade nycklar med punkt, listor av inline-tabeller). |
 | `joint_parameters.py` | Parameterkatalogen så som gränssnittet visar den: sex grupper i fast ordning, ordning inom grupp, avancerade parametrar och nyttolasten för `GET /api/joint-runs/parameters`. |
 | `parameter_validation.py` | `validate_overrides`: kontrollerar okända parametrar, `contract_only`, värdetyp, intervall, tillåtna val, bemanningstrappans stigande ordning och datum/tid mot katalogen; svarar med `{id, message}` på svenska. |
+| `joint_precheck.py`, `joint_precheck_api.py` | Förkontroll före körning: bygger problemet som en körning, räknar tentor utan tillåtet tillfälle och tentor som måste flyttas, och låter lösaren försöka bevisa omöjlighet i högst 20 s. Sparar ingenting. |
 | `joint_diagnosis.py` | Utredning av en körning utan lösning: vad körningen ändrade jämfört med sitt scenario, och prov (utgångsscenariot, sedan en ändring i taget, högst 30 s) som visar vilken ändring som bevisat gör problemet omöjligt. Sparas som `joint_diagnosis.json`. |
 | `joint_diagnosis_api.py` | Rutterna `GET/POST /api/joint-runs/{run_id}/diagnosis`. |
 | `joint_savings.py` | Besparingspotential: bygger Nuläge (scenariot utan flyttbara tentor), löser och sparar det under `baselines/`, och räknar potentialen (Nuläge minus körning) med intervall och kostnadsposter. |
@@ -133,6 +134,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `tests/test_joint_cancel_regressions.py` | Avbrott: ostartad lösare läses aldrig, ett avbrutet dagbeslut är `unknown` och aldrig ogenomförbart, och den monolitiska strategin stoppar i båda faserna och bevarar en verifierad lösning men aldrig en ofullständig. |
 | `tests/test_joint_warm_start.py` | Varmstart: accepteras och avvisas med redovisade skäl, kostnaden räknas om med de nya priserna, sparad verifieringsstatus godtas aldrig, körningsval via sparade artefakter och CLI. |
 | `tests/test_joint_progress.py` | Händelseström: trådsäker ordning, fil per rad, svalda fel, identiskt lösarresultat med och utan sink, händelser för faser/dagkontroller/lösningar/gränser/varmstart, samt samma artefakter plus `joint_events.jsonl`. |
+| `tests/test_joint_precheck.py` | Förkontrollen: går att köra, tentor utan tillåtet tillfälle, felaktigt värde nekas per parameter, inget sparas. |
 | `tests/test_joint_diagnosis.py` | Ändringar jämfört med scenariot, att ett prov tillämpar exakt en ändring, att bara bevisad omöjlighet räknas som orsak och att en avbruten utredning sparas som ofullständig. |
 | `tests/test_joint_savings.py` | Nuläge flyttar ingen tentamen och rör inte scenariot, återanvänds bara för samma scenario och underlag, potentialen och dess intervall, och att körning eller Nuläge utan verifierad lösning inte ger någon besparing. |
 | `tests/test_joint_api.py` | Gemensamma körningar via API-lagret: start, händelser med `after`, avbrott (fullständigt verifierat resultat eller inget), uppspelning, sammanfattning, id-validering och rutter över HTTP. |
@@ -197,7 +199,8 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `frontend/src/lib/savingsApi.ts`, `savingsView.ts`, `useSavings.ts` | Anrop, rubriktexter (testade) och hook som följer Nuläge-jobbet. |
 | `frontend/src/components/joint/scenario-facts.tsx`, `params/params-section.tsx` | Raden med det som körs (en gång per uppgift) och parametersektionen med de vanligaste parametrarna överst och resten hopfällt. |
 | `frontend/src/lib/featuredParams.ts`, `scenarioFacts.ts`, `useUnderlayInfo.ts` | Vilka parametrar som visas överst, uppgifterna om det som körs (testade) och underlagets datum. |
-| `frontend/src/components/joint/diagnosis-card.tsx` | Kortet "Vad gick fel?" för en körning utan lösning: dina ändringar med gammalt och nytt värde, utredningsknapp, förlopp och slutsats. |
+| `frontend/src/components/joint/diagnosis-card.tsx`, `constraint-list.tsx` | "Vad gick fel?" för en körning utan lösning och hopfälld lista för en med: begränsningarna som gällde (ditt val markerat), utredningsknapp, förlopp och slutsats. |
+| `frontend/src/components/joint/precheck-result.tsx`, `lib/precheckApi.ts`, `precheckView.ts`, `usePrecheck.ts` | Förkontrollen på startfliken: knapp, utfall och hook (utfallet försvinner när inställningarna ändras). |
 | `frontend/src/components/ui/info-tip.tsx`, `notice.tsx` | ⓘ-ikon som visar en förklaring vid klick, och varning/fel med hopfällda detaljer. |
 | `frontend/src/lib/diagnosisApi.ts`, `diagnosisView.ts`, `useDiagnosis.ts` | Anrop, namn och slutsats i klartext (testade) samt hook som följer utredningsjobbet, även efter omladdning. |
 | `frontend/src/components/joint/period-picker.tsx` | Periodval i gränssnittet: datum, genvägar, täckning, kontrollresultat och märkningen som explorativ planering. |

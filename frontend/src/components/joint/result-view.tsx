@@ -10,7 +10,7 @@ import { InfoTip } from "@/components/ui/info-tip"
 import { foldEvents } from "@/lib/jointState"
 import { CompareSection } from "./compare-section"
 import { SavingsCard } from "./savings-card"
-import { DiagnosisCard } from "./diagnosis-card"
+import { ConstraintsFold, DiagnosisCard } from "./diagnosis-card"
 import { LiveRun } from "./live-run"
 import { Replay } from "./replay"
 import { TimelineCard } from "./run-panels"
@@ -71,6 +71,7 @@ export function ResultView({ runId: chosen, runs, scenarios, onSelectRun, live }
 
     {runId && data?.summary?.has_verified_solution && <SavingsCard runId={runId}/>}
     {data?.summary && <SummaryCard summary={data.summary} labels={data.labels}/>}
+    {runId && data?.summary?.has_verified_solution && <ConstraintsFold runId={runId}/>}
     {runId && data?.summary && !data.summary.has_verified_solution && !data.summary.cancelled && <DiagnosisCard runId={runId}/>}
     {data && runId && <Fold title={data.summary?.has_verified_solution ? "Jämförelse, domar, förlopp och uppspelning" : "Fler detaljer: jämförelse, förlopp och uppspelning"} open={data.summary?.has_verified_solution === true}>
       <CompareSection runId={runId} runs={runs} scenarios={scenarios}/>

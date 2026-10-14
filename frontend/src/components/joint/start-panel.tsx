@@ -10,9 +10,11 @@ import type { JointScenario, StartJointRunBody } from "@/lib/jointTypes"
 import { DEFAULT_RUN_OPTIONS, runOptionsValid, toStartBody, type RunOptions } from "@/lib/runOptions"
 import { periodRunnable, type PeriodChoice } from "@/lib/period"
 import { useParameterEditor } from "@/lib/useParameterEditor"
+import { usePrecheck } from "@/lib/usePrecheck"
 import { useUnderlayInfo } from "@/lib/useUnderlayInfo"
 import { usePeriod } from "@/lib/usePeriod"
 import { PeriodPicker } from "./period-picker"
+import { PrecheckResult } from "./precheck-result"
 import { ParamsHeading, ParamsSection } from "./params/params-section"
 import { RunOptionsPanel } from "./run-options"
 import { SaveScenario } from "./save-scenario"
@@ -39,6 +41,7 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
   const editor = useParameterEditor(scenarioId, scenarios)
   const periodState = usePeriod(scenarioId, period)
   const underlay = useUnderlayInfo(scenarios)
+  const precheck = usePrecheck(JSON.stringify([scenarioId, editor.request, period]))
 
   useEffect(() => {
     if (!scenarios.length) return
@@ -54,8 +57,11 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
   const missingUnderlay = scenarioNeedsUnderlay(scenario) || isMissingUnderlayMessage(startError) || isMissingUnderlayMessage(loadError)
   const namedExams = scenario?.subset?.selection === "event_list"
   const periodOk = periodRunnable(period, periodState.check)
-  const canStart = !busy && !submitting && !!scenarioId && ready && !editor.hasErrors && optionsOk && periodOk && !scenarioNeedsUnderlay(scenario)
+  const checking = precheck.status === "running"
+  const canStart = !busy && !submitting && !checking && !!scenarioId && ready && !editor.hasErrors && optionsOk && periodOk && !scenarioNeedsUnderlay(scenario)
   const why = busy ? "En körning pågår redan." : scenarioNeedsUnderlay(scenario) ? "Förbered underlaget under Underlag först." : !ready ? "Parametrarna har inte hämtats än." : editor.hasErrors ? "Rätta felen i parametrarna först." : !optionsOk ? "Rätta valen för start och resurser först." : !periodOk ? (periodState.check?.partial && !period?.accept ? "Godkänn den kortare perioden först." : "Välj en period som går att planera först.") : null
+
+  const canCheck = !busy && !submitting && !checking && !!scenarioId && ready && !editor.hasErrors && periodOk && !scenarioNeedsUnderlay(scenario)
 
   const changeScenario = (id: string) => {
     if (id === scenarioId) return
@@ -77,7 +83,11 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
 
   const saveDisabled = !ready ? "Parametrarna har inte hämtats än." : editor.changes.length === 0 ? "Gör minst en ändring först." : editor.hasErrors ? "Rätta felen i parametrarna först." : null
 
-  const showChanges = () => document.getElementById("changes-bar")?.scrollIntoView({ block: "start", behavior: "smooth" })
+  const showChanges = () => {
+    const row = document.querySelector<HTMLElement>('[data-changed="true"]')
+    row?.closest("details")?.setAttribute("open", "") // en ändrad parameter under "Fler parametrar" ska synas
+    row?.scrollIntoView({ block: "center", behavior: "smooth" })
+  }
 
   return <div className="space-y-4">
     {missingUnderlay && <UnderlayNotice onOpen={onOpenUnderlay}/>}
@@ -90,15 +100,19 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
             <div className="flex flex-wrap items-center justify-end gap-3">
               <p className="text-sm font-semibold" role="status" aria-live="polite">
                 {editor.changes.length === 0 ? "Inga ändringar" : `${editor.changes.length} ${editor.changes.length === 1 ? "ändring" : "ändringar"}`}
-                {editor.changes.length > 0 && <button type="button" onClick={showChanges} className="ml-2 rounded text-xs font-medium underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-900">Visa</button>}
+                {editor.changes.length > 0 && <>
+                  <button type="button" onClick={showChanges} className="ml-2 rounded text-xs font-medium underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-900">Visa</button>
+                  <button type="button" onClick={editor.resetAll} className="ml-2 rounded text-xs font-medium underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-900">Återställ alla</button></>}
               </p>
               {estimate && <InfoTip label="Hur lång tid tar körningen?" align="right">{estimate.text}</InfoTip>}
+              <Button type="button" size="lg" variant="outline" disabled={!canCheck} onClick={() => void precheck.run(toStartBody(scenarioId, options, editor.request, period))}>{checking ? "Kontrollerar …" : "Kontrollera"}</Button>
               <Button type="button" size="lg" disabled={!canStart} onClick={() => void submit()} aria-describedby={why ? "start-why" : undefined}><Play size={15} className="mr-1" aria-hidden="true"/>{submitting ? "Startar …" : "Kör"}</Button>
             </div>
             {why && <p id="start-why" className="text-xs text-slate-800">{why}</p>}
           </div>
         </div>
         <ScenarioFacts scenario={scenario} choice={period} check={periodState.check} coverage={periodState.coverage} underlay={underlay}/>
+        <PrecheckResult state={precheck}/>
       </CardContent>
     </Card>
     {problems.length > 0 && <div role="alert" className="rounded-md border border-red-700 bg-red-50 p-3 text-sm text-red-900">

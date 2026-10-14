@@ -39,7 +39,7 @@ def register_diagnosis_routes(app: FastAPI, storage: AppStorage, jobs: LocalJobM
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
         return {"scenario_id": found["scenario_id"], "scenario_name": found["scenario_name"], "changes": found["changes"],
-                "saved": saved_diagnosis(storage, run_id), "job": job_view(run_id)}
+                "constraints": found["constraints"], "saved": saved_diagnosis(storage, run_id), "job": job_view(run_id)}
 
     @app.post("/api/joint-runs/{run_id}/diagnosis")
     def start_diagnosis(run_id: str = Path(..., pattern=RUN_ID)) -> dict[str, Any]:

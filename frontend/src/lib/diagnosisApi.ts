@@ -8,7 +8,13 @@ export type SavedDiagnosis = {
   probes: DiagnosisProbe[]; culprits: string[]; baseline_infeasible: boolean
 }
 export type DiagnosisJob = { job_id: string; status: string; error: string | null; progress: { done: number; total: number; current: string | null } }
-export type DiagnosisState = { scenario_id: string; scenario_name: string; changes: DiagnosisChange[]; saved: SavedDiagnosis | null; job: DiagnosisJob | null }
+export type Constraint = { id: string; value: unknown; source: "scenario" | "changed" }
+export type DiagnosisState = {
+  scenario_id: string; scenario_name: string; changes: DiagnosisChange[]
+  /** Begränsningarna som gällde, med var varje kommer ifrån: scenariot eller användarens ändring. */
+  constraints: Constraint[]
+  saved: SavedDiagnosis | null; job: DiagnosisJob | null
+}
 
 const enc = encodeURIComponent
 

@@ -1,7 +1,7 @@
 import { CircleCheck, CircleHelp, CircleX } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { COST_NAME, COST_SCOPE, describeVerdict } from "@/lib/jointFormat"
-import { changedParameters, changedParametersHeading, summaryView, type StatView } from "@/lib/jointSummaryView"
+import { summaryView, type StatView } from "@/lib/jointSummaryView"
 import type { JointSummary } from "@/lib/jointTypes"
 import { VerdictChip } from "./status-chip"
 import { InfoTip } from "@/components/ui/info-tip"
@@ -14,16 +14,7 @@ import { HowToRead } from "./how-to-read"
  */
 export function SummaryCard({ summary, labels }: { summary: JointSummary; labels: Record<string, string> }) {
   const view = summaryView(summary)
-  const changed = changedParameters(summary, labels)
-  const Extras = () => <>
-    <PlanningNote summary={summary}/>
-    <div className="text-xs text-slate-900">
-      <p className="font-semibold">{changedParametersHeading(summary)}</p>
-      {changed.length > 0 && <ul className="mt-1 flex flex-wrap gap-1.5" aria-label="Parametrar som avviker från standardvärdet">
-        {changed.map(item => <li key={item.id} title={item.id} className="rounded border bg-slate-50 px-1.5 py-0.5">{item.label ?? <span className="font-mono text-[11px]">{item.id}</span>}</li>)}
-      </ul>}
-    </div>
-  </>
+  const Extras = () => <PlanningNote summary={summary}/>
   return <section className="space-y-3" aria-label="Sammanfattning av körningen">
     <Card>
       <CardHeader><CardTitle className="flex items-center gap-1.5">Sammanfattning<InfoTip label="Så läser du resultatet"><HowToRead/></InfoTip></CardTitle></CardHeader>
@@ -51,7 +42,7 @@ export function SummaryCard({ summary, labels }: { summary: JointSummary; labels
           </div>
           <Stats stats={view.stats}/>
         </>}
-        {view.verified ? <Extras/> : <details className="text-xs text-slate-900"><summary className="cursor-pointer font-medium">Planering, parametrar och domar</summary><div className="mt-2 space-y-3"><Extras/>
+        {view.verified ? <Extras/> : <details className="text-xs text-slate-900"><summary className="cursor-pointer font-medium">Planering och domar</summary><div className="mt-2 space-y-3"><Extras/>
           <dl className="flex flex-wrap gap-x-5 gap-y-1" aria-label="Domar">
             <div className="flex items-center gap-1.5"><dt>Teknisk eftervalidering:</dt><dd><VerdictChip status={describeVerdict(summary.technical_validation).status}/></dd></div>
             <div className="flex items-center gap-1.5"><dt>Verksamhetsmässig verifiering:</dt><dd><VerdictChip status={describeVerdict(summary.business_verification).status}/></dd></div>

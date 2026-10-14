@@ -33,7 +33,7 @@ from .parameter_catalog import load_parameter_catalog
 __all__ = [
     "JOINT_SCENARIO_SCHEMA", "JointRunRequest", "ParameterValidationError", "ScenarioConflictError", "ScenarioCreate",
     "cancel_job", "compare_runs", "create_scenario", "job_events", "list_scenarios", "options_payload_for", "period_payload_for",
-    "parameters_payload", "run_events", "run_summary", "scenario_path", "start_joint_run",
+    "parameters_payload", "run_config", "run_events", "run_summary", "scenario_path", "start_joint_run",
 ]
 RUNNING, COMPLETED, FAILED, CANCELLED = "running", "completed", "failed", "cancelled"
 
@@ -115,14 +115,13 @@ def create_scenario(
     return next(row for row in scenario_rows(storage, scenarios_dir, processed_dir or storage.processed_dir) if row["id"] == request.name)
 
 
-def start_joint_run(
-    jobs: LocalJobManager, storage: AppStorage, request: JointRunRequest,
-    scenarios_dir: Path | None = None, catalog_path: Path | None = None,
-) -> dict[str, Any]:
-    """Queue a joint run as a background job with its own cancel token and progress sink.
+def run_config(
+    storage: AppStorage, request: JointRunRequest, scenarios_dir: Path | None = None, catalog_path: Path | None = None
+) -> tuple[Path, Path | None]:
+    """The scenario file a request runs on, and the snapshot file made for it (None when the scenario is run as it is).
 
-    Parameter changes in the request are validated first and merged into a snapshot of the scenario; the scenario
-    file itself is never changed. The snapshot is removed when the run ends (the run keeps a copy of it).
+    Parameter changes and the chosen period are validated and merged into a snapshot; the scenario file itself is
+    never changed. The caller removes the snapshot when it is done with it.
     """
     original, _ = resolve_scenario(storage, request.scenario, scenarios_dir)
     catalog_file = catalog_path or bundled_joint_catalog_path()
@@ -139,6 +138,19 @@ def start_joint_run(
             merged = with_period(merged, storage.processed_dir, request.period)
         if changes or request.period:
             config = snapshot = write_run_snapshot(storage, merged)
+    return config, snapshot
+
+
+def start_joint_run(
+    jobs: LocalJobManager, storage: AppStorage, request: JointRunRequest,
+    scenarios_dir: Path | None = None, catalog_path: Path | None = None,
+) -> dict[str, Any]:
+    """Queue a joint run as a background job with its own cancel token and progress sink.
+
+    The snapshot of the scenario (see `run_config`) is removed when the run ends (the run keeps a copy of it).
+    """
+    catalog_file = catalog_path or bundled_joint_catalog_path()
+    config, snapshot = run_config(storage, request, scenarios_dir, catalog_file)
     cancel, progress = CancelToken(), ProgressSink()
     budget = ExecutionBudget(request.threads, request.memory_mb, request.parallel_day_checks)
 
