@@ -195,6 +195,8 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `frontend/src/lib/usePeriod.ts` | Hämtar underlagets täckning och serverns kontroll av vald period. |
 | `frontend/src/components/joint/savings-card.tsx` | Besparingspotentialen överst i resultatet: belopp, jämförelse mot Nuläge, intervall och kostnadsposter; knapp som beräknar Nuläge. |
 | `frontend/src/lib/savingsApi.ts`, `savingsView.ts`, `useSavings.ts` | Anrop, rubriktexter (testade) och hook som följer Nuläge-jobbet. |
+| `frontend/src/components/joint/scenario-facts.tsx`, `params/params-section.tsx` | Raden med det som körs (en gång per uppgift) och parametersektionen med de vanligaste parametrarna överst och resten hopfällt. |
+| `frontend/src/lib/featuredParams.ts`, `scenarioFacts.ts`, `useUnderlayInfo.ts` | Vilka parametrar som visas överst, uppgifterna om det som körs (testade) och underlagets datum. |
 | `frontend/src/components/joint/diagnosis-card.tsx` | Kortet "Vad gick fel?" för en körning utan lösning: dina ändringar med gammalt och nytt värde, utredningsknapp, förlopp och slutsats. |
 | `frontend/src/components/ui/info-tip.tsx`, `notice.tsx` | ⓘ-ikon som visar en förklaring vid klick, och varning/fel med hopfällda detaljer. |
 | `frontend/src/lib/diagnosisApi.ts`, `diagnosisView.ts`, `useDiagnosis.ts` | Anrop, namn och slutsats i klartext (testade) samt hook som följer utredningsjobbet, även efter omladdning. |

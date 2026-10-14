@@ -1,6 +1,7 @@
 import { useId } from "react"
 import { ArrowRight, CircleAlert, Lock, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { InfoTip } from "@/components/ui/info-tip"
 import type { JointOptions, ParameterInfo } from "@/lib/jointTypes"
 import type { ParamChange } from "@/lib/paramDiff"
 import { formatParamValue } from "@/lib/paramFormat"
@@ -54,7 +55,7 @@ function Editor({ param, draft, onChange, disabled, label, inputId, describedBy,
   }
 }
 
-/** En parameterrad: etikett, hjälptext (alltid synlig), inmatning efter typ, ändringsmarkering och fel. */
+/** En parameterrad: etikett med förklaring bakom en ikon, inmatning efter typ, ändringsmarkering och fel. */
 export function ParamRow({ param, draft, change, error, onChange, onReset, optionsContext }: RowProps) {
   const id = useId()
   const locked = !param.editable
@@ -73,13 +74,16 @@ export function ParamRow({ param, draft, change, error, onChange, onReset, optio
       <div className="flex flex-wrap items-center gap-2">
         {scalar ? <label htmlFor={id} className="text-sm font-semibold text-slate-900">{param.label}</label>
           : <span className="text-sm font-semibold text-slate-900">{param.label}</span>}
-        {BASIS_TEXT[param.basis] && <span className="rounded border border-slate-400 px-1.5 py-0.5 text-[11px] text-slate-800">{BASIS_TEXT[param.basis]}</span>}
+        <InfoTip label={`Om ${param.label}`}>
+          {param.help_text && <span className="block">{param.help_text}</span>}
+          {defaultText && <span className="block">Standardvärde: {defaultText}. Scenariot avviker från det.</span>}
+          {BASIS_TEXT[param.basis] && <span className="block">Grund: {BASIS_TEXT[param.basis]}.</span>}
+          <span className="block font-mono text-[11px]">{param.id}</span>
+        </InfoTip>
         {param.advanced && <span className="rounded border border-slate-400 px-1.5 py-0.5 text-[11px] text-slate-800">Avancerad</span>}
         {locked && <span className="inline-flex items-center gap-1 rounded bg-slate-200 px-1.5 py-0.5 text-[11px] font-medium text-slate-900"><Lock size={11} aria-hidden="true"/>{LOCKED_TEXT}</span>}
       </div>
-      <p id={helpId} className="mt-1 text-xs text-slate-800">{param.help_text}</p>
-      {defaultText && <p className="mt-1 text-xs text-slate-800">Standardvärde: {defaultText}. Scenariot avviker från det.</p>}
-      <p className="mt-1 font-mono text-[11px] text-slate-700">{param.id}</p>
+      <span id={helpId} className="sr-only">{param.help_text}</span>
     </div>
     <div className="space-y-2">
       {editable && <Editor param={param} draft={draft} onChange={onChange} disabled={locked} label={param.label} inputId={id} describedBy={describedBy} invalid={!!error} options={optionsContext.options}/>}
