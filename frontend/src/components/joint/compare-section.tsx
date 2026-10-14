@@ -6,7 +6,8 @@ import { Notice } from "@/components/ui/notice"
 import { jointApi } from "@/lib/jointApi"
 import { NO_PREVIOUS_RUN_TEXT, assumptionView, changeRows, interpretationView, metricRows, type InterpretationView, type MetricRow } from "@/lib/jointCompare"
 import { formatKr } from "@/lib/jointFormat"
-import type { CompareResult, CompareRunRef, SavedRun } from "@/lib/jointTypes"
+import type { CompareResult, CompareRunRef, JointScenario, SavedRun } from "@/lib/jointTypes"
+import { runLabel } from "@/lib/runLabel"
 
 type Load = { status: "loading" | "ready" | "error"; result: CompareResult | null; error: string }
 
@@ -20,7 +21,7 @@ const TONE: Record<InterpretationView["tone"], { box: string; icon: JSX.Element;
 }
 
 /** Jämförelse av en körning mot föregående körning av samma scenario, eller mot en vald körning. */
-export function CompareSection({ runId, runs }: { runId: string; runs: SavedRun[] }) {
+export function CompareSection({ runId, runs, scenarios }: { runId: string; runs: SavedRun[]; scenarios: JointScenario[] }) {
   const id = useId()
   const [base, setBase] = useState("previous")
   const [load, setLoad] = useState<Load>({ status: "loading", result: null, error: "" })
@@ -42,7 +43,7 @@ export function CompareSection({ runId, runs }: { runId: string; runs: SavedRun[
         <label className="label" htmlFor={`${id}-base`}>Jämför med</label>
         <select id={`${id}-base`} className="field max-w-xl" value={base} onChange={event => setBase(event.target.value)}>
           <option value="previous">Föregående körning av samma scenario</option>
-          {others.map(run => <option key={run.run_id} value={run.run_id}>{run.run_id} · {run.scenario_id}</option>)}
+          {others.map(run => <option key={run.run_id} value={run.run_id} title={run.run_id}>{runLabel(run, scenarios)}</option>)}
         </select>
       </div>
       <div aria-live="polite">
