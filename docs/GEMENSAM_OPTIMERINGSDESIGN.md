@@ -101,3 +101,15 @@ För första terminskörningen i verklig datastorlek används dessutom en uttryc
 4. Terminsmotor med rum, salstillfällen och kostnadskomponenter.
 5. Bemanningsuppgifter, därefter individuella arbetstids- och resevillkor när de aktiveras.
 6. Terminskörning med verkliga data och tydligt vald omfattning, med separat täckningsmått för inkluderade behov respektive hela källpopulationen.
+
+## Betald personaltid, externa salar och fasta bokningar i motorn
+
+**Betald personaltid.** För varje sal och pass finns en produkt `vakter × betald längd` (`joint_paid_time.py`): betald längd är salstillfällets längsta tentamen plus förberedelse och avslut, lägst kortaste betalda pass, plus salens betalda restid, och noll om salen inte har något tillfälle. Kostnaden är kostnaden per betald minut gånger summan. Samma termer byggs för den monolitiska modellen och för varje dagkontroll i den dekomponerade strategin; relaxationen får en giltig undre gräns (varje vaktposition betalas minst den kortaste kandidattentamen i passet). Eftersom gränsen är svagare än den exakta kostnaden kan gapet vara större med betald tid, men resultatet kontrolleras alltid exakt dag för dag.
+
+**Externa salar** är salar utan fast årskostnad med en kostnad per salstillfälle (`Room.external_session_cost_ore`); kontraktet hade redan stödet och resursdata är nu dataadaptern som skapar dem.
+
+**Fasta bokningar** (`Reservation`) spärrar en sal för en tid: ett salstillfälle måste sluta minst ställtiden före bokningens start eller börja minst ställtiden efter dess slut, och en sal med en fast bokning är alltid använd (`owned = 1`). Relaxationen fixerar bara att salen är använd; själva spärren prövas i dagkontrollerna. `joint_blocking.py`.
+
+**Kontrakt.** `joint-optimization-input-v3` lägger till `reservations`, `resource_basis`, `Room.name/cost_object_id/cost_origin/kind/travel_paid_minutes` och `StaffingCostPolicy.paid_minute_cost_ore/min_paid_minutes`; resultatet `staffing_summary` och `costs.staff_paid_time_cost_ore`. Äldre filer läses med standardvärden.
+
+**Prissättning av en given plan.** `joint_pricing.py` prissätter vilken plan som helst (en körning eller den faktiska bokningen) med en sparad körnings regler; den används av jämförelsen (`abc_ledger.py`, `abc_explain.py`) och testas mot optimeraren och valideraren i `tests/test_joint_paid_time_differential.py`.

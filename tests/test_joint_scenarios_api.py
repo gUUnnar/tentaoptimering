@@ -426,7 +426,7 @@ class RouteTests(unittest.TestCase):
         self.assertEqual((term["origin"], term["subset"]["selection"], term["subset"]["exam_count"]), ("bundled", "rule", 2))
 
         status, payload = self._request("GET", "/api/joint-runs/parameters?scenario=joint_underlay_period")
-        self.assertEqual((status, payload["catalog_version"], payload["scenario_id"], len(payload["parameters"])), (200, "2.4.0", "joint_underlay_period", 59))
+        self.assertEqual((status, payload["catalog_version"], payload["scenario_id"], len(payload["parameters"])), (200, "2.6.0", "joint_underlay_period", 66))
         self.assertEqual(self._request("GET", "/api/joint-runs/parameters?scenario=finns-inte")[0], 404)
         self.assertEqual(self._request("GET", "/api/joint-runs/parameters?scenario=../x")[0], 422)
         self.assertEqual(self._request("GET", "/api/joint-runs/parameters")[0], 422)

@@ -79,9 +79,9 @@ class CatalogChoiceTests(unittest.TestCase):
                 load_parameter_catalog(path)
 
     def test_the_catalog_version_and_counts_are_the_documented_ones(self) -> None:
-        self.assertEqual(CATALOG_DATA.version, "2.4.0")
-        self.assertEqual(len(CATALOG_DATA.parameters), 59)
-        self.assertEqual(sum(item.engine_support == "implemented" for item in CATALOG_DATA.parameters), 36)
+        self.assertEqual(CATALOG_DATA.version, "2.6.0")
+        self.assertEqual(len(CATALOG_DATA.parameters), 66)
+        self.assertEqual(sum(item.engine_support == "implemented" for item in CATALOG_DATA.parameters), 44)
 
 
 class ValidationTests(unittest.TestCase):
@@ -185,8 +185,8 @@ class ListingTests(unittest.TestCase):
     def test_the_payload_separates_default_scenario_value_and_effective_value(self) -> None:
         content = tomllib.loads(FULL_TERM.read_text(encoding="utf-8"))
         payload = describe_parameters(CATALOG_DATA, "joint_underlay_period", dict(content["parameters"]))
-        self.assertEqual((payload["catalog_version"], payload["scenario_id"]), ("2.4.0", "joint_underlay_period"))
-        self.assertEqual(len(payload["parameters"]), 59)
+        self.assertEqual((payload["catalog_version"], payload["scenario_id"]), ("2.6.0", "joint_underlay_period"))
+        self.assertEqual(len(payload["parameters"]), 66)
         self.assertEqual(set(payload["group_labels"]), {group for group, _ in GROUPS})
         rows = {row["id"]: row for row in payload["parameters"]}
         window = rows["window.earlier_days"]

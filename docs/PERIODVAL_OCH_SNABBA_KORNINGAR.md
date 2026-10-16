@@ -64,7 +64,9 @@ Alla fyra körningarna har fullständig placering och teknisk eftervalidering `p
 
 Inga tidsmål har fastställts; målen ska sättas efter dessa mätningar (kravspecifikation §11.9).
 
-## 3. Steg 3 – design: hänsyn till redan lagda bokningar (inte implementerat)
+## 3. Steg 3 – hänsyn till redan lagda bokningar (implementerat i `joint_reservations.py`, `joint_blocking.py`)
+
+**Status:** implementerat för bokningar som identifierar en sal i modellen: de spärrar salen hel under sin tid plus ställtid och gör att salen räknas som använd (`reservations.policy`, standard `block_identified`). Oidentifierade bokningar spärrar ingenting och redovisas (antal, platser). Bokningarna redovisas i förkontrollen per orsak med parametrarna `reservations.action_no_count`, `reservations.action_outside_selection` och `reservations.action_not_in_ladok` (`keep_fixed` är förval, `remove` är ett uttryckligt val som märks i körningen). Policyerna `sensitivity_bounds` och `refuse` nedan är inte implementerade. Texten nedan är den ursprungliga designen, kvar som motivering.
 
 Detta avsnitt ersätter ett tidigare utkast som föreslog kapacitetsreduktion per adress när salnamn saknas. Det utkastet gjorde en datalucka till ett modellantagande och är struket. Utgångspunkten är `docs/ARKITEKTURPRINCIPER_DATAKVALITET.md`: modell och datakvalitet hålls isär, saknade uppgifter hanteras explicit, och inget antas tyst.
 

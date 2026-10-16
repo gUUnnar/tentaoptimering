@@ -20,7 +20,8 @@ from .run_meta import KIND_USER, read_meta, staleness
 from .wishes import RANKS, date_rank
 
 COMPONENT_LABELS = (("annual_room_cost_ore", "Lokaler"), ("annual_staff_pool_cost_ore", "Vaktpool"),
-                    ("external_room_session_cost_ore", "Externa salstillfällen"), ("staff_session_cost_ore", "Rörlig bemanning"))
+                    ("external_room_session_cost_ore", "Externa salstillfällen"), ("staff_session_cost_ore", "Rörlig bemanning"),
+                    ("staff_paid_time_cost_ore", "Betald personaltid"))
 DIAGNOSIS_FILE = "joint_diagnosis.json"
 
 

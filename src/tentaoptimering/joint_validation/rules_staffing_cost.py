@@ -63,7 +63,7 @@ def _costs(ctx: Context, sessions, staff, pool: object) -> RuleResult:
     if not isinstance(costs, dict) or not isinstance(pool, int):
         return rule("costs_recomputed", TECHNICAL, FAIL, "Kostnader eller pool saknas i resultatet.", reference="krav: kostnader räknas om")
     expected = recompute_costs(ctx, sessions, staff, pool)
-    broken = [f"{name}: rapporterat {costs.get(name)}, beräknat {value}" for name, value in expected.items() if costs.get(name) != value]
+    broken = [f"{name}: rapporterat {costs.get(name, 0)}, beräknat {value}" for name, value in expected.items() if costs.get(name, 0) != value]
     parts = sum(int(costs.get(name, 0)) for name in expected if name != "comparable_total_cost_ore")
     if costs.get("comparable_total_cost_ore") != parts:
         broken.append(f"komponenterna summerar till {parts}, totalen är {costs.get('comparable_total_cost_ore')}")
@@ -72,7 +72,7 @@ def _costs(ctx: Context, sessions, staff, pool: object) -> RuleResult:
         broken.append(f"solvermålet {objective} avviker från modellkostnaden")
     return rule("costs_recomputed", TECHNICAL, FAIL if broken else PASS,
                 "Kostnadskomponenter, summa eller solvermål avviker från omräkningen." if broken
-                else f"Lokaler, externa salstillfällen, pool och rörlig bemanning räknas om och summerar till {expected['comparable_total_cost_ore']} öre.",
+                else f"Lokaler (inklusive fast bokade), externa salstillfällen, pool, rörlig bemanning och betald personaltid räknas om och summerar till {expected['comparable_total_cost_ore']} öre.",
                 broken, "krav: kostnaderna summerar till modellkostnaden")
 
 

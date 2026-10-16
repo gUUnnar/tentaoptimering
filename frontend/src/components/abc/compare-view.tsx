@@ -8,6 +8,7 @@ import type { AbcCompare, AbcHeader, AbcRoomUsage, AbcUnplaced } from "@/lib/abc
 import { costSideText, percentOf, utilizationSeries } from "@/lib/abcView"
 import { changeRows } from "@/lib/jointCompare"
 import { formatKr } from "@/lib/jointFormat"
+import { ExplainedSavings } from "./explained-savings"
 
 const number = new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 0 })
 const DASH = "–"
@@ -26,6 +27,8 @@ export function CompareView({ result }: { result: AbcCompare }) {
     <div className="grid gap-3 md:grid-cols-2"><Side header={result.left} title="Vänster (referens)"/><Side header={result.right} title="Höger (jämfört mot vänster)"/></div>
     {result.reasons.length > 0 && <Notice tone="warning" title={result.comparable ? "Jämförelsen har begränsningar" : "Jämförelsen går inte att göra fullt ut"} open>
       <ul className="list-disc pl-5">{result.reasons.map(reason => <li key={reason}>{reason}</li>)}</ul></Notice>}
+
+    {result.explained && <ExplainedSavings explained={result.explained}/>}
 
     <Section title="Nyckeltal" tip="Antal tentamina och salar, och vaktpoolen för körningar. Den faktiska bokningen har ingen vaktpool i underlaget.">
       <table className="w-full text-sm"><thead><tr className="border-b"><th className={TH}>Mått</th><th className={`${TH} text-right`}>{result.left.name}</th><th className={`${TH} text-right`}>{result.right.name}</th><th className={`${TH} text-right`}>Skillnad</th></tr></thead>

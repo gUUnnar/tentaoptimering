@@ -22,6 +22,7 @@ from ortools.sat.python import cp_model
 
 from ..joint_contract import JointOptimizationInput, Room, SolverSettings
 from ..joint_optimizer import _build_variables_and_constraints, _extract
+from ..joint_paid_time import add_paid_time, paid_time_active
 from ..joint_preference import max_penalty, penalty_weights
 from .aggregate import cp_solver
 from .resources import CancelToken, solve_cancellable, wall_time
@@ -94,7 +95,7 @@ def solve_part(
     session_cost = sub.staffing.cost_ore_per_staff_session * sum(variables.staff.values()) + sum(
         room.external_session_cost_ore * variables.sessions[room.room_id, slot.slot_id]
         for room in sub.rooms for slot in sub.slots if room.external_session_cost_ore
-    )
+    ) + add_paid_time(model, sub, variables)
     if pool_cap is not None:
         model.Add(variables.staff_pool <= pool_cap)
         cost = session_cost
@@ -117,7 +118,8 @@ def solve_part(
         return "unknown", None, None
     assignments, sessions, schedule = _extract(sub, solver, variables, slots)
     pool_bound = None
-    only_pool = sub.staffing.cost_ore_per_staff_session == 0 and not any(room.external_session_cost_ore for room in sub.rooms)
+    only_pool = (sub.staffing.cost_ore_per_staff_session == 0 and not any(room.external_session_cost_ore for room in sub.rooms)
+                 and not paid_time_active(sub))
     if pool_cap is None and sub.staffing.annual_cost_ore_per_staff > 0 and not extra_rooms and only_pool:
         # objective = scale * staff_cost * pool + changes, with changes < scale
         pool_bound = int(solver.BestObjectiveBound() // (scale * sub.staffing.annual_cost_ore_per_staff))

@@ -62,4 +62,17 @@ def precheck(storage: AppStorage, config: Path, snapshot: Path | None, cancel: C
             verdict = UNCLEAR
             reasons.append(f"Ingen omöjlighet kunde bevisas på {PRECHECK_SECONDS:.0f} sekunder. Det är inget bevis för att det går; en körning kan ändå ta lång tid.")
     return {"kind": "joint_precheck", "verdict": verdict, "exams_total": total, "blocked_exams": len(blocked), "must_move_exams": len(must_move),
-            "solver_outcome": outcome, "seconds": seconds, "reasons": reasons}
+            "solver_outcome": outcome, "seconds": seconds, "reasons": reasons,
+            "fixed_bookings": _fixed_bookings(problem)}
+
+
+def _fixed_bookings(problem: Any) -> dict[str, Any] | None:
+    """Other bookings in the period that are not among the exams: by group with the chosen action, the rooms and times they take, and what is unidentified."""
+    basis = ((problem.resource_basis or {}).get("reservations")) or {}
+    if basis.get("status") != "read":
+        return {"status": basis.get("status"), "note": basis.get("note"), "groups": [], "bookings": []}
+    names = {room.room_id: room.name for room in problem.rooms}
+    return {"status": "read", "blocking": basis["blocking"], "removed": basis["removed"], "unidentified_bookings": basis.get("unidentified_bookings", 0),
+            "unidentified_booked_places": basis.get("unidentified_booked_places", 0), "groups": basis["groups"],
+            "bookings": [{**item, "room": names.get(item["room_id"]) or item["room_id"]} for item in basis["bookings"]], "truncated": basis["bookings_truncated"],
+            "note": basis["note"]}

@@ -32,6 +32,7 @@ import time
 from ..joint_contract import (
     RESULT_SCHEMA_VERSION, CostBreakdown, CoverageSummary, JointOptimizationInput, JointOptimizationResult, SolverSummary,
 )
+from ..joint_costing import staffing_summary
 from ..joint_optimizer import _is_changed, _limitations, _verification
 from ..joint_progress import ProgressSink, emit, finished_event, phase, resources_event
 from .aggregate import Cut, solve_master
@@ -150,7 +151,7 @@ def _result(problem, parts, lower, proven, started, rounds, cut_count, first_at,
     assignments = tuple(sorted((row for part in parts for row in part.assignments), key=order))
     sessions = tuple(sorted((row for part in parts for row in part.sessions), key=order))
     schedule = tuple(sorted((row for part in parts for row in part.schedule), key=order))
-    pool, room_cost, external, pool_cost, session_cost, total = cost(problem, parts)
+    pool, room_cost, external, pool_cost, session_cost, paid_cost, total = cost(problem, parts)
     bound = min(lower, total)
     slots = {slot.slot_id: slot for slot in problem.slots}
     demands = {item.exam_demand_id: item for item in problem.demands}
@@ -170,7 +171,7 @@ def _result(problem, parts, lower, proven, started, rounds, cut_count, first_at,
             change_preference_status="heuristic_history_plan_swapped_where_verified",
             strategy="decomposed",
         ),
-        costs=CostBreakdown(room_cost, external, pool_cost, session_cost, total),
+        costs=CostBreakdown(room_cost, external, pool_cost, session_cost, total, paid_cost),
         coverage=CoverageSummary(
             len(problem.demands), len(schedule), participants, physical, non_room,
             len(schedule) == len(problem.demands) and physical + non_room == participants,
@@ -185,6 +186,7 @@ def _result(problem, parts, lower, proven, started, rounds, cut_count, first_at,
             "med den gemensamma modellen. Undre gränsen kommer från relaxationen.",
         ),
         verification=_verification(problem, proven and bound == total, assignments),
+        staffing_summary=staffing_summary(problem, sessions),
     )
 
 

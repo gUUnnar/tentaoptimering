@@ -33,6 +33,7 @@ exam_event_ids = [
 "calendar.weekdays" = [1, 2, 3]
 "calendar.start_times" = ["08:00", "14:00"]
 "calendar.turnaround_minutes" = 30
+"reservations.policy" = "none"
 "flex.movable_types" = ["ordinarie", "omtenta", "dugga", "hybrid"]
 "rooms.max_rooms_per_exam" = 8
 "rooms.allow_split_across_buildings" = false
@@ -51,6 +52,7 @@ exam_event_ids = [
 "solver.seed" = 20261009
 
 [rationales]
+"reservations.policy" = "Reproducerbart regressionsfall för motorn: tolv namngivna tentor utan hänsyn till övriga bokningar i salarna, så att kostnaden på 379 000 kr kan upprepas. Ett fall som ska ge verkliga planer låter fasta bokningar spärra (katalogens standard)."
 "window.earlier_days" = "Tre dagars avgränsat testfönster för att mäta gemensam modellering."
 "window.later_days" = "Tre dagars avgränsat testfönster för att mäta gemensam modellering."
 "cost.room_annual_per_seat_ore" = "Explorativ proxy 1 000 kr per plats och år; inte avtalskostnad."

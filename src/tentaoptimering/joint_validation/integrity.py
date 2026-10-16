@@ -7,8 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from ..joint_contract import INPUT_SCHEMA_VERSION, RESULT_SCHEMA_VERSION
-from .report import FAIL, NOT_EVALUATED, PASS, PROVENANCE, RuleResult, rule
+from ..joint_contract import COMPATIBLE_INPUT_VERSIONS, COMPATIBLE_RESULT_VERSIONS, INPUT_SCHEMA_VERSION, RESULT_SCHEMA_VERSION
+from .report import FAIL, NOT_APPLICABLE, NOT_EVALUATED, PASS, PROVENANCE, RuleResult, rule
 
 INPUT_FILE = "joint_input.json"
 RESULT_FILE = "joint_result.json"
@@ -64,9 +64,9 @@ def integrity_rules(
         else "Indata- och resultatfilens SHA-256 stämmer med manifestet.", wrong, "krav: filernas integritet",
     ))
     versions = []
-    if problem.get("schema_version") != INPUT_SCHEMA_VERSION:
+    if problem.get("schema_version") not in COMPATIBLE_INPUT_VERSIONS:
         versions.append(f"indata {problem.get('schema_version')}")
-    if result.get("schema_version") != RESULT_SCHEMA_VERSION:
+    if result.get("schema_version") not in COMPATIBLE_RESULT_VERSIONS:
         versions.append(f"resultat {result.get('schema_version')}")
     results.append(rule(
         "schema_versions", PROVENANCE, FAIL if versions else PASS,
@@ -80,11 +80,33 @@ def integrity_rules(
         else f"Resultatets problem_id {result.get('problem_id')!r} skiljer sig från indatans {problem.get('problem_id')!r}.",
         reference="krav: resultat och indata hör ihop",
     ))
+    results.append(_resource_pack(run_dir, problem, manifest))
     results.append(_dataset_hash(problem, processed_dir))
     results.append(_optional_hash("config_hash", manifest.get("config_sha256"), config_path, "scenariokonfigurationen"))
     results.append(_optional_hash("catalog_hash", manifest.get("catalog_sha256"), catalog_path, "parameterkatalogen"))
     results.append(_source_hashes(source_dir, source_manifest))
     return results
+
+
+def _resource_pack(run_dir: Path, problem: dict[str, Any], manifest: dict[str, Any]) -> RuleResult:
+    """The run's frozen copy of its resource data must be the file that the manifest recorded and the input names."""
+    pack = (problem.get("resource_basis") or {}).get("pack")
+    if not pack:
+        return rule("resource_pack_hash", PROVENANCE, NOT_APPLICABLE, "Körningen använder ingen resursdata.", reference="krav: resursdata är spårbar")
+    path = run_dir / "resource_pack.json"
+    recorded = manifest.get("resource_pack_sha256")
+    if not path.is_file() or not recorded:
+        return rule("resource_pack_hash", PROVENANCE, FAIL, "Körningen anger resursdata men dess frysta kopia eller hash saknas.", reference="krav: resursdata är spårbar")
+    same = recorded == sha256(path)
+    try:
+        snapshot = json.loads(path.read_text(encoding="utf-8"))
+        named = snapshot.get("sha256") == pack.get("pack_sha256") and snapshot.get("pack_id") == pack.get("pack_id")
+    except (ValueError, OSError):
+        named = False
+    status = PASS if same and named else FAIL
+    return rule("resource_pack_hash", PROVENANCE, status,
+                "Den frysta resursdatan stämmer med manifestet och med den resursdata som indatan namnger." if status == PASS
+                else "Den frysta resursdatan har ändrats efter körningen eller är inte den som indatan namnger.", reference="krav: resursdata är spårbar")
 
 
 def _dataset_hash(problem: dict[str, Any], processed_dir: Path | None) -> RuleResult:

@@ -14,11 +14,11 @@ selection = "all_ready"
 "wish.tiebreak" = "wish_priority"
 "rooms.include_observed_unregistered" = true
 "cost.room_annual_per_seat_ore" = 100000
-"cost.staff_annual_ore" = 5000000
+"resources.pack" = "simulated_dev_2026"
 
 [rationales]
 "wish.candidate_policy" = "Grundoptimeringen utgår från verksamhetens önskemål: önskat datum och reservdatum 1 och 2, inga andra dagar. Katalogens standard är ett fönster kring bokat datum."
 "wish.tiebreak" = "Bland lika billiga lösningar väljs önskat datum före reservdatum 1, reservdatum 2 och annat datum. Katalogens standard är så få ändringar som möjligt mot bokningen."
 "rooms.include_observed_unregistered" = "Registrets sju salar i Uppsala ryms inte ens de bokade tentorna en toppdag (dygnstopp över 2 800 tentander mot cirka 1 040 platser per pass). Salar som bokningarna använt men som saknar registerkapacitet (Fyrishovs hallar) tas därför med, med största bokade antal platser som kapacitet (en underkant). Av: bara registrets salar."
-"cost.room_annual_per_seat_ore" = "Katalogens standard är 0 kr, vilket ger kostnad 0. Explorativ proxy 1 000 kr per plats och år; inte avtalskostnad."
-"cost.staff_annual_ore" = "Katalogens standard är 0 kr, vilket ger kostnad 0. Explorativ proxy 50 000 kr per dimensionerande anonym resurs och år; inte avtalskostnad."
+"cost.room_annual_per_seat_ore" = "Katalogens standard är 0 kr, vilket ger kostnad 0. Explorativ proxy 1 000 kr per plats och år för salar som resursdatan inte prissätter; inte avtalskostnad."
+"resources.pack" = "Verkliga hyresavtal, externhyror och personalkostnader finns ännu inte. Tills de gör det används de simulerade resursuppgifterna (påhittade men realistiska värden, tydligt märkta som simulerade): namngivna salar med avtalsobjekt, externhyra för Fyrishovs hallar och en kostnad per betald personalminut. Personalkostnaden är därmed betald tid (förberedelse, tentamen, avslut, kortaste pass och restid) och inte en schablon per vaktresurs. Av: lokaler prissätts per plats och personalen kostar ingenting."

@@ -51,9 +51,36 @@ def build_report(problem: JointOptimizationInput, result: Any) -> str:
         f"- Långsiktiga salar: {costs.annual_room_cost_ore if costs else None} öre.",
         f"- Externa salstillfällen: {costs.external_room_session_cost_ore if costs else None} öre.",
         f"- Årlig bemanningspool: {costs.annual_staff_pool_cost_ore if costs else None} öre.",
-        f"- Rörlig salstillfällesbemanning: {costs.staff_session_cost_ore if costs else None} öre.", "",
+        f"- Rörlig salstillfällesbemanning: {costs.staff_session_cost_ore if costs else None} öre.",
+        f"- Betald personaltid: {costs.staff_paid_time_cost_ore if costs else None} öre.", "",
+        *resource_lines(problem, result),
         "## Datatäckning och begränsningar", "",
         f"- Modellerade tentamensbehov: {problem.scope.modeled_exam_demands} av en uttryckligen vald delmängd.",
         f"- Hela källpopulationen: {problem.scope.source_activities_total} aktiviteter, varav {problem.scope.unresolved_source_activities} oavgjorda.",
         *[f"- {item}" for item in result.limitations], "",
     ])
+
+
+def resource_lines(problem, result) -> list[str]:
+    """What the run's costs and blocked rooms rest on: resource data with its origin, fixed bookings and the paid staff time."""
+    basis = problem.resource_basis or {}
+    pack = basis.get("pack")
+    reservations = basis.get("reservations") or {}
+    summary = result.staffing_summary or {}
+    lines = ["## Resursdata, fasta bokningar och betald personaltid", ""]
+    lines.append(f"- Resursdata: {pack['pack_id']} (ursprung: {', '.join(pack['origins']) or pack['pack_origin']}; simulerade uppgifter är aldrig verifierade)." if pack
+                 else "- Resursdata: ingen vald; lokalkostnaden är en kostnad per plats och externhyror saknas.")
+    proxies = [item["room_id"] for item in basis.get("rooms", ()) if item.get("kind") == "internal" and item.get("cost_origin") == "parameter_proxy"]
+    if pack and proxies:
+        lines.append(f"- {len(proxies)} salar saknar kostnad i resursdatan och prissätts per plats: {', '.join(proxies)}.")
+    for text in basis.get("warnings", ()):
+        lines.append(f"- {text}")
+    if reservations.get("status") == "read":
+        lines.append("- Kvarvarande fasta bokningar påverkar salspärrar och lokalkostnad (en sal med fast bokning räknas som använd), men deras vaktpersonal ingår inte i kostnaden.")
+        lines.append(f"- Fasta bokningar utanför de valda tentorna: {reservations['blocking']} spärrar salar; {reservations.get('unidentified_bookings', 0)} saknar identifierad sal och spärrar ingenting.")
+    elif reservations:
+        lines.append(f"- Fasta bokningar: {reservations.get('note', reservations.get('status'))}")
+    if summary:
+        lines.append(f"- Betald personaltid: {summary['passes']} betalda pass, {summary['paid_minutes'] / 60:.1f} timmar "
+                     f"(arbetad tid {summary['worked_minutes'] / 60:.1f} h, tillägg till kortaste pass {summary['minimum_top_up_minutes'] / 60:.1f} h, restid {summary['travel_minutes'] / 60:.1f} h).")
+    return lines + [""]
