@@ -218,6 +218,27 @@ class ReservationBuilderTests(unittest.TestCase):
         self.assertEqual((basis["blocking"], basis["unidentified_bookings"], basis["unidentified_booked_places"]), (2, 1, 25))
         self.assertEqual(basis["status"], "read")
 
+    def test_other_bookings_are_grouped_by_why_they_are_not_exams_and_each_group_has_an_explicit_action(self) -> None:
+        import pandas as pd
+
+        demands = pd.read_csv(self.dir / "optimization_demands.csv", encoding="utf-8-sig", dtype=str)
+        demands.loc[demands["exam_event_id"] == "ev-1", "demand_input_status"] = "not_ready_missing_demand"  # ev-1 has no participant count
+        demands.to_csv(self.dir / "optimization_demands.csv", index=False, encoding="utf-8-sig")
+        reservations, basis = build_reservations(self.dir, {"ev-2"}, self.rooms, self.slots, "block_identified")
+        groups = {item["group"]: item for item in basis["groups"]}
+        self.assertEqual((groups["no_participant_count"]["bookings"], groups["no_participant_count"]["action"], groups["outside_selection"]["bookings"]), (2, "keep_fixed", 0))
+        self.assertEqual(sorted(groups["no_participant_count"]["rooms"]), ["uu-g1-s1", "uu-g1-s2"])
+        self.assertEqual({item.group for item in reservations}, {"no_participant_count"})  # careful default: kept fixed
+        self.assertEqual(len(basis["bookings"]), 2)
+        self.assertEqual(basis["actions"], {"no_participant_count": "keep_fixed", "outside_selection": "keep_fixed", "not_in_ladok": "keep_fixed"})
+        reservations, basis = build_reservations(self.dir, {"ev-2"}, self.rooms, self.slots, "block_identified", {"no_participant_count": "remove"})
+        self.assertEqual((reservations, basis["blocking"], basis["removed"]), ((), 0, 2))  # removed by choice, still listed
+        self.assertEqual({item["action"] for item in basis["bookings"]}, {"remove"})
+        # a booking whose exam is not in the demand file at all is its own group
+        demands[demands["exam_event_id"] != "ev-1"].to_csv(self.dir / "optimization_demands.csv", index=False, encoding="utf-8-sig")
+        _, basis = build_reservations(self.dir, {"ev-2"}, self.rooms, self.slots, "block_identified")
+        self.assertEqual({item["group"]: item["bookings"] for item in basis["groups"]}["not_in_ladok"], 2)
+
     def test_the_exams_of_the_selection_are_not_reservations(self) -> None:
         reservations, _ = build_reservations(self.dir, {"ev-1", "ev-2", "ev-4"}, self.rooms, self.slots, "block_identified")
         self.assertEqual(reservations, ())

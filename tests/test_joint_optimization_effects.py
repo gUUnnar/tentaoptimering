@@ -209,7 +209,7 @@ class OptimizationEffectTests(unittest.TestCase):
         covered |= {"demand.rounding", "demand.measure", "solver.time_limit_seconds", "solver.seed", "solver.workers", "solver.deterministic",
                     "solver.strategy", "solver.relative_gap_limit"}  # strategies: tests/test_joint_strategy.py
         covered |= {"wish.tiebreak"}  # changes the chosen date at the same cost: tests/test_joint_wishes.py (TieBreakTests)
-        covered |= {"resources.pack", "reservations.policy"}  # tests/test_resource_data.py, tests/test_joint_paid_time.py, tests/test_explained_saving_chain.py
+        covered |= {"resources.pack", "reservations.policy", "reservations.action_no_count", "reservations.action_outside_selection", "reservations.action_not_in_ladok"}  # tests/test_resource_data.py, tests/test_joint_paid_time.py, tests/test_explained_saving_chain.py
         covered |= {"wish.candidate_policy", "wish.time_policy", "rooms.include_observed_unregistered"}  # proven below (test_wishes_and_observed_rooms_...)
         self.assertEqual(implemented - covered, set(), "implemented parameters without a result-level test")
 

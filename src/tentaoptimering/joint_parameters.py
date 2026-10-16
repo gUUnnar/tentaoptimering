@@ -29,7 +29,7 @@ LAYOUT: dict[str, tuple[str, ...]] = {
         "rules.student_conflicts",
     ),
     "rum": (
-        "rooms.selection", "rooms.exclude", "rooms.include_observed_unregistered", "reservations.policy", "rooms.allow_split", "rooms.max_rooms_per_exam", "rooms.allow_split_across_buildings",
+        "rooms.selection", "rooms.exclude", "rooms.include_observed_unregistered", "reservations.policy", "reservations.action_no_count", "reservations.action_outside_selection", "reservations.action_not_in_ladok", "rooms.allow_split", "rooms.max_rooms_per_exam", "rooms.allow_split_across_buildings",
         "rooms.availability_mode", "rooms.capacity_override", "rooms.custom_rooms", "rooms.co_location_rules",
         "digital.partial_support_policy", "digital.unknown_demand_policy", "digital.exam_share_pct",
         "digital.compatibility_matrix",

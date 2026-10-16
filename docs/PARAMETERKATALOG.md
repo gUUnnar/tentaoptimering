@@ -1,7 +1,7 @@
 # Parameterkatalog v2
 
 **Status:** Implementerad kontraktskälla för den nya gemensamma optimeringsmotorn.
-**Maskinläsbar källa:** `config/joint_parameter_catalog.toml` (`catalog_version = "2.5.0"`).
+**Maskinläsbar källa:** `config/joint_parameter_catalog.toml` (`catalog_version = "2.6.0"`).
 
 Det tidigare S0-beslutet att dölja parametrar utan motorstöd är upphävt. Alla definierade verksamhetsparametrar finns i samma katalog för framtida GUI, lagring, validering och motoranslutning. Varje post har ett av två tydliga stödtillstånd:
 
@@ -12,7 +12,7 @@ Varje definition innehåller id, verksamhetsgrupp, etikett, typ, enhet, standard
 
 ## Omfattning
 
-Katalogen har 63 poster, varav 41 har motorstöd. Varje implementerad post har ett effektfall i `tests/test_joint_parameter_effects.py` som ändrar värdet och kräver att modellen optimeraren får ändras; en parameter som ignoreras fångas.
+Katalogen har 66 poster, varav 44 har motorstöd. Varje implementerad post har ett effektfall i `tests/test_joint_parameter_effects.py` som ändrar värdet och kräver att modellen optimeraren får ändras; en parameter som ignoreras fångas.
 
 | Område | Parametrar med motorstöd | Definierade men utan motorstöd (`contract_only`) |
 |---|---|---|

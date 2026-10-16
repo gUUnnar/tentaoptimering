@@ -1,4 +1,4 @@
-catalog_version = "2.5.0"
+catalog_version = "2.6.0"
 
 [[parameter]]
 id = "demand.variation_pct"
@@ -735,3 +735,42 @@ default_basis = "experiment"
 help_text = "Prova konsekvensen av att inte använda en viss lokal. Salarna tas bort från modellen, även de som är fast bokade av andra tentor (de spärrar då ingenting)."
 engine_support = "implemented"
 honored_by = "joint_resources.apply_resource_pack"
+
+[[parameter]]
+id = "reservations.action_no_count"
+group = "Lokaler"
+label = "Fasta bokningar: tentor utan deltagarantal"
+value_type = "choice"
+default = "keep_fixed"
+default_basis = "assumption"
+help_text = "Vad som ska hända med bokningar för tentor som saknar känt antal anmälda. Behåll fast: salen spärras under bokningens tid (försiktigt förval). Ta bort: bokningen antas inte upptaga salen; ett uttryckligt val som märker körningen explorativ."
+choices = [{value = "keep_fixed", label = "Behåll fast (spärrar salen)"}, {value = "remove", label = "Ta bort (spärrar ingenting)"}]
+engine_support = "implemented"
+honored_by = "joint_reservations.build_reservations"
+
+
+[[parameter]]
+id = "reservations.action_outside_selection"
+group = "Lokaler"
+label = "Fasta bokningar: tentor utanför valt urval"
+value_type = "choice"
+default = "keep_fixed"
+default_basis = "assumption"
+help_text = "Vad som ska hända med bokningar för tentor som har känt antal men inte ingår i urvalet eller perioden. Behåll fast spärrar salen; Ta bort låter dem inte spärra något."
+choices = [{value = "keep_fixed", label = "Behåll fast (spärrar salen)"}, {value = "remove", label = "Ta bort (spärrar ingenting)"}]
+engine_support = "implemented"
+honored_by = "joint_reservations.build_reservations"
+
+
+[[parameter]]
+id = "reservations.action_not_in_ladok"
+group = "Lokaler"
+label = "Fasta bokningar: bokningar utan tentamen i underlaget"
+value_type = "choice"
+default = "keep_fixed"
+default_basis = "assumption"
+help_text = "Vad som ska hända med bokningar som inte kan kopplas till en tentamen i efterfrågeunderlaget (till exempel ”Extern”). Behåll fast spärrar salen; Ta bort antar att de inte upptar salen."
+choices = [{value = "keep_fixed", label = "Behåll fast (spärrar salen)"}, {value = "remove", label = "Ta bort (spärrar ingenting)"}]
+engine_support = "implemented"
+honored_by = "joint_reservations.build_reservations"
+

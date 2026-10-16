@@ -129,6 +129,7 @@ class Reservation:
     source_booking_id: str = ""
     exam_event_id: str | None = None
     basis: str = "booked_room_matched"
+    group: str = ""
 
 
 @dataclass(frozen=True)

@@ -173,7 +173,9 @@ def build_resource_layer(
     chosen, trace = apply_resource_pack(rooms, pack, plan_area, slots, values)
     staff = effective_staff_values(values, parameters, pack)
     reservations, reservation_basis = build_reservations(
-        processed_dir, population_event_ids, chosen, slots, str(values.get("reservations.policy", "block_identified")))
+        processed_dir, population_event_ids, chosen, slots, str(values.get("reservations.policy", "block_identified")),
+        {"no_participant_count": str(values.get("reservations.action_no_count", "keep_fixed")), "outside_selection": str(values.get("reservations.action_outside_selection", "keep_fixed")),
+         "not_in_ladok": str(values.get("reservations.action_not_in_ladok", "keep_fixed"))})
     reserved = {item.room_id for item in reservations}
     basis = {**trace, "staff": staff, "reservations": reservation_basis, "reserved_rooms": sorted(reserved)}
     return chosen, staff, reservations, basis
