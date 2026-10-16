@@ -1,6 +1,6 @@
 import { Notice } from "@/components/ui/notice"
 import type { FixedBookings } from "@/lib/precheckApi"
-import { actionText, bookingTime, fixedBookingsSummary } from "@/lib/fixedBookingsView"
+import { STAFF_LIMIT, actionText, bookingTime, fixedBookingsSummary } from "@/lib/fixedBookingsView"
 
 const TH = "p-1.5 text-left text-xs font-semibold"
 const TD = "p-1.5 align-top"
@@ -14,6 +14,7 @@ export function FixedBookingsCard({ data }: { data: FixedBookings }) {
   return <div className="space-y-2 rounded-md border p-3" aria-label="Övriga redan lagda bokningar">
     <p className="text-sm font-semibold">Övriga redan lagda bokningar i perioden</p>
     <p className="text-xs">{fixedBookingsSummary(data)}</p>
+    <p className="text-xs font-medium text-amber-900" role="note">{STAFF_LIMIT}</p>
     <table className="w-full text-xs"><thead><tr className="border-b"><th className={TH}>Orsak</th><th className={`${TH} text-right`}>Bokningar</th><th className={`${TH} text-right`}>Platser</th><th className={TH}>Åtgärd</th></tr></thead>
       <tbody>{data.groups.map(group => <tr key={group.group} className="border-b last:border-0"><td className={TD}><strong>{group.label}</strong><span className="block text-slate-800">{group.why}</span></td>
         <td className={`${TD} text-right tabular-nums`}>{group.bookings}</td><td className={`${TD} text-right tabular-nums`}>{group.booked_places}</td>

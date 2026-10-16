@@ -5,6 +5,10 @@ export const ACTION_TEXT: Record<string, string> = {
   remove: "Ta bort: spärrar ingenting (uttryckligt val, körningen blir en egen körning och märks explorativ)",
 }
 
+/** Begränsningen som alltid visas intill kostnaden när fasta bokningar finns. */
+export const STAFF_LIMIT =
+  "Kvarvarande fasta bokningar påverkar salspärrar och lokalkostnad (en sal med fast bokning räknas som använd), men deras vaktpersonal ingår inte i kostnaden."
+
 export const actionText = (action: string): string => ACTION_TEXT[action] ?? action
 
 /** Klockslag för en bokning, t.ex. "08:00–13:00". */

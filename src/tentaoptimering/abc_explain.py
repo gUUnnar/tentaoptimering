@@ -351,6 +351,8 @@ def _quality(left: Ledger, right: Ledger) -> dict[str, Any]:
         flags.append({"key": "simulated", "text": "Kostnader eller villkor kommer från simulerade testdata. Resultatet visar hur beräkningen fungerar och får inte tolkas som verklig eller verifierad besparing."})
     if proxies:
         flags.append({"key": "proxy_prices", "text": f"{len(proxies)} använda salar saknar kostnad i resursdatan och prissätts per plats enligt en parameter (proxy): {', '.join(proxies[:6])}."})
+    if any(((ledger.problem.resource_basis or {}).get("reservations") or {}).get("blocking") for ledger in (left, right)):
+        flags.append({"key": "reservation_staff_excluded", "text": "Kvarvarande fasta bokningar påverkar salspärrar och lokalkostnad (en sal med fast bokning räknas som använd), men deras vaktpersonal ingår inte i kostnaden."})
     for ledger in (left, right):
         if ledger.cost_kind == COST_KIND_ACTUAL:
             continue  # A is priced by the rules of the other alternative, which carries the flag

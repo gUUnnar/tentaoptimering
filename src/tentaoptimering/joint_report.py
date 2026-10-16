@@ -76,6 +76,7 @@ def resource_lines(problem, result) -> list[str]:
     for text in basis.get("warnings", ()):
         lines.append(f"- {text}")
     if reservations.get("status") == "read":
+        lines.append("- Kvarvarande fasta bokningar påverkar salspärrar och lokalkostnad (en sal med fast bokning räknas som använd), men deras vaktpersonal ingår inte i kostnaden.")
         lines.append(f"- Fasta bokningar utanför de valda tentorna: {reservations['blocking']} spärrar salar; {reservations.get('unidentified_bookings', 0)} saknar identifierad sal och spärrar ingenting.")
     elif reservations:
         lines.append(f"- Fasta bokningar: {reservations.get('note', reservations.get('status'))}")
