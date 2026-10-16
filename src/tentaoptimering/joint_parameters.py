@@ -29,7 +29,7 @@ LAYOUT: dict[str, tuple[str, ...]] = {
         "rules.student_conflicts",
     ),
     "rum": (
-        "rooms.selection", "rooms.include_observed_unregistered", "rooms.allow_split", "rooms.max_rooms_per_exam", "rooms.allow_split_across_buildings",
+        "rooms.selection", "rooms.exclude", "rooms.include_observed_unregistered", "reservations.policy", "rooms.allow_split", "rooms.max_rooms_per_exam", "rooms.allow_split_across_buildings",
         "rooms.availability_mode", "rooms.capacity_override", "rooms.custom_rooms", "rooms.co_location_rules",
         "digital.partial_support_policy", "digital.unknown_demand_policy", "digital.exam_share_pct",
         "digital.compatibility_matrix",
@@ -40,7 +40,7 @@ LAYOUT: dict[str, tuple[str, ...]] = {
         "staffing.min_daily_rest_minutes", "staffing.travel_minutes", "staffing.min_paid_shift_minutes",
     ),
     "kostnad": (
-        "cost.room_annual_per_seat_ore", "cost.staff_annual_ore", "cost.staff_session_ore", "cost.external_room_session_ore",
+        "resources.pack", "cost.room_annual_per_seat_ore", "cost.staff_paid_minute_ore", "cost.staff_annual_ore", "cost.staff_session_ore", "cost.external_room_session_ore",
         "cost.annualization_factor", "cost.avoidable_cost_definition",
     ),
     "korning": (

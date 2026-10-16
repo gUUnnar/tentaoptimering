@@ -32,6 +32,7 @@ from .joint_optimizer import solve_joint_optimization
 from .joint_observed_rooms import observed_unregistered_rooms, with_price
 from .joint_options import building_id, select_rooms
 from .joint_report import build_report, validation_lines
+from .joint_resources import build_resource_layer, save_pack_snapshot
 from .joint_progress import EVENTS_FILE, ProgressSink, emit, phase
 from .joint_selection import select_ready_demands
 from .joint_strategy.resources import CancelToken, ExecutionBudget
@@ -88,6 +89,10 @@ def build_real_subset_problem(
         StaffingStep(int(item["max_participants"]), int(item["required_staff"]))
         for item in values["staffing.ladder"]
     )
+    rooms, staff, reservations, basis = build_resource_layer(
+        rooms, values, parameters, config["subset"]["plan_area"], slots, catalog_path, processed_dir,
+        {item["event_id"] for item in events},
+    )
     return JointOptimizationInput(
         schema_version=INPUT_SCHEMA_VERSION,
         problem_id=str(config["scenario"]["id"]),
@@ -97,10 +102,12 @@ def build_real_subset_problem(
         rooms=rooms,
         staffing=StaffingCostPolicy(
             ladder=ladder,
-            annual_cost_ore_per_staff=int(values["cost.staff_annual_ore"]),
+            annual_cost_ore_per_staff=staff["annual_cost_ore_per_staff"]["value"],
             cost_ore_per_staff_session=int(values["cost.staff_session_ore"]),
             preparation_minutes=int(values["staffing.preparation_minutes"]),
             closing_minutes=int(values["staffing.closing_minutes"]),
+            paid_minute_cost_ore=staff["paid_minute_cost_ore"]["value"],
+            min_paid_minutes=staff["min_paid_minutes"]["value"],
         ),
         solver=SolverSettings(
             float(values["solver.time_limit_seconds"]), int(values["solver.seed"]), int(values["solver.workers"]),
@@ -117,6 +124,8 @@ def build_real_subset_problem(
         ),
         turnaround_minutes=int(values["calendar.turnaround_minutes"]),
         preference=str(values["wish.tiebreak"]),
+        reservations=reservations,
+        resource_basis=basis,
     )
 
 
@@ -364,6 +373,7 @@ def _save_and_validate(
         "catalog_sha256": sha256_file(catalog_path),
         "warm_start_source_run_id": choice.source.run_id if choice.source else None,
         "warm_start_source_result_sha256": choice.source.result_sha256 if choice.source else None,
+        "resource_pack_sha256": save_pack_snapshot(problem.resource_basis, catalog_path, run_dir),
     }
     write_decision(run_dir, decision)
     (run_dir / "joint_manifest.json").write_text(

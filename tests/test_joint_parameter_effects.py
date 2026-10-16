@@ -182,6 +182,11 @@ EFFECT_CASES: dict[str, object] = {
     "wish.time_policy": "booked_start",
     "wish.tiebreak": "wish_priority",
     "rooms.include_observed_unregistered": True,
+    "staffing.min_paid_shift_minutes": 60,
+    "cost.staff_paid_minute_ore": 450,
+    "resources.pack": "simulated_dev_2026",
+    "rooms.exclude": ["uu-r3"],
+    "reservations.policy": "none",
 }
 # Some parameters only matter together with another one: the comparison is made with this companion value set in both.
 EFFECT_COMPANIONS: dict[str, dict[str, object]] = {"wish.time_policy": {"wish.candidate_policy": "wishes"}}

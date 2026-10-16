@@ -3,7 +3,7 @@
 **Dokumenttyp:** styrande valideringskontrakt.
 **Status:** implementerat kontrakt; verksamhetsregler kan fortfarande vara `not_evaluated`.
 
-Paket: `src/tentaoptimering/joint_validation/`. Gäller `joint-optimization-input-v2` och `joint-optimization-result-v2`.
+Paket: `src/tentaoptimering/joint_validation/`. Gäller `joint-optimization-input-v3` och `joint-optimization-result-v3`; äldre `v2`-filer läses också (utan fasta bokningar, betald tid och resursdata).
 
 ## Princip
 
@@ -20,13 +20,15 @@ Tre axlar redovisas åtskilda, jämte solverns eget utfall som bara återges:
 
 Regelstatus: `fail` om något regelbrott finns, `not_evaluated` när bevis eller motorstöd saknas, `pass` bara när regeln faktiskt prövats och hållit, `not_applicable` när regeln saknar objekt. En regel utan underlag blir aldrig `pass`. Teknisk korrekthet ger aldrig verksamhetsverifiering automatiskt: verifieringen härleds ur parametrarnas `basis` och `engine_support`, inte ur värden som en användare kan skriva.
 
-## Regelkatalog (46 regler)
+## Regelkatalog (51 regler)
 
 Teknisk: efterfrågan och omfattning (varje behov exakt en gång, alla deltagare placerade, summor per tenta/sal, ingen dubbelräkning, hemtentor utan sal, täckning korrekt rapporterad, omfattning redovisad, ingen partiell placering vid ogenomförbarhet); kalender (fasta tentor behåller historik, `slot_end_limit` för det valda passets egen sluttidsgräns, flyttbara följer fönster/veckodag/spärrdatum/starttid/senaste sluttid, referenspass är inte tillåtet val, passkatalog, kandidatgenerering, kurskrockar och uttryckliga konfliktgrupper); salar (välformade rader, planeringsområde, kapacitet, tillgänglighet, salar per tenta, byggnadsdelning, ställtid och dubbelbokning, digital kompatibilitet enligt indata, omräknade salstillfällen); bemanning (behov per salstillfälle enligt trappan vid alla gränser, pool täcker samtidig topp inklusive förberedelse/avslut, pool ej uppblåst); kostnad (fasta lokalkostnader, externa pass, pool, rörliga kostnader, komponenter summerar till rapporterad totalkostnad, antal flyttade tentor, konsistent solverrapport).
 
-Verksamhet: kalender-, lokal-, bemannings-, kostnads- och efterfrågegrund; populationens fullständighet; studentöverlapp; verifierad digital kompatibilitet; samtentors disjunkthet; parametrar utan motorstöd.
+Betald tid och fasta bokningar (teknisk): `reservations_respected` (inget salstillfälle överlappar en fast bokning, ställtid hålls; `not_applicable` utan fasta bokningar), `paid_time_recomputed` (betalda pass och minuter, uppdelade i arbetad tid, tillägg till kortaste pass och restid, per dag och kostnaden räknas om ur placeringen; en körning som saknar betald tid och kostnad för den är `not_applicable`). Komponenten betald personaltid ingår i `costs_recomputed`, och en sal som en fast bokning använder räknas som använd.
 
-Proveniens: artefakter finns och är läsbara, manifestets hashar, kontraktsversioner, resultat hör till indata, dataset-, konfigurations- och katalog-hash, rådatahashar.
+Verksamhet: kalender-, lokal-, bemannings-, kostnads- och efterfrågegrund; `reservations_coverage_verified` och `resource_data_verified` (alltid `not_evaluated`: fasta bokningars fullständighet och resursdatans ursprung kan inte oberoende verifieras, och simulerade uppgifter blir aldrig verifierade); populationens fullständighet; studentöverlapp; verifierad digital kompatibilitet; samtentors disjunkthet; parametrar utan motorstöd.
+
+Proveniens: artefakter finns och är läsbara, manifestets hashar, `resource_pack_hash` (den frusna resursdatan är den manifestet och indatan anger), kontraktsversioner, resultat hör till indata, dataset-, konfigurations- och katalog-hash, rådatahashar.
 
 ## Användning
 

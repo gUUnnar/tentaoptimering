@@ -151,6 +151,15 @@ CASES = [
     ("room_cost_doubles", ("cost.room_annual_per_seat_ore",), PAIR, TWO_ROOMS, {"cost.room_annual_per_seat_ore": 200}, "optimal", 13_000),
     ("free_staff_pool", ("cost.staff_annual_ore",), PAIR, TWO_ROOMS, {"cost.staff_annual_ore": 0}, "optimal", 6_000),
     ("staff_session_cost", ("cost.staff_session_ore",), PAIR, TWO_ROOMS, {"cost.staff_session_ore": 500}, "optimal", 8_000),
+    # Paid staff time: every staff position of a session is a paid pass (240 minutes of exam here), 10 öre per minute.
+    ("paid_minutes_are_priced", ("cost.staff_paid_minute_ore",), PAIR, TWO_ROOMS, {"cost.staff_paid_minute_ore": 10}, "optimal", 11_800),
+    # One-hour exams are paid as two hours: 120 minutes per pass instead of 60.
+    ("shortest_paid_pass_tops_up_short_exams", ("staffing.min_paid_shift_minutes",), [_event("X", end="09:00"), _event("Y", end="09:00")], TWO_ROOMS,
+     {"cost.staff_paid_minute_ore": 10, "staffing.min_paid_shift_minutes": 120}, "optimal", 9_400),
+    ("without_the_minimum_short_exams_are_paid_by_their_length", ("staffing.min_paid_shift_minutes",), [_event("X", end="09:00"), _event("Y", end="09:00")], TWO_ROOMS,
+     {"cost.staff_paid_minute_ore": 10, "staffing.min_paid_shift_minutes": 60}, "optimal", 8_200),
+    ("excluded_room_makes_the_pair_infeasible", ("rooms.exclude",), PAIR, TWO_ROOMS,
+     {"calendar.start_times": ["08:00"], "rooms.exclude": ["uu-r2"]}, "infeasible", None),
     ("room_selection_makes_infeasible", ("rooms.selection",), PAIR, TWO_ROOMS,
      {"calendar.start_times": ["08:00"], "rooms.selection": ["uu-r1"]}, "infeasible", None),
     ("variation_makes_exams_too_big_for_one_room", ("demand.variation_pct",), PAIR, TWO_ROOMS,
@@ -200,6 +209,7 @@ class OptimizationEffectTests(unittest.TestCase):
         covered |= {"demand.rounding", "demand.measure", "solver.time_limit_seconds", "solver.seed", "solver.workers", "solver.deterministic",
                     "solver.strategy", "solver.relative_gap_limit"}  # strategies: tests/test_joint_strategy.py
         covered |= {"wish.tiebreak"}  # changes the chosen date at the same cost: tests/test_joint_wishes.py (TieBreakTests)
+        covered |= {"resources.pack", "reservations.policy"}  # tests/test_resource_data.py, tests/test_joint_paid_time.py, tests/test_explained_saving_chain.py
         covered |= {"wish.candidate_policy", "wish.time_policy", "rooms.include_observed_unregistered"}  # proven below (test_wishes_and_observed_rooms_...)
         self.assertEqual(implemented - covered, set(), "implemented parameters without a result-level test")
 

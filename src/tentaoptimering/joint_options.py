@@ -83,9 +83,10 @@ def options_payload(processed_dir: Path, scenario_id: str, content: dict[str, An
     plan_area = str(subset.get("plan_area", ""))
     rooms_frame, demands = _read(processed_dir, ROOMS_FILE), _read(processed_dir, DEMANDS_FILE)
     available = rooms_frame is not None and demands is not None
+    rooms = _room_rows(rooms_frame, plan_area) if available else []
     return {
         "scenario_id": scenario_id, "data_available": available,
-        "rooms": _room_rows(rooms_frame, plan_area) if available else [],
+        "rooms": rooms + (_pack_room_rows(str(content.get("parameters", {}).get("resources.pack", "none")), plan_area, {row["room_id"] for row in rooms}) if available else []),
         "exam_types": _type_rows(demands, subset) if available else [],
         "plan_area": plan_area,
     }
@@ -111,6 +112,23 @@ def _room_rows(rooms_frame: pd.DataFrame, plan_area: str) -> list[dict[str, Any]
             "building_id": building, "address": address, "capacity": capacity,
             "digital": digital_level(str(row.digital_capability_status)),
         })
+    return sorted(rows, key=lambda item: (item["building_id"], -item["capacity"], item["room_id"]))
+
+
+def _pack_room_rows(pack_id: str, plan_area: str, known: set[str]) -> list[dict[str, Any]]:
+    """Rooms that the scenario's resource pack adds to the register (external halls): they can be chosen or left out like any room."""
+    if pack_id in ("", "none"):
+        return []
+    from .app_paths import bundled_joint_catalog_path
+    from .resource_data import ResourceDataError, pack_directory, resolve_pack
+
+    try:
+        pack = resolve_pack(pack_id, pack_directory(bundled_joint_catalog_path()))
+    except (ResourceDataError, OSError):
+        return []
+    rows = [{"room_id": room.room_id, "label": f"{room.name} – extern ({room.capacity} platser)", "building_id": str(room.building_id), "address": room.name,
+             "capacity": int(room.capacity or 0), "digital": "all" if room.digital == "e_exam" else "none"}
+            for room in pack.rooms if room.room_id not in known and room.plan_area == plan_area and room.capacity and room.building_id]
     return sorted(rows, key=lambda item: (item["building_id"], -item["capacity"], item["room_id"]))
 
 

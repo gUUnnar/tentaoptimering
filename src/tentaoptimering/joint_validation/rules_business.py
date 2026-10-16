@@ -21,14 +21,15 @@ _GROUPS = {
         "Lokalregler (kapacitet, tillgänglighet, urval)", ("rooms.selection", "rooms.max_rooms_per_exam", "rooms.allow_split",
                                                           "rooms.allow_split_across_buildings", "rooms.availability_mode",
                                                           "rooms.capacity_override", "rooms.custom_rooms", "rooms.co_location_rules",
-                                                          "calendar.turnaround_minutes")),
+                                                          "calendar.turnaround_minutes", "rooms.exclude", "reservations.policy")),
     "staffing_rules_verified": (
         "Bemanningsregler", ("staffing.ladder", "staffing.preparation_minutes", "staffing.closing_minutes", "staffing.shifts",
                              "staffing.min_break_minutes", "staffing.max_continuous_minutes", "staffing.max_daily_minutes",
                              "staffing.min_daily_rest_minutes", "staffing.travel_minutes", "staffing.min_paid_shift_minutes")),
     "cost_basis_verified": (
         "Kostnadsgrund", ("cost.room_annual_per_seat_ore", "cost.staff_annual_ore", "cost.staff_session_ore",
-                          "cost.external_room_session_ore", "cost.annualization_factor", "cost.avoidable_cost_definition")),
+                          "cost.external_room_session_ore", "cost.annualization_factor", "cost.avoidable_cost_definition",
+                          "cost.staff_paid_minute_ore", "resources.pack")),
     "demand_basis_verified": (
         "Efterfrågegrund", ("demand.measure", "demand.variation_pct", "demand.rounding", "demand.capacity_safety_margin_pct")),
 }

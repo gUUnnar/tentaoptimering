@@ -1,4 +1,4 @@
-catalog_version = "2.4.0"
+catalog_version = "2.5.0"
 
 [[parameter]]
 id = "demand.variation_pct"
@@ -369,8 +369,9 @@ value_type = "integer"
 unit = "minutes"
 default = 120
 default_basis = "verified"
-help_text = "Kortaste betalda individuella arbetspass."
-engine_support = "contract_only"
+help_text = "Kortaste betalda arbetspass. Varje vaktposition i ett salstillfälle är ett eget betalt pass från förberedelse till avslut och betalas minst så här lång tid (lokalt kollektivavtal §2.2: pass kortare än två timmar räknas som två). Påverkar kostnaden först när en kostnad per betald minut är satt."
+engine_support = "implemented"
+honored_by = "joint_paid_time.add_paid_time"
 
 [[parameter]]
 id = "cost.room_annual_per_seat_ore"
@@ -687,3 +688,50 @@ default_basis = "experiment"
 help_text = "Sökningen avbryts när en verifierad lösning ligger högst denna andel över den bevisade undre gränsen. 0 kräver bevisat optimum (eller tidsgränsen). Ett avbrutet resultat redovisas alltid med gräns och gap, aldrig som bevisat optimum."
 engine_support = "implemented"
 honored_by = "joint_optimizer.solve_joint_optimization"
+
+[[parameter]]
+id = "cost.staff_paid_minute_ore"
+group = "Kostnader"
+label = "Kostnad per betald personalminut"
+value_type = "integer"
+unit = "ore_per_minute"
+default = 0
+default_basis = "assumption"
+help_text = "Kostnad per betald minut och vaktposition. Den betalda tiden är förberedelse, skrivtid, avslut och sluttid för salstillfället, lägst kortaste betalda pass, plus salens betalda restid. Står värdet på 0 används värdet i vald resursdata (parameter resources.pack) om det finns; ett ändrat värde här gäller före resursdatan."
+engine_support = "implemented"
+honored_by = "joint_resources.apply_resource_pack"
+
+[[parameter]]
+id = "resources.pack"
+group = "Kostnader"
+label = "Resursdata (lokalkostnader, avtal, externhyror, personalkostnad)"
+value_type = "choice"
+default = "none"
+default_basis = "assumption"
+help_text = "Namngivna lokaler med kostnader, avtalsobjekt, externhyror och personalkostnadsregler, var och en märkt med ursprung (observerad, modellberäknad, simulerad eller antagen). Ingen: lokalkostnaden är kostnaden per plats och inga externhyror finns. Verkliga uppgifter läggs som en ny fil i config/resource_data och en ny rad här."
+choices = [{value = "none", label = "Ingen (kostnad per plats)"}, {value = "simulated_dev_2026", label = "Simulerade resursuppgifter (utveckling)"}]
+engine_support = "implemented"
+honored_by = "joint_resources.apply_resource_pack"
+
+[[parameter]]
+id = "reservations.policy"
+group = "Lokaler"
+label = "Fasta bokningar utanför valda tentor"
+value_type = "choice"
+default = "block_identified"
+default_basis = "assumption"
+help_text = "Andra bokningar i perioden tar plats i salarna. Spärra: en bokning i en identifierad sal som inte ingår i de valda tentorna spärrar salen under sin tid och gör att salen räknas som använd. Bokningar som bara anger adress eller en sal som saknas i modellen kan inte spärra något och redovisas som oidentifierade. Ingen: bokningarna ignoreras (bara för explorativa tester; körningen märks så)."
+choices = [{value = "block_identified", label = "Spärra identifierade salar"}, {value = "none", label = "Ingen spärr (explorativt)"}]
+engine_support = "implemented"
+honored_by = "joint_reservations.build_reservations"
+
+[[parameter]]
+id = "rooms.exclude"
+group = "Lokaler"
+label = "Lokaler som inte får användas"
+value_type = "room_id_list"
+default = []
+default_basis = "experiment"
+help_text = "Prova konsekvensen av att inte använda en viss lokal. Salarna tas bort från modellen, även de som är fast bokade av andra tentor (de spärrar då ingenting)."
+engine_support = "implemented"
+honored_by = "joint_resources.apply_resource_pack"

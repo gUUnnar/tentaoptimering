@@ -88,10 +88,24 @@ def peak_concurrent_staff(
     return peak, peak_day
 
 
+def paid_passes(ctx: Context, sessions: dict[tuple[str, str], Session], staff: dict[tuple[str, str], int | None]) -> list[dict]:
+    """One paid pass per staff position of every session: worked time, the shortest paid pass and the room's travel minutes."""
+    passes = []
+    for key, session in sorted(sessions.items()):
+        room = ctx.rooms.get(session.room_id)
+        travel = room.travel_minutes if room else 0
+        worked = session.end - session.start + ctx.preparation + ctx.closing
+        core = max(worked, ctx.min_paid_minutes)
+        for position in range(1, (staff.get(key) or 0) + 1):
+            passes.append({"day": session.day.isoformat(), "room_id": session.room_id, "position": position, "worked": worked,
+                           "paid": core + travel, "top_up": core - worked, "travel": travel})
+    return passes
+
+
 def recompute_costs(
     ctx: Context, sessions: dict[tuple[str, str], Session], staff: dict[tuple[str, str], int | None], pool: int
 ) -> dict[str, int]:
-    used_rooms = {room_id for room_id, _slot in sessions}
+    used_rooms = {room_id for room_id, _slot in sessions} | {item.room_id for item in ctx.reservations if item.room_id in ctx.rooms}
     per_room_sessions: dict[str, int] = defaultdict(int)
     for room_id, _slot in sessions:
         per_room_sessions[room_id] += 1
@@ -101,10 +115,12 @@ def recompute_costs(
     )
     pool_cost = ctx.staff_annual_cost * pool
     session_cost = ctx.staff_session_cost * sum(value or 0 for value in staff.values())
+    paid_cost = ctx.paid_minute_cost * sum(item["paid"] for item in paid_passes(ctx, sessions, staff))
     return {
         "annual_room_cost_ore": room_cost,
         "external_room_session_cost_ore": external,
         "annual_staff_pool_cost_ore": pool_cost,
         "staff_session_cost_ore": session_cost,
-        "comparable_total_cost_ore": room_cost + external + pool_cost + session_cost,
+        "staff_paid_time_cost_ore": paid_cost,
+        "comparable_total_cost_ore": room_cost + external + pool_cost + session_cost + paid_cost,
     }

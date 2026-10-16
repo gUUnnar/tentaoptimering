@@ -24,6 +24,7 @@ from typing import Any
 
 from ortools.sat.python import cp_model
 
+from ..joint_blocking import reserved_rooms
 from ..joint_contract import ExamDemand, JointOptimizationInput, Room, SolverSettings, StaffingStep
 from ..joint_optimizer import _conflicts, _overlap, staffing_cut_edges
 from ..joint_preference import has_preference, penalty_weights
@@ -158,13 +159,15 @@ def _build(problem: JointOptimizationInput, cuts: tuple[Cut, ...], hint: dict[st
     _room_time_capacity(model, problem, slots, x, owned, cap)
     _building_integrity(model, problem, owned, cap)
     pool = model.NewIntVar(0, len(problem.rooms) * problem.staffing.ladder[-1].required_staff * len(problem.slots), "pool")
-    session_staff, external = _staffing_bound(model, problem, slots, x, owned, cap, pool)
+    session_staff, external, paid = _staffing_bound(model, problem, slots, x, owned, cap, pool)
     _conflict_pairs(model, problem, slots, x)
+    for room_id in reserved_rooms(problem):
+        model.Add(owned[room_id] == 1)  # a reserved room is in use through its fixed booking (the reservations themselves are not relaxed in)
     cost = (
         sum(room.annual_fixed_cost_ore * owned[room.room_id] for room in problem.rooms)
         + problem.staffing.annual_cost_ore_per_staff * pool
         + problem.staffing.cost_ore_per_staff_session * session_staff
-        + external
+        + external + paid
     )
     model.Minimize(cost)
     _add_cuts(model, problem, slots, x, owned, pool, cuts)
@@ -240,13 +243,15 @@ def _hull_from_one(table: list[int]) -> list[tuple[tuple[int, int], tuple[int, i
     return [(left, right) for left, right in zip(hull, hull[1:]) if left[0] != right[0]]
 
 
-def _staffing_bound(model, problem, slots, x, owned, cap, pool) -> tuple[Any, Any]:
-    """Bound the pool; return lower bounds on the staff summed over all room sessions and on the
-    external session charges (every room used at a slot is at least one session there)."""
+def _staffing_bound(model, problem, slots, x, owned, cap, pool) -> tuple[Any, Any, Any]:
+    """Bound the pool; return lower bounds on the staff summed over all room sessions, on the
+    external session charges (every room used at a slot is at least one session there) and on the paid staff time
+    (every session lasts at least its shortest candidate exam, so each staff position is paid at least that)."""
     prep, closing = problem.staffing.preparation_minutes, problem.staffing.closing_minutes
     max_staff = problem.staffing.ladder[-1].required_staff
     starting: dict[str, int | Any] = {}
     external: list[Any] = []
+    paid: list[Any] = []
     for slot in problem.slots:
         rooms = [room for room in problem.rooms if room.available_slot_ids is None or slot.slot_id in room.available_slot_ids]
         load_by_area: dict[str, list[Any]] = defaultdict(list)
@@ -255,6 +260,7 @@ def _staffing_bound(model, problem, slots, x, owned, cap, pool) -> tuple[Any, An
                 load_by_area[demand.plan_area].append(demand.participant_count * x[demand.exam_demand_id, slot.slot_id])
         if not load_by_area:
             continue
+        shortest = min(demand.duration_minutes for demand in problem.demands if demand.requires_room and slot.slot_id in demand.candidate_slot_ids)
         staff_terms = []
         for room in rooms:
             if room.plan_area not in load_by_area:
@@ -272,6 +278,9 @@ def _staffing_bound(model, problem, slots, x, owned, cap, pool) -> tuple[Any, An
             staff_terms.append((room.plan_area, occupancy, staff))
             if room.external_session_cost_ore:
                 external.append(room.external_session_cost_ore * used)
+            if problem.staffing.paid_minute_cost_ore:
+                length = max(problem.staffing.min_paid_minutes, prep + closing + shortest) + room.travel_paid_minutes
+                paid.append(problem.staffing.paid_minute_cost_ore * length * staff)
         for area, load in load_by_area.items():
             model.Add(sum(occ for room_area, occ, _ in staff_terms if room_area == area) == sum(load))
         starting[slot.slot_id] = sum(staff for _, _, staff in staff_terms)
@@ -300,7 +309,7 @@ def _staffing_bound(model, problem, slots, x, owned, cap, pool) -> tuple[Any, An
                 if run * y0 - rise * x0 >= 0:
                     model.Add(run * hull >= rise * sum(earlier) + (run * y0 - rise * x0) * sessions)
             model.Add(pool >= starting.get(slot.slot_id, 0) + hull)
-    return sum(starting.values()), sum(external)
+    return sum(starting.values()), sum(external), sum(paid)
 
 
 def _capped_ladder(ladder: tuple[StaffingStep, ...], capacity: int) -> tuple[StaffingStep, ...]:

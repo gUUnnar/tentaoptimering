@@ -36,7 +36,7 @@ A beror inte på någon körning och ändras inte av någon parameter. Ett test 
 
 ### B – Grundoptimering
 
-B körs med scenariot `joint_base` (alla klara tentor i Uppsala i hela underlaget), katalogens standardvärden och fem dokumenterade antaganden, var och en med motivering i scenariofilen:
+B körs med scenariot `joint_base` (alla klara tentor i Uppsala i hela underlaget), katalogens standardvärden och fem dokumenterade antaganden (fasta bokningar utanför tentorna spärrar salar, katalogens standard), var och en med motivering i scenariofilen:
 
 | Parameter | Värde | Varför |
 |---|---|---|
@@ -44,7 +44,7 @@ B körs med scenariot `joint_base` (alla klara tentor i Uppsala i hela underlage
 | `wish.tiebreak` | `wish_priority` | Bland lika billiga lösningar väljs önskat datum före reservdatum 1, reservdatum 2 och annat datum. |
 | `rooms.include_observed_unregistered` | `true` | Registrets sju salar i Uppsala (cirka 1 040 platser per pass) rymmer inte de bokade tentorna en toppdag (över 2 800 tentander). Salar som bokningarna använt men som saknar registerkapacitet (Fyrishovs hallar) tas med, med största bokade antal platser som kapacitet. Det är en underkant, inte en uppmätt kapacitet. |
 | `cost.room_annual_per_seat_ore` | 1 000 kr | Explorativ proxy, inte avtalskostnad. |
-| `cost.staff_annual_ore` | 50 000 kr | Explorativ proxy, inte avtalskostnad. |
+| `resources.pack` | `simulated_dev_2026` | Verkliga avtal, externhyror och personalkostnader finns ännu inte; de simulerade resursuppgifterna används tills de gör det. Personalkostnaden är betald tid, inte en schablon per vaktresurs. |
 
 Utan antagandet om observerade salar är B bevisat ogenomförbar (3 834 tentander önskar 16 januari mot cirka 2 078 platser). Det mättes: med de tre Fyrishovhallarna lades till blev B genomförbar. Antagandet är en parameter och kan stängas av i C; då visas B:s ogenomförbarhet med skäl i stället för en siffra.
 
@@ -129,3 +129,19 @@ Sidan *Optimering* har tre flikar: **1. A, B, C och jämförelse** (de tre alter
 5. Verksamhetsmässig verifiering (`business_verification`) är fortfarande `not_evaluated` för alla körningar.
 6. B kan vara bevisat ogenomförbar för vissa urval eller parametrar; då redovisas status och blockerande krav, aldrig en partiell placering.
 7. Äldre körningar (före den här ändringen) saknar `joint_run.json` och visas som äldre körningar med scenario och starttid som namn.
+
+## Förklarad besparing mellan valfria alternativ
+
+Användaren väljer själv två alternativ bland A, sparade B- och C-körningar. `GET /api/abc/compare` returnerar förutom den tidigare jämförelsen nyckeln `explained` (`abc_explain.py`):
+
+- total modellkostnad för båda sidor och skillnaden; **kostnadsposterna hyrda lokaler, externa bokningar och personal (betald tid) summerar exakt till totalskillnaden** (gränssnittet visar kontrollen);
+- uppdelning av skillnaden i *ändrat resursutnyttjande* och *ändrade priser, regler eller antaganden* (eller skälet till att den inte går att göra);
+- per namngiven lokal: behålls, tillkommer eller kan avvaras, tillfällen och bokad tid före och efter, hyra före, efter och skillnad, och om hyran kan avvecklas (`cost_realization.py`);
+- externa bokningar som undviks eller tillkommer, med datum, tid, lokal, tentor och debitering;
+- betalda pass och timmar i båda alternativen och skillnaden, per dag, och de salstillfällen som utgår, tillkommer eller ändras;
+- tentor som byter datum, klockslag eller sal med före- och efteruppgifter och den förändring (sal som kan avvaras, extern bokning som undviks) som förklarar dem;
+- de fyra kostnadsslagen (historisk, modellberäknad, teoretisk årlig potential, verifierad realiserbar) var för sig.
+
+**A prissätts med körningens regler** och märks *modellberäknad kostnad för de historiska bokningarna*; dess bemanning är beräknad ur bokade platser och aldrig observerad. Jämförelsen **spärras** (inga totalsiffror) vid olika tentamängd, olika underlag, ändrad efterfrågan, körning på äldre underlag, körning utan verifierad lösning och när A inte kan prissättas fullständigt (sal som körningen saknar, ingen bokning). **Temporär regel:** en bokning som bara anger adress godtas på antagandet att adressen har en sal med fler platser än antalet anmälda; salens hyra är okänd och räknas som noll, bemanningen följer bokade platser, och A:s kostnad är därför en underkant. Regeln (`ADDRESS_ONLY_RULE` i `abc_ledger.py`) redovisas i jämförelsen och tas bort när bokningarna identifierar sin sal. Posttabellerna visas ändå, märkta ofullständiga.
+
+Den förklarade skillnaden är modellberäknad. Med simulerade resursuppgifter markeras den så överallt och ingen besparing blir verifierad.

@@ -9,8 +9,11 @@ from pathlib import Path
 from typing import Any
 
 
-INPUT_SCHEMA_VERSION = "joint-optimization-input-v2"
-RESULT_SCHEMA_VERSION = "joint-optimization-result-v2"
+INPUT_SCHEMA_VERSION = "joint-optimization-input-v3"
+RESULT_SCHEMA_VERSION = "joint-optimization-result-v3"
+# Earlier files have none of the later fields (reservations, paid-time rules, room names and cost objects); they read with the defaults.
+COMPATIBLE_INPUT_VERSIONS = ("joint-optimization-input-v2", INPUT_SCHEMA_VERSION)
+COMPATIBLE_RESULT_VERSIONS = ("joint-optimization-result-v2", RESULT_SCHEMA_VERSION)
 
 
 @dataclass(frozen=True)
@@ -85,6 +88,14 @@ class Room:
     digital_support_basis: str = "not_stated"
     # Where the capacity comes from: the published register, or (a lower bound) the largest booking ever seen in the room.
     capacity_basis: str = "register"
+    # A named room: its name, the lease or contract object its cost belongs to, where the cost figure comes from
+    # (`parameter_proxy`, or the origin of the resource data: observed, model_calculated, simulated, assumption),
+    # whether it is a university room or an external hire, and the paid minutes of travel each staff position there costs.
+    name: str | None = None
+    cost_object_id: str | None = None
+    cost_origin: str = "parameter_proxy"
+    kind: str = "internal"
+    travel_paid_minutes: int = 0
 
 
 @dataclass(frozen=True)
@@ -100,6 +111,24 @@ class StaffingCostPolicy:
     cost_ore_per_staff_session: int = 0
     preparation_minutes: int = 0
     closing_minutes: int = 0
+    # Paid working time: every staff position of a room session is one paid pass from `start - preparation` to
+    # `end + closing`, paid at least `min_paid_minutes`, plus the room's travel minutes, at `paid_minute_cost_ore` per minute.
+    paid_minute_cost_ore: int = 0
+    min_paid_minutes: int = 0
+
+
+@dataclass(frozen=True)
+class Reservation:
+    """A fixed booking outside the optimised population that blocks a room for its time (plus turnaround)."""
+
+    reservation_id: str
+    room_id: str
+    scheduled_date: date
+    start_minute: int
+    end_minute: int
+    source_booking_id: str = ""
+    exam_event_id: str | None = None
+    basis: str = "booked_room_matched"
 
 
 @dataclass(frozen=True)
@@ -138,6 +167,10 @@ class JointOptimizationInput:
     # What the engine prefers among equally cheap placements: `fewest_changes` (stay at the booked occasion) or
     # `wish_priority` (requested date, then reserve 1, then reserve 2, then any other date).
     preference: str = "fewest_changes"
+    # Fixed bookings outside the population that block rooms, and what the problem's resource data and reservations rest on
+    # (pack id and hash, origin, how many bookings could not be identified and therefore block nothing).
+    reservations: tuple[Reservation, ...] = ()
+    resource_basis: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -159,6 +192,7 @@ class CostBreakdown:
     annual_staff_pool_cost_ore: int
     staff_session_cost_ore: int
     comparable_total_cost_ore: int
+    staff_paid_time_cost_ore: int = 0
 
 
 @dataclass(frozen=True)
@@ -185,6 +219,8 @@ class JointOptimizationResult:
     schedule: tuple[dict[str, Any], ...]
     limitations: tuple[str, ...]
     verification: dict[str, str] | None = None
+    # Derived from the placement: staff positions (paid passes), paid minutes and their parts. See `joint_costing`.
+    staffing_summary: dict[str, Any] | None = None
 
 
 def write_problem(problem: JointOptimizationInput, path: Path) -> None:
@@ -193,7 +229,7 @@ def write_problem(problem: JointOptimizationInput, path: Path) -> None:
 
 def read_problem(path: Path) -> JointOptimizationInput:
     payload = json.loads(path.read_text(encoding="utf-8"))
-    if payload.get("schema_version") != INPUT_SCHEMA_VERSION:
+    if payload.get("schema_version") not in COMPATIBLE_INPUT_VERSIONS:
         raise ValueError(f"Okänd indatakontraktsversion: {payload.get('schema_version')}")
     demands = tuple(
         ExamDemand(
@@ -250,6 +286,11 @@ def read_problem(path: Path) -> JointOptimizationInput:
         scope=ScopeSummary(**payload["scope"]),
         turnaround_minutes=int(payload.get("turnaround_minutes", 0)),
         preference=str(payload.get("preference", "fewest_changes")),
+        reservations=tuple(
+            Reservation(**{**item, "scheduled_date": date.fromisoformat(item["scheduled_date"])})
+            for item in payload.get("reservations", ())
+        ),
+        resource_basis=payload.get("resource_basis"),
     )
 
 
@@ -259,7 +300,7 @@ def write_result(result: JointOptimizationResult, path: Path) -> None:
 
 def validate_problem(problem: JointOptimizationInput) -> None:
     """Reject malformed or silently incomplete optimization contracts."""
-    if problem.schema_version != INPUT_SCHEMA_VERSION:
+    if problem.schema_version not in COMPATIBLE_INPUT_VERSIONS:
         raise ValueError(f"Okänd indatakontraktsversion: {problem.schema_version}")
     if not problem.demands or not problem.slots or not problem.rooms:
         raise ValueError("Gemensam optimering kräver behov, kandidatpass och salar.")
@@ -341,6 +382,14 @@ def validate_problem(problem: JointOptimizationInput) -> None:
         or problem.staffing.closing_minutes < 0
     ):
         raise ValueError("Bemanningens tider och kostnader måste vara icke-negativa.")
+    if problem.staffing.paid_minute_cost_ore < 0 or problem.staffing.min_paid_minutes < 0:
+        raise ValueError("Betald tid och minsta betalda pass måste vara icke-negativa.")
+    if any(room.travel_paid_minutes < 0 for room in problem.rooms):
+        raise ValueError("Betald restid måste vara icke-negativ.")
+    known_rooms = set(room_ids)
+    for reservation in problem.reservations:
+        if reservation.room_id not in known_rooms or reservation.start_minute >= reservation.end_minute:
+            raise ValueError(f"Ogiltig fast bokning: {reservation.reservation_id}")
 
 
 def _jsonable(value: Any) -> Any:

@@ -11,6 +11,7 @@ from .integrity import MANIFEST_FILE, integrity_rules, load_artifacts
 from .report import FAIL, NOT_EVALUATED, TECHNICAL, RuleResult, markdown, rule, to_payload
 from .rules_business import business_rules
 from .rules_placement import calendar_rules, demand_rules
+from .rules_resources import resource_rules
 from .rules_rooms import room_rules
 from .rules_staffing_cost import staffing_cost_rules
 
@@ -43,7 +44,7 @@ def validate_run(
         rules.append(rule("input_wellformed", TECHNICAL, FAIL, f"Indata eller resultat är felaktigt format: {error}.", reference="krav: giltigt kontrakt"))
         return to_payload(rules, outcome, {"run_dir": str(run_dir), "problem_id": problem.get("problem_id")})
     rules.append(rule("input_wellformed", TECHNICAL, "pass", "Indata och resultat kan läsas enligt kontraktet.", reference="krav: giltigt kontrakt"))
-    for group in (demand_rules, calendar_rules, room_rules, staffing_cost_rules, business_rules):
+    for group in (demand_rules, calendar_rules, room_rules, staffing_cost_rules, resource_rules, business_rules):
         rules += _guarded(group, context)
     return to_payload(rules, outcome, {"run_dir": str(run_dir), "problem_id": problem.get("problem_id")})
 

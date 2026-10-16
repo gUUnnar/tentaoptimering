@@ -27,7 +27,8 @@ SCENARIO_COPY = "joint_scenario.toml"
 BASELINE_TIME_LIMIT_SECONDS = 120.0
 VERIFIED = ("optimal", "feasible_not_proven")
 COMPONENTS = (("annual_room_cost_ore", "Lokaler"), ("annual_staff_pool_cost_ore", "Vaktpool"),
-              ("external_room_session_cost_ore", "Externa salstillfällen"), ("staff_session_cost_ore", "Rörlig bemanning"))
+              ("external_room_session_cost_ore", "Externa salstillfällen"), ("staff_session_cost_ore", "Rörlig bemanning"),
+              ("staff_paid_time_cost_ore", "Betald personaltid"))
 
 
 def baseline_content(content: dict[str, Any]) -> dict[str, Any]:

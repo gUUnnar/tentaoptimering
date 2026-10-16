@@ -19,6 +19,9 @@ from .joint_contract import (
     SolverSummary,
     validate_problem,
 )
+from .joint_blocking import apply_reservations, reserved_rooms
+from .joint_costing import staffing_summary
+from .joint_paid_time import add_paid_time
 from .joint_preference import has_preference, penalty_weights
 from .joint_progress import ProgressSink, emit, finished_event
 
@@ -91,7 +94,8 @@ def _solve(
     )
     staff_pool_cost = problem.staffing.annual_cost_ore_per_staff * variables.staff_pool
     staff_session_cost = problem.staffing.cost_ore_per_staff_session * sum(variables.staff.values())
-    total_cost = room_cost + external_cost + staff_pool_cost + staff_session_cost
+    paid_time_cost = add_paid_time(model, problem, variables)
+    total_cost = room_cost + external_cost + staff_pool_cost + staff_session_cost + paid_time_cost
     changed_terms = _change_terms(problem, variables.selected)
     model.Minimize(total_cost)
 
@@ -149,6 +153,7 @@ def _solve(
         annual_staff_pool_cost_ore=int(solver.Value(staff_pool_cost)),
         staff_session_cost_ore=int(solver.Value(staff_session_cost)),
         comparable_total_cost_ore=int(solver.Value(total_cost)),
+        staff_paid_time_cost_ore=int(solver.Value(paid_time_cost)) if not isinstance(paid_time_cost, int) else 0,
     )
     return JointOptimizationResult(
         schema_version=RESULT_SCHEMA_VERSION,
@@ -179,6 +184,7 @@ def _solve(
         schedule=schedule,
         limitations=_limitations(problem),
         verification=_verification(problem, proven, assignments),
+        staffing_summary=staffing_summary(problem, sessions),
     )
 
 
@@ -257,6 +263,7 @@ def _build_variables_and_constraints(
                             model.Add(left_use + right_use <= 1)
         model.Add(sum(choices) == 1)
 
+    reserved = reserved_rooms(problem)
     for room in problem.rooms:
         room_sessions = []
         lookup = _staff_lookup(room.capacity, problem)
@@ -283,9 +290,11 @@ def _build_variables_and_constraints(
                 ],
             )
             room_sessions.append(sessions[room_key])
-        model.Add(owned[room.room_id] <= sum(room_sessions))
+        if room.room_id not in reserved:  # a reserved room is in use through its reservation, not through an optimised session
+            model.Add(owned[room.room_id] <= sum(room_sessions))
         _room_non_overlap(model, room.room_id, problem, sessions, session_end)
 
+    apply_reservations(model, problem, sessions, session_end, owned)
     _demand_conflicts(model, problem, selected, slots)
     pool_upper = len(problem.rooms) * max_staff
     staff_pool = model.NewIntVar(0, pool_upper, "staff_pool")

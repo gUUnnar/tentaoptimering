@@ -16,7 +16,9 @@ import logging
 import time
 from typing import Iterator, NamedTuple
 
+from ..joint_blocking import reserved_rooms
 from ..joint_contract import JointOptimizationInput
+from ..joint_costing import paid_cost_ore
 from ..joint_progress import ProgressSink, phase
 from .aggregate import Cut, Plan
 from .batch_progress import BatchReporter
@@ -319,13 +321,15 @@ def peak_staff(problem: JointOptimizationInput, sessions: list[dict]) -> int:
     return peak
 
 
-def cost(problem: JointOptimizationInput, parts: list[Part]) -> tuple[int, int, int, int, int, int]:
+def cost(problem: JointOptimizationInput, parts: list[Part]) -> tuple[int, int, int, int, int, int, int]:
+    """(pool, room cost, external, pool cost, per-session staff cost, paid staff time cost, total) of the assembled parts."""
     sessions = [row for part in parts for row in part.sessions]
-    used = {row["room_id"] for row in sessions}
+    used = {row["room_id"] for row in sessions} | reserved_rooms(problem)  # a reserved room is in use through its reservation
     rooms = {room.room_id: room for room in problem.rooms}
     pool = peak_staff(problem, sessions)
     room_cost = sum(rooms[room].annual_fixed_cost_ore for room in used)
     external = sum(rooms[row["room_id"]].external_session_cost_ore for row in sessions)
     pool_cost = problem.staffing.annual_cost_ore_per_staff * pool
     session_cost = problem.staffing.cost_ore_per_staff_session * sum(row["required_staff"] for row in sessions)
-    return pool, room_cost, external, pool_cost, session_cost, room_cost + external + pool_cost + session_cost
+    paid = paid_cost_ore(problem, sessions) if problem.staffing.paid_minute_cost_ore else 0
+    return pool, room_cost, external, pool_cost, session_cost, paid, room_cost + external + pool_cost + session_cost + paid

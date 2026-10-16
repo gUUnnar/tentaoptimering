@@ -66,6 +66,10 @@ Den tidigare körningen måste ha oförändrade filer enligt sitt manifest och g
 
 `--threads`, `--memory-mb` och `--sequential-day-checks` styr den gemensamma trådbudgeten och minnesgränsen för de parallella dagkontrollerna. Ctrl+C stoppar lösaren och sparar den bästa verifierade lösningen hittills. Se [optimeringsstrategin](docs/OPTIMERINGSSTRATEGI.md), avsnitt 9.
 
+## Förklarad besparing mellan valfria alternativ
+
+Kostnader, avtal och externhyror ligger i ett **resurspaket** (`config/resource_data/`, schema `resource-data-v1`) där varje uppgift märks som observerad, modellberäknad, simulerad eller antagen. Den medföljande filen är **simulerad** och ersätts av verkliga uppgifter med en ny fil, utan kodändring. Personalkostnaden är **betald personaltid** (förberedelse, tentamen, avslut, kortaste betalda pass och restid) och fasta bokningar utanför de valda tentorna spärrar salar. Under **Jämför** väljer du själv två alternativ (A, B eller en sparad C-körning) och ser totalskillnaden uppdelad i hyrda lokaler, externa bokningar och personal, ner till namngivna lokaler, ändrade bokningar och betalda timmar. Skillnaden är modellberäknad; verifierad realiserbar besparing kräver observerade avtalsuppgifter. Se [kostnadsmodellen](docs/KOSTNADSMODELL.md) och [A, B och C](docs/ABC_SCENARIOMODELL.md).
+
 ## Lokalt gränssnitt
 
 PoC:n har ett lokalt React- och FastAPI-gränssnitt för gemensamma körningar: scenarier, parametrar, körning, jämförelse och eftervalidering. Se [lokalt gränssnitt](docs/LOKALT_GRANSSNITT.md) för utveckling, Windows-paketering och offlineverifiering.

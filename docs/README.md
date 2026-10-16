@@ -1,7 +1,7 @@
 # Dokumentation
 
 **Status:** kanonisk dokumentationsingång.
-**Senast avstämd:** 2026-10-14 mot `main` efter PR #21.
+**Senast avstämd:** 2026-10-15 mot grenen `feature/forklarad-totalbesparing` (efter PR #21).
 
 Dokumentationen är indelad i styrande dokument, tekniska referenser,
 verksamhetsunderlag och historik. Ett historiskt dokument beskriver ett tidigare
@@ -45,7 +45,7 @@ statusmatrisen.
 | [DATAMODELL.md](DATAMODELL.md) | Datakorn, nycklar, önskemål, täckning och läsvyer. |
 | [PARAMETERKATALOG.md](PARAMETERKATALOG.md) | Parameterkontrakt, grund, redigerbarhet och motorstöd. |
 | [OPTIMERINGSSTRATEGI.md](OPTIMERINGSSTRATEGI.md) | Dekomponerad lösningsstrategi, mätningar och begränsningar. |
-| [PERIODVAL_OCH_SNABBA_KORNINGAR.md](PERIODVAL_OCH_SNABBA_KORNINGAR.md) | Periodval, korta körningar och den ännu ej implementerade reservationsmodellen. |
+| [PERIODVAL_OCH_SNABBA_KORNINGAR.md](PERIODVAL_OCH_SNABBA_KORNINGAR.md) | Periodval, korta körningar och reservationsmodellen för fasta bokningar. |
 | [LOKALT_GRANSSNITT.md](LOKALT_GRANSSNITT.md) | Aktuellt lokalt gränssnitt, API och paketering. |
 | [ARKITEKTURPRINCIPER_DATAKVALITET.md](ARKITEKTURPRINCIPER_DATAKVALITET.md) | Separation mellan verksamhetsmodell, datakvalitet och policy. |
 | [FILOVERSIKT.md](FILOVERSIKT.md) | Ansvar per versionshanterad fil. |

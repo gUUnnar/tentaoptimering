@@ -15,6 +15,8 @@ from typing import Any
 import pandas as pd
 
 from .app_paths import bundled_joint_catalog_path
+from .abc_explain import explain
+from .abc_ledger import actual_ledger, run_ledger
 from .app_storage import AppStorage
 from .joint_compare import _parameter_changes, run_parameters
 from .joint_inputs import dataset_hash
@@ -100,7 +102,26 @@ def compare(storage: AppStorage, left: str, right: str) -> dict[str, Any]:
     if ACTUAL not in (left, right):
         catalog = load_parameter_catalog(bundled_joint_catalog_path())
         changes = _parameter_changes(catalog, run_parameters(storage.run_directory(left)), run_parameters(storage.run_directory(right)))
-    return compare_profiles(first, second, changes)
+    result = compare_profiles(first, second, changes)
+    result["explained"] = explained_comparison(storage, left, right, first, second)
+    return result
+
+
+def explained_comparison(storage: AppStorage, left: str, right: str, first: dict[str, Any], second: dict[str, Any]) -> dict[str, Any]:
+    """The saving between the two alternatives explained by named rooms, changed bookings and paid staff hours (see `abc_explain`)."""
+    blocked = [f"{name} ({side.get('name')}) saknar verifierad lösning: {side.get('unavailable_reason')}" for name, side in (("Vänster", first), ("Höger", second)) if not side.get("available")]
+    if blocked:
+        return {"available": False, "reasons": blocked, "notes": []}
+    runs = {ref: run_ledger(storage.run_directory(ref), side) for ref, side in ((left, first), (right, second)) if ref != ACTUAL}
+    rules = next(iter(runs.values()))
+    ledgers = {ref: runs.get(ref) or actual_ledger(side, rules) for ref, side in ((left, first), (right, second))}
+    labels = {row["room_id"]: row["label"] for side in (first, second) for row in side.get("room_usage", ()) if row.get("room_id")}
+    result = explain(ledgers[left], ledgers[right], labels)
+    stale = [f"{side.get('name')}: {side['stale']['reason']}" for side in (first, second) if side.get("stale") and not side["stale"]["current"]]
+    if stale:  # a run on an older underlay is never costed against the current bookings
+        result.update(reasons=stale + result["reasons"], available=False, summary=None)
+        result["total"] = {**result["total"], "difference_ore": None}
+    return result
 
 
 def wishes_summary(storage: AppStorage) -> dict[str, Any]:

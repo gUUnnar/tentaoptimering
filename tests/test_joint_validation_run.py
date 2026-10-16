@@ -187,7 +187,7 @@ class CliTests(unittest.TestCase):
 class RealSubsetRegressionTests(unittest.TestCase):
     """The real 12-exam run from PR #7, with every rule's real status."""
 
-    EXPECTED_TECHNICAL_NOT_APPLICABLE = {"non_room_demands", "fixed_exams_keep_history"}
+    EXPECTED_TECHNICAL_NOT_APPLICABLE = {"non_room_demands", "fixed_exams_keep_history", "reservations_respected"}  # the case ignores fixed bookings (reservations.policy = none)
     EXPECTED_BUSINESS = {
         "calendar_rules_verified": "not_evaluated", "room_rules_verified": "not_evaluated",
         "staffing_rules_verified": "not_evaluated", "cost_basis_verified": "not_evaluated",

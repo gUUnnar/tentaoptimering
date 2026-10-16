@@ -533,7 +533,7 @@ class IndependenceTests(unittest.TestCase):
                     self.assertTrue(node.module is None or node.module in own, f"{path.name} importerar {node.module}")
                 else:
                     self.assertEqual(node.module, "joint_contract", f"{path.name}: endast kontraktskonstanter får delas")
-                    self.assertEqual({alias.name for alias in node.names}, {"INPUT_SCHEMA_VERSION", "RESULT_SCHEMA_VERSION"})
+                    self.assertLessEqual({alias.name for alias in node.names}, {"INPUT_SCHEMA_VERSION", "RESULT_SCHEMA_VERSION", "COMPATIBLE_INPUT_VERSIONS", "COMPATIBLE_RESULT_VERSIONS"})
 
 
 if __name__ == "__main__":

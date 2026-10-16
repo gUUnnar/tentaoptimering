@@ -102,3 +102,9 @@ Typerna ligger i `frontend/src/lib/jointTypes.ts` och `frontend/src/lib/underlay
 ## Kontraktstester
 
 Riktiga svar från backend finns som ögonblicksbilder i `frontend/src/lib/testing/contract/` (sammanfattning med och utan verifierad lösning, jämförelse med ändrade antaganden, utan tidigare körning och mot en körning utan verifierad lösning, alternativen ur underlaget (`options.json`) samt `/events` för en klar och en misslyckad körning). `jointContract.test.ts` matar dem genom klientens adaptrar och kräver att varje fält i svaret är hanterat, så att ett nytt eller omdöpt fält fångas i testerna och inte först i webbläsaren. När backend ändrar kontraktet: uppdatera ögonblicksbilderna och låt testet visa vad klienten saknar.
+
+## Förklarad besparing i jämförelsen
+
+Under **Jämför** visar gränssnittet först den förklarade skillnaden (`explained` i `GET /api/abc/compare`, komponenterna `explained-savings.tsx` och `explained-detail.tsx`, logik i `abcExplainView.ts`): total modellkostnad för båda sidor och skillnaden, förbehåll om simulerade uppgifter och spärrade bokningar, uppdelningen i utnyttjande och priser, och tre kostnadsposter (hyrda lokaler, externa bokningar, personal). **Visa vad som förklarar** fäller ut en post till berörda namngivna lokaler (före, efter och skillnad, med om hyran kan avvecklas), undvikna externa bokningar, betalda pass och timmar per dag och de salstillfällen som ändras, samt de tentor som byter datum, klockslag eller sal. Därunder finns bedömningen av om en lokalbesparing kan realiseras och de fyra kostnadsslagen. En spärrad jämförelse visar skälen och ingen totalskillnad.
+
+Att prova en lokal bortvald görs med parametern *Lokaler som inte får användas* (`rooms.exclude`) i en egen körning (C) som sedan jämförs med den ursprungliga.

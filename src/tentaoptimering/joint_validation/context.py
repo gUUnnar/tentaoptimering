@@ -66,6 +66,17 @@ class Room:
     digital_capabilities: frozenset[str]
     available_slots: frozenset[str] | None
     digital_basis: str
+    travel_minutes: int = 0
+    kind: str = "internal"
+
+
+@dataclass(frozen=True)
+class Reservation:
+    reservation_id: str
+    room_id: str
+    day: date
+    start: int
+    end: int
 
 
 @dataclass
@@ -83,6 +94,10 @@ class Context:
     turnaround: int
     staff_annual_cost: int
     staff_session_cost: int
+    paid_minute_cost: int = 0
+    min_paid_minutes: int = 0
+    reservations: tuple[Reservation, ...] = ()
+    resource_basis: dict[str, Any] | None = None
     schedule: dict[str, dict[str, Any]] = field(default_factory=dict)
     assignments: list[dict[str, Any]] = field(default_factory=list)
     sessions: list[dict[str, Any]] = field(default_factory=list)
@@ -165,6 +180,7 @@ def build_context(problem: dict[str, Any], result: dict[str, Any]) -> Context:
             frozenset(str(value) for value in item.get("digital_capabilities", ("paper",))),
             frozenset(str(value) for value in available) if available is not None else None,
             str(item.get("digital_support_basis", "not_stated")),
+            _int(item.get("travel_paid_minutes", 0), room_id), str(item.get("kind", "internal")),
         )
     staffing = _need(problem, "staffing", "indata")
     ladder = [
@@ -179,6 +195,14 @@ def build_context(problem: dict[str, Any], result: dict[str, Any]) -> Context:
         _int(problem.get("turnaround_minutes", 0), "indata"),
         _int(_need(staffing, "annual_cost_ore_per_staff", "bemanning"), "bemanning"),
         _int(staffing.get("cost_ore_per_staff_session", 0), "bemanning"),
+        _int(staffing.get("paid_minute_cost_ore", 0), "bemanning"), _int(staffing.get("min_paid_minutes", 0), "bemanning"),
+        tuple(
+            Reservation(str(_need(item, "reservation_id", "fast bokning")), str(_need(item, "room_id", "fast bokning")),
+                        _day(_need(item, "scheduled_date", "fast bokning"), "fast bokning"),
+                        _int(_need(item, "start_minute", "fast bokning"), "fast bokning"), _int(_need(item, "end_minute", "fast bokning"), "fast bokning"))
+            for item in problem.get("reservations", ())
+        ),
+        problem.get("resource_basis"),
     )
     solver = _need(result, "solver", "resultat")
     outcome = _need(solver, "outcome", "solver")
