@@ -25,6 +25,7 @@ import json
 from pathlib import Path
 import tomllib
 from typing import Any
+from .money import check_kr, from_units, to_units
 
 SCHEMA_VERSION = "resource-data-v1"
 ORIGINS = ("observed", "model_calculated", "simulated", "assumption")
@@ -53,30 +54,30 @@ class CostObject:
     cost_object_id: str
     name: str
     kind: str
-    annual_cost_ore: int | None
+    annual_cost_kr: float | None
     avoidable: str
     notice_months: int | None
     earliest_release_date: str | None
-    one_off_cost_ore: int | None
+    one_off_cost_kr: float | None
     provenance: Provenance
 
 
 @dataclass(frozen=True)
 class ExternalCharge:
-    """How an external room is charged. `session_cost_ore` is derived: the price of one session as the engine prices it."""
+    """How an external room is charged. `session_cost_kr` is derived: the price of one session as the engine prices it."""
 
     basis: str
-    price_ore: int
+    price_kr: float
     min_billed_minutes: int
     assumed_billed_minutes: int
     terms: str
 
     @property
-    def session_cost_ore(self) -> int:
+    def session_cost_kr(self) -> float:
         if self.basis == "per_session":
-            return self.price_ore
+            return self.price_kr
         billed = max(self.min_billed_minutes, self.assumed_billed_minutes)
-        return (self.price_ore * billed + 30) // 60  # whole öre, rounded to nearest
+        return from_units((to_units(self.price_kr) * billed + 30) // 60)  # to the nearest whole öre of the hourly price
 
 
 @dataclass(frozen=True)
@@ -88,7 +89,7 @@ class NamedRoom:
     building_id: str | None
     capacity: int | None
     digital: str | None
-    annual_cost_ore: int | None
+    annual_cost_kr: int | None
     cost_object_id: str | None
     travel_paid_minutes: int
     available_from: str | None
@@ -110,7 +111,7 @@ class HireWindow:
     room_ids: tuple[str, ...]
     start: str
     end: str
-    cost_ore: int
+    cost_kr: int
     provenance: Provenance
 
 
@@ -118,9 +119,9 @@ class HireWindow:
 class StaffRules:
     """Cost and pay rules for the paid staff time. `None` means the pack does not say; the parameters then decide."""
 
-    paid_minute_cost_ore: int | None
+    paid_minute_cost_kr: int | None
     min_paid_shift_minutes: int | None
-    pool_annual_cost_ore: int | None
+    pool_annual_cost_kr: int | None
     rules_basis: str
     provenance: Provenance
 
@@ -162,7 +163,7 @@ class ResourcePack:
     def snapshot(self) -> dict[str, Any]:
         """The pack as JSON, saved with every run that used it."""
         payload = asdict(self)
-        payload["rooms"] = [{**asdict(item), "session_cost_ore": item.charge.session_cost_ore if item.charge else None} for item in self.rooms]
+        payload["rooms"] = [{**asdict(item), "session_cost_kr": item.charge.session_cost_kr if item.charge else None} for item in self.rooms]
         return payload
 
 
@@ -253,12 +254,17 @@ def _day(value: Any, where: str) -> str | None:
         raise ResourceDataError(f"{where}: ogiltigt datum {value!r}.") from error
 
 
-def _money(value: Any, where: str) -> int | None:
+def _money(value: Any, where: str) -> float | int | None:
+    """An amount in kronor with at most two decimals, never negative."""
     if value is None:
         return None
-    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-        raise ResourceDataError(f"{where}: belopp i hela öre (icke-negativt heltal) förväntades, fick {value!r}.")
-    return int(value)
+    try:
+        amount = check_kr(value, where)
+    except ValueError as error:
+        raise ResourceDataError(str(error)) from error
+    if amount < 0:
+        raise ResourceDataError(f"{where}: belopp i kronor får inte vara negativa, fick {value!r}.")
+    return amount
 
 
 def _provenance(item: dict[str, Any], where: str, fallback: str) -> Provenance:
@@ -276,8 +282,8 @@ def _cost_object(item: dict[str, Any]) -> CostObject:
     notice = item.get("notice_months")
     if notice is not None and (isinstance(notice, bool) or not isinstance(notice, int) or notice < 0):
         raise ResourceDataError(f"{where}: notice_months måste vara ett icke-negativt heltal.")
-    return CostObject(key, _text(item, "name", where), str(kind), _money(item.get("annual_cost_ore"), where), avoidable, notice,
-                      _day(item.get("earliest_release_date"), where), _money(item.get("one_off_cost_ore"), where),
+    return CostObject(key, _text(item, "name", where), str(kind), _money(item.get("annual_cost_kr"), where), avoidable, notice,
+                      _day(item.get("earliest_release_date"), where), _money(item.get("one_off_cost_kr"), where),
                       _provenance(item, where, "assumption"))
 
 
@@ -293,7 +299,7 @@ def _room(item: dict[str, Any], pack_origin: str) -> NamedRoom:
         basis = str(raw.get("basis", ""))
         if basis not in CHARGE_BASES:
             raise ResourceDataError(f"{where}: charge.basis måste vara en av {CHARGE_BASES}.")
-        charge = ExternalCharge(basis, _money(raw.get("price_ore"), where) or 0, int(raw.get("min_billed_minutes", 0)),
+        charge = ExternalCharge(basis, _money(raw.get("price_kr"), where) or 0, int(raw.get("min_billed_minutes", 0)),
                                 int(raw.get("assumed_billed_minutes", 0)), str(raw.get("terms", "")))
     capacity = item.get("capacity")
     if capacity is not None and (isinstance(capacity, bool) or not isinstance(capacity, int) or capacity <= 0):
@@ -303,7 +309,7 @@ def _room(item: dict[str, Any], pack_origin: str) -> NamedRoom:
         raise ResourceDataError(f"{where}: travel_paid_minutes måste vara icke-negativt.")
     return NamedRoom(
         key, _text(item, "name", where), kind, item.get("plan_area"), item.get("building_id"), capacity, item.get("digital"),
-        _money(item.get("annual_cost_ore"), where), item.get("cost_object_id"), travel, _day(item.get("available_from"), where),
+        _money(item.get("annual_cost_kr"), where), item.get("cost_object_id"), travel, _day(item.get("available_from"), where),
         _day(item.get("available_to"), where), charge, _provenance(item, where, pack_origin),
     )
 
@@ -317,9 +323,9 @@ def _hire_window(item: dict[str, Any], pack_origin: str) -> HireWindow:
     start, end = _day(item.get("start"), where), _day(item.get("end"), where)
     if start is None or end is None or start > end:
         raise ResourceDataError(f"{where}: start och end måste vara datum och start får inte ligga efter end.")
-    cost = _money(item.get("cost_ore"), where)
+    cost = _money(item.get("cost_kr"), where)
     if cost is None:
-        raise ResourceDataError(f"{where}: cost_ore (hela förhyrningens kostnad i öre) saknas.")
+        raise ResourceDataError(f"{where}: cost_kr (hela förhyrningens kostnad i öre) saknas.")
     return HireWindow(key, _text(item, "name", where), tuple(rooms), start, end, cost, _provenance(item, where, pack_origin))
 
 
@@ -328,8 +334,8 @@ def _staff(item: dict[str, Any] | None, pack_origin: str) -> StaffRules | None:
         return None
     where = "staff"
     minimum = item.get("min_paid_shift_minutes")
-    return StaffRules(_money(item.get("paid_minute_cost_ore"), where), None if minimum is None else int(minimum),
-                      _money(item.get("pool_annual_cost_ore"), where), str(item.get("rules_basis", "")), _provenance(item, where, pack_origin))
+    return StaffRules(_money(item.get("paid_minute_cost_kr"), where), None if minimum is None else int(minimum),
+                      _money(item.get("pool_annual_cost_kr"), where), str(item.get("rules_basis", "")), _provenance(item, where, pack_origin))
 
 
 def _actual(item: dict[str, Any], pack_origin: str) -> ActualStaffing:
@@ -356,8 +362,8 @@ def _check(pack: ResourcePack) -> None:
             raise ResourceDataError(f"Den externa salen {room.room_id} måste ange charge, capacity, plan_area och building_id.")
         if room.kind == "internal" and room.charge is not None:
             raise ResourceDataError(f"Den interna salen {room.room_id} kan inte ha en extern debitering.")
-        if room.kind == "internal" and room.cost_object_id is None and room.annual_cost_ore is None:
-            raise ResourceDataError(f"Den interna salen {room.room_id} måste ange annual_cost_ore eller cost_object_id.")
+        if room.kind == "internal" and room.cost_object_id is None and room.annual_cost_kr is None:
+            raise ResourceDataError(f"Den interna salen {room.room_id} måste ange annual_cost_kr eller cost_object_id.")
     known = set(ids)
     window_ids = [item.window_id for item in pack.hire_windows]
     if len(window_ids) != len(set(window_ids)):

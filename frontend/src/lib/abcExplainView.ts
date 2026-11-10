@@ -5,10 +5,10 @@ const MINUS = "−"
 const hourFormat = new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 1, minimumFractionDigits: 1 })
 
 /** Kronor med tecken: plus för en ökning, riktigt minustecken för en minskning, utan tecken för noll. */
-export function signedKr(ore: number | null | undefined): string {
-  if (ore === null || ore === undefined) return "–"
-  if (ore === 0) return formatKr(0)
-  return `${ore > 0 ? "+" : MINUS}${formatKr(Math.abs(ore))}`
+export function signedKr(kr: number | null | undefined): string {
+  if (kr === null || kr === undefined) return "–"
+  if (kr === 0) return formatKr(0)
+  return `${kr > 0 ? "+" : MINUS}${formatKr(Math.abs(kr))}`
 }
 
 /** Betalda minuter som timmar, t.ex. "9,5 h". */
@@ -55,20 +55,20 @@ export const hasDetail = (explained: AbcExplained | undefined | null): explained
 
 /** Kostnadsposternas skillnader ska summera till totalskillnaden; gränssnittet visar det som en kontroll. */
 export function itemsReconcile(explained: AbcExplained & ExplainedDetail): boolean {
-  const difference = explained.total.difference_ore
-  return difference !== null && explained.items.every(item => item.difference_ore !== null) && explained.items.reduce((sum, item) => sum + (item.difference_ore ?? 0), 0) === difference
+  const difference = explained.total.difference_kr
+  return difference !== null && explained.items.every(item => item.difference_kr !== null) && explained.items.reduce((sum, item) => sum + (item.difference_kr ?? 0), 0) === difference
 }
 
 /** Rubrik för totalen: minskar, ökar eller ändras inte, utan att kalla det en besparing. */
 export function headline(explained: AbcExplained & ExplainedDetail): string {
-  const difference = explained.total.difference_ore
+  const difference = explained.total.difference_kr
   if (difference === null) return "Ingen totalskillnad kan redovisas"
   if (difference === 0) return "Modellkostnaden är oförändrad"
   return `Modellkostnaden ${difference < 0 ? "minskar" : "ökar"} med ${formatKr(Math.abs(difference))}`
 }
 
-export function direction(item: Pick<ExplainedItem, "difference_ore">): "down" | "up" | "same" {
-  const difference = item.difference_ore ?? 0
+export function direction(item: Pick<ExplainedItem, "difference_kr">): "down" | "up" | "same" {
+  const difference = item.difference_kr ?? 0
   return difference < 0 ? "down" : difference > 0 ? "up" : "same"
 }
 
@@ -77,7 +77,7 @@ export function splitSentence(explained: AbcExplained & ExplainedDetail): string
   const { split } = explained
   if (!split.available) return split.reason ?? "Skillnaden kan inte delas upp i utnyttjande och priser."
   if (split.same_prices) return "Samma priser och regler på båda sidor: hela skillnaden är ändrat resursutnyttjande."
-  return `Ändrat resursutnyttjande ${signedKr(split.usage_ore ?? 0)}; ändrade priser, regler eller antaganden ${signedKr(split.assumption_ore ?? 0)}.`
+  return `Ändrat resursutnyttjande ${signedKr(split.usage_kr ?? 0)}; ändrade priser, regler eller antaganden ${signedKr(split.assumption_kr ?? 0)}.`
 }
 
 /** En etikett från backendens tentamenstagg ("room_freed:uu-r2" och så vidare). */

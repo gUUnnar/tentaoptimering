@@ -8,12 +8,15 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .legacy_money import upgrade
 
-INPUT_SCHEMA_VERSION = "joint-optimization-input-v3"
-RESULT_SCHEMA_VERSION = "joint-optimization-result-v3"
+
+INPUT_SCHEMA_VERSION = "joint-optimization-input-v4"
+RESULT_SCHEMA_VERSION = "joint-optimization-result-v4"
 # Earlier files have none of the later fields (reservations, paid-time rules, room names and cost objects); they read with the defaults.
-COMPATIBLE_INPUT_VERSIONS = ("joint-optimization-input-v2", INPUT_SCHEMA_VERSION)
-COMPATIBLE_RESULT_VERSIONS = ("joint-optimization-result-v2", RESULT_SCHEMA_VERSION)
+# v2 and v3 files hold amounts in öre; `read_problem`/`read_result` convert them to kronor (v4) when they are read.
+COMPATIBLE_INPUT_VERSIONS = ("joint-optimization-input-v2", "joint-optimization-input-v3", INPUT_SCHEMA_VERSION)
+COMPATIBLE_RESULT_VERSIONS = ("joint-optimization-result-v2", "joint-optimization-result-v3", RESULT_SCHEMA_VERSION)
 
 
 @dataclass(frozen=True)
@@ -81,8 +84,8 @@ class Room:
     building_id: str
     plan_area: str
     capacity: int
-    annual_fixed_cost_ore: int
-    external_session_cost_ore: int = 0
+    annual_fixed_cost_kr: float
+    external_session_cost_kr: float = 0
     digital_capabilities: tuple[str, ...] = ("paper",)
     available_slot_ids: tuple[str, ...] | None = None
     digital_support_basis: str = "not_stated"
@@ -107,13 +110,13 @@ class StaffingStep:
 @dataclass(frozen=True)
 class StaffingCostPolicy:
     ladder: tuple[StaffingStep, ...]
-    annual_cost_ore_per_staff: int
-    cost_ore_per_staff_session: int = 0
+    annual_cost_kr_per_staff: float
+    cost_kr_per_staff_session: float = 0
     preparation_minutes: int = 0
     closing_minutes: int = 0
     # Paid working time: every staff position of a room session is one paid pass from `start - preparation` to
-    # `end + closing`, paid at least `min_paid_minutes`, plus the room's travel minutes, at `paid_minute_cost_ore` per minute.
-    paid_minute_cost_ore: int = 0
+    # `end + closing`, paid at least `min_paid_minutes`, plus the room's travel minutes, at `paid_minute_cost_kr` per minute.
+    paid_minute_cost_kr: float = 0
     min_paid_minutes: int = 0
 
 
@@ -134,7 +137,7 @@ class Reservation:
 
 @dataclass(frozen=True)
 class HireWindow:
-    """A whole external facility hired for a period: `cost_ore` is incurred once if any of `room_ids` has a session on a date
+    """A whole external facility hired for a period: `cost_kr` is incurred once if any of `room_ids` has a session on a date
     in `[start, end]`. The rooms carry no per-session charge and are available only inside the windows that name them."""
 
     window_id: str
@@ -142,7 +145,7 @@ class HireWindow:
     room_ids: tuple[str, ...]
     start: date
     end: date
-    cost_ore: int
+    cost_kr: float
     origin: str = "assumption"
     source: str = ""
 
@@ -194,8 +197,8 @@ class JointOptimizationInput:
 class SolverSummary:
     outcome: str
     raw_status: str
-    objective_value_ore: int | None
-    best_objective_bound_ore: int | None
+    objective_value_kr: float | None
+    best_objective_bound_kr: float | None
     relative_gap: float | None
     wall_time_seconds: float
     change_preference_status: str
@@ -204,12 +207,12 @@ class SolverSummary:
 
 @dataclass(frozen=True)
 class CostBreakdown:
-    annual_room_cost_ore: int
-    external_room_session_cost_ore: int
-    annual_staff_pool_cost_ore: int
-    staff_session_cost_ore: int
-    comparable_total_cost_ore: int
-    staff_paid_time_cost_ore: int = 0
+    annual_room_cost_kr: float
+    external_room_session_cost_kr: float
+    annual_staff_pool_cost_kr: float
+    staff_session_cost_kr: float
+    comparable_total_cost_kr: float
+    staff_paid_time_cost_kr: float = 0
 
 
 @dataclass(frozen=True)
@@ -245,7 +248,7 @@ def write_problem(problem: JointOptimizationInput, path: Path) -> None:
 
 
 def read_problem(path: Path) -> JointOptimizationInput:
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload = upgrade(json.loads(path.read_text(encoding="utf-8")))  # a file from before kronor is converted, never rewritten
     if payload.get("schema_version") not in COMPATIBLE_INPUT_VERSIONS:
         raise ValueError(f"Okänd indatakontraktsversion: {payload.get('schema_version')}")
     demands = tuple(
@@ -377,8 +380,8 @@ def validate_problem(problem: JointOptimizationInput) -> None:
         previous = step.max_participants
     if any(
         room.capacity <= 0
-        or room.annual_fixed_cost_ore < 0
-        or room.external_session_cost_ore < 0
+        or room.annual_fixed_cost_kr < 0
+        or room.external_session_cost_kr < 0
         for room in problem.rooms
     ):
         raise ValueError("Salar måste ha positiv kapacitet och icke-negativa kostnader.")
@@ -398,13 +401,13 @@ def validate_problem(problem: JointOptimizationInput) -> None:
     ):
         raise ValueError("Omfattningssammanfattningen stämmer inte med modellens behov.")
     if (
-        problem.staffing.annual_cost_ore_per_staff < 0
-        or problem.staffing.cost_ore_per_staff_session < 0
+        problem.staffing.annual_cost_kr_per_staff < 0
+        or problem.staffing.cost_kr_per_staff_session < 0
         or problem.staffing.preparation_minutes < 0
         or problem.staffing.closing_minutes < 0
     ):
         raise ValueError("Bemanningens tider och kostnader måste vara icke-negativa.")
-    if problem.staffing.paid_minute_cost_ore < 0 or problem.staffing.min_paid_minutes < 0:
+    if problem.staffing.paid_minute_cost_kr < 0 or problem.staffing.min_paid_minutes < 0:
         raise ValueError("Betald tid och minsta betalda pass måste vara icke-negativa.")
     if any(room.travel_paid_minutes < 0 for room in problem.rooms):
         raise ValueError("Betald restid måste vara icke-negativ.")
@@ -413,7 +416,7 @@ def validate_problem(problem: JointOptimizationInput) -> None:
         if reservation.room_id not in known_rooms or reservation.start_minute >= reservation.end_minute:
             raise ValueError(f"Ogiltig fast bokning: {reservation.reservation_id}")
     for window in problem.hire_windows:
-        if window.cost_ore < 0 or window.start > window.end or not window.room_ids or not set(window.room_ids) <= known_rooms:
+        if window.cost_kr < 0 or window.start > window.end or not window.room_ids or not set(window.room_ids) <= known_rooms:
             raise ValueError(f"Ogiltig förhyrning: {window.window_id}")
 
 

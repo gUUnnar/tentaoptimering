@@ -18,6 +18,7 @@ from typing import Any
 import pandas as pd
 
 from .joint_contract import Room
+from .money import kmul
 from .joint_options import building_id
 
 OBSERVED_BASIS = "observed_booked_places_max_lower_bound"
@@ -41,17 +42,17 @@ def observed_unregistered_rooms(inventory: pd.DataFrame | None, plan_area: str, 
             continue
         rooms.append(Room(
             room_id=str(room_id), building_id=building_id(str(address)), plan_area=plan_area, capacity=int(float(row.observed_booked_places_max)),
-            annual_fixed_cost_ore=0, external_session_cost_ore=0, digital_capabilities=("paper",),
+            annual_fixed_cost_kr=0, external_session_cost_kr=0, digital_capabilities=("paper",),
             available_slot_ids=slot_ids, digital_support_basis="unknown", capacity_basis=OBSERVED_BASIS,
         ))
     return tuple(sorted(rooms, key=lambda item: item.room_id))
 
 
-def with_price(room: Room, price_per_seat_ore: int) -> Room:
+def with_price(room: Room, price_per_seat_kr: int) -> Room:
     """Same price rule as for registered rooms: the annual cost per seat times the capacity."""
     from dataclasses import replace
 
-    return replace(room, annual_fixed_cost_ore=room.capacity * price_per_seat_ore)
+    return replace(room, annual_fixed_cost_kr=kmul(price_per_seat_kr, room.capacity))
 
 
 def describe(rooms: tuple[Room, ...]) -> list[dict[str, Any]]:

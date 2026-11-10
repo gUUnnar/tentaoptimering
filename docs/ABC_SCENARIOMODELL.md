@@ -43,7 +43,7 @@ B körs med scenariot `joint_base` (alla klara tentor i Uppsala i hela underlage
 | `wish.candidate_policy` | `wishes` | Verksamhetens önskemål är underlaget: önskat datum och reservdatum 1 och 2, inga andra dagar. Reservdatumen är prioriterade alternativ som verksamheten själv angav, inte godtyckliga dagar inom ett flexibilitetsintervall. |
 | `wish.tiebreak` | `wish_priority` | Bland lika billiga lösningar väljs önskat datum före reservdatum 1, reservdatum 2 och annat datum. |
 | `rooms.include_observed_unregistered` | `true` | Registrets sju salar i Uppsala (cirka 1 040 platser per pass) rymmer inte de bokade tentorna en toppdag (över 2 800 tentander). Salar som bokningarna använt men som saknar registerkapacitet (Fyrishovs hallar) tas med, med största bokade antal platser som kapacitet. Det är en underkant, inte en uppmätt kapacitet. |
-| `cost.room_annual_per_seat_ore` | 1 000 kr | Explorativ proxy, inte avtalskostnad. |
+| `cost.room_annual_per_seat_kr` | 1 000 kr | Explorativ proxy, inte avtalskostnad. |
 | `resources.pack` | `simulated_dev_2026` | Verkliga avtal, externhyror och personalkostnader finns ännu inte; de simulerade resursuppgifterna används tills de gör det. Personalkostnaden är betald tid, inte en schablon per vaktresurs. |
 
 Utan antagandet om observerade salar är B bevisat ogenomförbar (3 834 tentander önskar 16 januari mot cirka 2 078 platser). Det mättes: med de tre Fyrishovhallarna lades till blev B genomförbar. Antagandet är en parameter och kan stängas av i C; då visas B:s ogenomförbarhet med skäl i stället för en siffra.

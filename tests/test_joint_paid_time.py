@@ -35,7 +35,7 @@ def _demand(demand_id: str, count: int, minutes: int, slots: tuple[str, ...], or
                       original or slots[0], original_date=DAY, original_start_minute=480, movable=movable)
 
 
-def _problem(demands, rooms, slots, rate: int = 10, minimum: int = 120, strategy: str = "monolithic", reservations=()) -> JointOptimizationInput:
+def _problem(demands, rooms, slots, rate: float = 0.1, minimum: int = 120, strategy: str = "monolithic", reservations=()) -> JointOptimizationInput:
     return JointOptimizationInput(
         INPUT_SCHEMA_VERSION, "paid-time", "hash", slots, demands, rooms,
         StaffingCostPolicy((StaffingStep(100, 1), StaffingStep(200, 2)), 0, 0, 30, 30, rate, minimum),
@@ -52,11 +52,11 @@ AFTERNOON = CandidateSlot("pm", DAY, "14:00", 840, 1200)
 class PaidTimeTests(unittest.TestCase):
     def test_paid_minutes_are_prep_exam_closing_and_travel(self) -> None:
         # worked 30 + 120 + 30 = 180, travel 15: 195 paid minutes for the one staff position, at 10 öre each
-        room = Room("r", "b", "Uppsala", 100, 1000, travel_paid_minutes=15)
+        room = Room("r", "b", "Uppsala", 100, 10, travel_paid_minutes=15)
         result = solve_joint_optimization(_problem((_demand("e", 40, 120, ("am",)),), (room,), (MORNING,)))
         self.assertEqual(result.solver.outcome, "optimal")
-        self.assertEqual(result.costs.staff_paid_time_cost_ore, 1950)
-        self.assertEqual(result.costs.comparable_total_cost_ore, 1000 + 1950)
+        self.assertEqual(result.costs.staff_paid_time_cost_kr, 19.5)
+        self.assertEqual(result.costs.comparable_total_cost_kr, 10 + 19.5)
         self.assertEqual((result.staffing_summary["passes"], result.staffing_summary["paid_minutes"]), (1, 195))
 
     def test_shortest_paid_pass_tops_up_a_short_session(self) -> None:
@@ -65,7 +65,7 @@ class PaidTimeTests(unittest.TestCase):
         result = solve_joint_optimization(_problem((_demand("e", 40, 30, ("am",)),), (room,), (MORNING,)))
         self.assertEqual(result.staffing_summary["paid_minutes"], 135)
         self.assertEqual(result.staffing_summary["minimum_top_up_minutes"], 30)
-        self.assertEqual(result.costs.staff_paid_time_cost_ore, 1350)
+        self.assertEqual(result.costs.staff_paid_time_cost_kr, 13.5)
 
     def test_two_staff_positions_are_two_paid_passes(self) -> None:
         # 150 participants need 2 staff by the ladder: 2 x (180 + 0) = 360 paid minutes
@@ -75,40 +75,40 @@ class PaidTimeTests(unittest.TestCase):
         self.assertEqual(result.staffing_summary["paid_minutes"], 360)
 
     def test_more_paid_hours_when_the_room_saving_is_larger(self) -> None:
-        near = Room("near", "b1", "Uppsala", 100, 5000)
-        far = Room("far", "b2", "Uppsala", 100, 1000, travel_paid_minutes=120)
+        near = Room("near", "b1", "Uppsala", 100, 50)
+        far = Room("far", "b2", "Uppsala", 100, 10, travel_paid_minutes=120)
         demand = (_demand("e", 40, 120, ("am",)),)
-        cheap_minutes = solve_joint_optimization(_problem(demand, (near, far), (MORNING,), rate=10))
+        cheap_minutes = solve_joint_optimization(_problem(demand, (near, far), (MORNING,), rate=0.1))
         # far: rent 1 000 + 300 paid minutes x 10 = 4 000; near: rent 5 000 + 180 x 10 = 6 800
         self.assertEqual({row["room_id"] for row in cheap_minutes.assignments}, {"far"})
         self.assertEqual(cheap_minutes.staffing_summary["paid_minutes"], 300)
-        self.assertEqual(cheap_minutes.costs.comparable_total_cost_ore, 4000)
-        dear_minutes = solve_joint_optimization(_problem(demand, (near, far), (MORNING,), rate=100))
+        self.assertEqual(cheap_minutes.costs.comparable_total_cost_kr, 40)
+        dear_minutes = solve_joint_optimization(_problem(demand, (near, far), (MORNING,), rate=1))
         # far: 1 000 + 30 000 = 31 000; near: 5 000 + 18 000 = 23 000: fewer paid hours now win
         self.assertEqual({row["room_id"] for row in dear_minutes.assignments}, {"near"})
         self.assertEqual(dear_minutes.staffing_summary["paid_minutes"], 180)
-        self.assertEqual(dear_minutes.costs.comparable_total_cost_ore, 23000)
+        self.assertEqual(dear_minutes.costs.comparable_total_cost_kr, 230)
 
     def test_cost_of_a_given_plan_matches_the_solver(self) -> None:
-        room = Room("r", "b", "Uppsala", 100, 1000, travel_paid_minutes=15)
+        room = Room("r", "b", "Uppsala", 100, 10, travel_paid_minutes=15)
         problem = _problem((_demand("e", 40, 120, ("am",)),), (room,), (MORNING,))
         result = solve_joint_optimization(problem)
         priced = cost_of_sessions(problem, result.room_sessions, result.staff_pool_size)
-        self.assertEqual(priced["comparable_total_cost_ore"], result.costs.comparable_total_cost_ore)
+        self.assertEqual(priced["comparable_total_cost_kr"], result.costs.comparable_total_cost_kr)
         self.assertEqual(staffing_summary(problem, result.room_sessions)["paid_minutes"], 195)
 
     def test_decomposed_strategy_reaches_the_monolithic_optimum_with_paid_time(self) -> None:
-        rooms = (Room("a", "b1", "Uppsala", 100, 3000, travel_paid_minutes=0), Room("b", "b2", "Uppsala", 100, 500, travel_paid_minutes=60))
+        rooms = (Room("a", "b1", "Uppsala", 100, 30, travel_paid_minutes=0), Room("b", "b2", "Uppsala", 100, 5, travel_paid_minutes=60))
         demands = (_demand("e1", 60, 180, ("am", "pm")), _demand("e2", 50, 120, ("am", "pm")), _demand("e3", 30, 60, ("am", "pm")))
-        mono = solve_joint_optimization(_problem(demands, rooms, (MORNING, AFTERNOON), rate=15))
-        deco = solve_joint_optimization(_problem(demands, rooms, (MORNING, AFTERNOON), rate=15, strategy="decomposed"))
+        mono = solve_joint_optimization(_problem(demands, rooms, (MORNING, AFTERNOON), rate=0.15))
+        deco = solve_joint_optimization(_problem(demands, rooms, (MORNING, AFTERNOON), rate=0.15, strategy="decomposed"))
         self.assertEqual(mono.solver.outcome, "optimal")
-        self.assertEqual(deco.costs.comparable_total_cost_ore, mono.costs.comparable_total_cost_ore)
-        self.assertEqual(deco.costs.staff_paid_time_cost_ore, deco.staffing_summary["paid_time_cost_ore"])
-        self.assertLessEqual(deco.solver.best_objective_bound_ore, deco.costs.comparable_total_cost_ore)
+        self.assertEqual(deco.costs.comparable_total_cost_kr, mono.costs.comparable_total_cost_kr)
+        self.assertEqual(deco.costs.staff_paid_time_cost_kr, deco.staffing_summary["paid_time_cost_kr"])
+        self.assertLessEqual(deco.solver.best_objective_bound_kr, deco.costs.comparable_total_cost_kr)
 
     def test_independent_validator_recomputes_paid_time_and_catches_a_wrong_figure(self) -> None:
-        room = Room("r", "b", "Uppsala", 100, 1000, travel_paid_minutes=15)
+        room = Room("r", "b", "Uppsala", 100, 10, travel_paid_minutes=15)
         problem = _problem((_demand("e", 40, 120, ("am",)),), (room,), (MORNING,))
         result = solve_joint_optimization(problem)
         with tempfile.TemporaryDirectory() as temp:
@@ -130,7 +130,7 @@ class PaidTimeTests(unittest.TestCase):
 
 class ReservationTests(unittest.TestCase):
     def _two_room_problem(self, slots, reservations, strategy="monolithic") -> JointOptimizationInput:
-        rooms = (Room("r1", "b1", "Uppsala", 100, 100), Room("r2", "b2", "Uppsala", 100, 200))
+        rooms = (Room("r1", "b1", "Uppsala", 100, 1), Room("r2", "b2", "Uppsala", 100, 2))
         return _problem((_demand("e", 40, 120, tuple(item.slot_id for item in slots)),), rooms, slots, rate=0, strategy=strategy, reservations=reservations)
 
     def test_a_booked_room_cannot_take_an_overlapping_session(self) -> None:
@@ -140,7 +140,7 @@ class ReservationTests(unittest.TestCase):
                 result = solve_joint_optimization(self._two_room_problem((MORNING,), (booked,), strategy))
                 self.assertEqual({row["room_id"] for row in result.assignments}, {"r2"})
                 # r1 is in use through its booking (100) and the exam sits in r2 (200)
-                self.assertEqual(result.costs.annual_room_cost_ore, 300)
+                self.assertEqual(result.costs.annual_room_cost_kr, 3)
 
     def test_exam_moves_to_the_free_pass_in_the_booked_room(self) -> None:
         booked = Reservation("b1", "r1", DAY, 480, 720)
@@ -150,7 +150,7 @@ class ReservationTests(unittest.TestCase):
                 # 14:00 is after 12:00 + 30 minutes turnaround, so r1 can be shared at no extra rent
                 self.assertEqual(result.schedule[0]["slot_id"], "pm")
                 self.assertEqual({row["room_id"] for row in result.assignments}, {"r1"})
-                self.assertEqual(result.costs.annual_room_cost_ore, 100)
+                self.assertEqual(result.costs.annual_room_cost_kr, 1)
 
     def test_turnaround_after_the_booking_is_kept(self) -> None:
         booked = Reservation("b1", "r1", DAY, 480, 780)  # until 13:00; the 14:00 pass would start 60 minutes later: allowed
@@ -163,7 +163,7 @@ class ReservationTests(unittest.TestCase):
         result = solve_joint_optimization(self._two_room_problem((MORNING,), (booked,)))
         # the exam fits r1 in the morning (rent 100, already owned through the booking) and r2 would add 200
         self.assertEqual({row["room_id"] for row in result.assignments}, {"r1"})
-        self.assertEqual(result.costs.annual_room_cost_ore, 100)
+        self.assertEqual(result.costs.annual_room_cost_kr, 1)
 
     def test_validator_flags_a_session_inside_a_booking(self) -> None:
         problem = self._two_room_problem((MORNING,), ())

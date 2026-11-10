@@ -87,11 +87,11 @@ class PeriodRunTests(unittest.TestCase):
             with self.subTest(period=(first, last)):
                 end, summary = self._run(first, last)
                 result = json.loads((self.storage.run_directory(end["run_id"]) / "joint_result.json").read_text(encoding="utf-8"))
-                costs, staff_annual = result["costs"], 5_000_000  # cost.staff_annual_ore of the scenario
-                self.assertEqual(costs["annual_staff_pool_cost_ore"], result["staff_pool_size"] * staff_annual)
-                self.assertEqual(costs["comparable_total_cost_ore"], costs["annual_room_cost_ore"] + costs["external_room_session_cost_ore"]
-                                 + costs["annual_staff_pool_cost_ore"] + costs["staff_session_cost_ore"])
-                self.assertEqual(summary["cost_ore"], costs["comparable_total_cost_ore"])
+                costs, staff_annual = result["costs"], 50_000  # cost.staff_annual_kr of the scenario
+                self.assertEqual(costs["annual_staff_pool_cost_kr"], result["staff_pool_size"] * staff_annual)
+                self.assertEqual(costs["comparable_total_cost_kr"], costs["annual_room_cost_kr"] + costs["external_room_session_cost_kr"]
+                                 + costs["annual_staff_pool_cost_kr"] + costs["staff_session_cost_kr"])
+                self.assertEqual(summary["cost_kr"], costs["comparable_total_cost_kr"])
                 self.assertEqual(summary["planning_basis"]["cost_name"], "Modellerad årlig kapacitetskostnad för valt urval")
 
     def test_runs_of_different_periods_are_not_compared_as_equal(self) -> None:

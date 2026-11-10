@@ -85,7 +85,7 @@ class MonolithicCancelTests(unittest.TestCase):
         self.assertEqual(len(calls), 2)
         self.assertEqual(calls[1], cp_model.UNKNOWN, "the change-preference phase must not run after a cancel")
         self.assertEqual(result.solver.outcome, "optimal")  # the economic optimum was proven before the cancel
-        self.assertEqual(result.costs.comparable_total_cost_ore, 1300)
+        self.assertEqual(result.costs.comparable_total_cost_kr, 13)
         self.assertEqual(result.solver.change_preference_status, "not_run_time_limit_after_economic_optimum")
         self.assertTrue(result.coverage.technical_placement_complete)
         with tempfile.TemporaryDirectory() as temp:
@@ -104,7 +104,7 @@ class MonolithicCancelTests(unittest.TestCase):
         with mock.patch.object(resources, "solve_cancellable", cancel_in_the_second_phase):
             result = solve_joint_optimization(problem, None, None, token)
         self.assertEqual(count[0], 2)
-        self.assertEqual((result.solver.outcome, result.costs.comparable_total_cost_ore), ("optimal", 1300))
+        self.assertEqual((result.solver.outcome, result.costs.comparable_total_cost_kr), ("optimal", 13))
         self.assertEqual(result.solver.change_preference_status, "not_run_time_limit_after_economic_optimum")
         with tempfile.TemporaryDirectory() as temp:
             self.assertEqual(_failing(_validate(Path(temp), problem, result)), [])
@@ -133,7 +133,7 @@ class MonolithicCancelTests(unittest.TestCase):
 
     def test_without_a_token_nothing_changes(self) -> None:
         result = solve_joint_optimization(_two_day_problem("monolithic"))
-        self.assertEqual((result.solver.outcome, result.costs.comparable_total_cost_ore), ("optimal", 1300))
+        self.assertEqual((result.solver.outcome, result.costs.comparable_total_cost_kr), ("optimal", 13))
         self.assertEqual(result.solver.change_preference_status, "optimal_at_economic_optimum")
 
 

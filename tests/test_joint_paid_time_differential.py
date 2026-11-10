@@ -38,7 +38,7 @@ def random_problem(seed: int, strategy: str) -> JointOptimizationInput:
         demands.append(ExamDemand(f"e{index}", (ParticipantGroup(f"g{index}", count, (f"a{index}",), "registered_count"),), rng.choice((60, 120, 180)), "Uppsala",
                                   candidates, candidates[0], original_date=slots[0].scheduled_date, original_start_minute=480, course_code=f"c{index}"))
     rooms = tuple(
-        Room(f"r{index}", f"b{rng.randint(1, 2)}", "Uppsala", rng.choice((60, 100, 150)), rng.choice((0, 500, 3000, 8000)), rng.choice((0, 0, 700)),
+        Room(f"r{index}", f"b{rng.randint(1, 2)}", "Uppsala", rng.choice((60, 100, 150)), rng.choice((0, 5, 30, 80)), rng.choice((0, 0, 7)),
              travel_paid_minutes=rng.choice((0, 0, 30, 90)), kind="external" if index == 0 else "internal")
         for index in range(rng.randint(2, 4))
     )
@@ -46,8 +46,8 @@ def random_problem(seed: int, strategy: str) -> JointOptimizationInput:
         Reservation(f"b{n}", rng.choice(rooms).room_id, rng.choice(DAYS), start, start + rng.choice((120, 240)))
         for n, start in enumerate(rng.sample((480, 840), rng.randint(0, 2)))
     )
-    staffing = StaffingCostPolicy((StaffingStep(80, 1), StaffingStep(160, 2)), rng.choice((0, 1000)), rng.choice((0, 50)), rng.choice((0, 30)), rng.choice((0, 30)),
-                                  rng.choice((5, 10, 25)), rng.choice((0, 90, 120)))
+    staffing = StaffingCostPolicy((StaffingStep(80, 1), StaffingStep(160, 2)), rng.choice((0, 10)), rng.choice((0, 0.5)), rng.choice((0, 30)), rng.choice((0, 30)),
+                                  rng.choice((0.05, 0.1, 0.25)), rng.choice((0, 90, 120)))
     return JointOptimizationInput(INPUT_SCHEMA_VERSION, f"random-{seed}", "hash", slots, tuple(demands), rooms, staffing, SolverSettings(60, seed, 1, False, strategy), (),
                                   ScopeSummary(len(demands), len(demands), 0, 0, len(demands), sum(item.participant_count for item in demands)), rng.choice((0, 30)),
                                   reservations=reservations)
@@ -69,7 +69,7 @@ class PaidTimeDifferentialTests(unittest.TestCase):
                 solved += 1
                 self.assertEqual(mono.solver.outcome, "optimal", f"seed {seed}")
                 if deco.solver.outcome == "optimal":
-                    self.assertEqual(deco.costs.comparable_total_cost_ore, mono.costs.comparable_total_cost_ore, f"seed {seed}")
+                    self.assertEqual(deco.costs.comparable_total_cost_kr, mono.costs.comparable_total_cost_kr, f"seed {seed}")
                 for name, problem, result in (("monolithic", mono_problem, mono), ("decomposed", deco_problem, deco)):
                     if not result.costs:
                         continue
@@ -77,7 +77,7 @@ class PaidTimeDifferentialTests(unittest.TestCase):
                     priced = price(problem, priced_sessions(problem, result.room_sessions))
                     reported = result.costs
                     for component in COMPONENTS:
-                        if component != "annual_staff_pool_cost_ore":
+                        if component != "annual_staff_pool_cost_kr":
                             self.assertEqual(priced[component], getattr(reported, component), f"seed {seed} {name} {component}")
                     run = Path(temp) / name
                     run.mkdir()

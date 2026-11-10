@@ -16,10 +16,10 @@ RUN = "20261013T000000Z-joint_underlay_period_2026"
 def _write_run(directory: Path, cost: int | None, bound: int | None, outcome: str = "optimal", complete: bool = True, valid: str = "pass",
                room: int = 0, staff: int = 0) -> None:
     directory.mkdir(parents=True, exist_ok=True)
-    result = {"solver": {"outcome": outcome, "objective_value_ore": cost, "best_objective_bound_ore": bound},
+    result = {"solver": {"outcome": outcome, "objective_value_kr": cost, "best_objective_bound_kr": bound},
               "coverage": {"technical_placement_complete": complete, "exam_demands_total": 12},
-              "costs": {"annual_room_cost_ore": room, "annual_staff_pool_cost_ore": staff, "external_room_session_cost_ore": 0,
-                        "staff_session_cost_ore": 0, "comparable_total_cost_ore": cost} if cost is not None else None,
+              "costs": {"annual_room_cost_kr": room, "annual_staff_pool_cost_kr": staff, "external_room_session_cost_kr": 0,
+                        "staff_session_cost_kr": 0, "comparable_total_cost_kr": cost} if cost is not None else None,
               "staff_pool_size": 3, "changed_exam_demands": 4}
     (directory / "joint_result.json").write_text(json.dumps(result), encoding="utf-8")
     (directory / "joint_validation.json").write_text(json.dumps({"summary": {"technical_validation": valid}}), encoding="utf-8")
@@ -51,7 +51,7 @@ class SavingsTest(unittest.TestCase):
         key = baseline_key(self.storage, self.content)
         self.assertEqual(key, baseline_key(self.storage, read_scenario(BUNDLED)))
         other = read_scenario(BUNDLED)
-        other["parameters"]["cost.room_annual_per_seat_ore"] = 1
+        other["parameters"]["cost.room_annual_per_seat_kr"] = 1
         self.assertNotEqual(key, baseline_key(self.storage, other))
         (self.storage.processed_dir / "underlay.json").write_text(json.dumps({"prepared_id": "ny"}), encoding="utf-8")
         self.assertNotEqual(key, baseline_key(self.storage, self.content))
@@ -68,9 +68,9 @@ class SavingsTest(unittest.TestCase):
         _write_run(self.storage.runs_dir / RUN, 500, 480, room=300, staff=200)
         self._baseline(cost=900, bound=850, room=600, staff=300)
         result = savings(self.storage, RUN)
-        self.assertEqual((result["state"], result["potential_ore"]), ("ready", 400))
-        self.assertEqual((result["potential_low_ore"], result["potential_high_ore"]), (850 - 500, 900 - 480))
-        self.assertEqual([(c["label"], c["baseline_ore"], c["run_ore"]) for c in result["components"]], [("Lokaler", 600, 300), ("Vaktpool", 300, 200)])
+        self.assertEqual((result["state"], result["potential_kr"]), ("ready", 400))
+        self.assertEqual((result["potential_low_kr"], result["potential_high_kr"]), (850 - 500, 900 - 480))
+        self.assertEqual([(c["label"], c["baseline_kr"], c["run_kr"]) for c in result["components"]], [("Lokaler", 600, 300), ("Vaktpool", 300, 200)])
 
     def test_a_nulage_without_a_verified_solution_gives_no_saving(self) -> None:
         _write_run(self.storage.runs_dir / RUN, 500, 500)

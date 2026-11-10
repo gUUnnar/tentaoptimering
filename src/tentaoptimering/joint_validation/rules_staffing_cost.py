@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .context import Context
+from .money import reported_units, text
 from .derive import build_sessions, peak_concurrent_staff, recompute_costs, staff_by_session
 from .report import FAIL, NOT_APPLICABLE, NOT_EVALUATED, PASS, TECHNICAL, RuleResult, rule
 
@@ -63,16 +64,17 @@ def _costs(ctx: Context, sessions, staff, pool: object) -> RuleResult:
     if not isinstance(costs, dict) or not isinstance(pool, int):
         return rule("costs_recomputed", TECHNICAL, FAIL, "Kostnader eller pool saknas i resultatet.", reference="krav: kostnader räknas om")
     expected = recompute_costs(ctx, sessions, staff, pool)
-    broken = [f"{name}: rapporterat {costs.get(name, 0)}, beräknat {value}" for name, value in expected.items() if costs.get(name, 0) != value]
-    parts = sum(int(costs.get(name, 0)) for name in expected if name != "comparable_total_cost_ore")
-    if costs.get("comparable_total_cost_ore") != parts:
-        broken.append(f"komponenterna summerar till {parts}, totalen är {costs.get('comparable_total_cost_ore')}")
-    objective = ctx.result["solver"].get("objective_value_ore")
-    if objective != costs.get("comparable_total_cost_ore"):
-        broken.append(f"solvermålet {objective} avviker från modellkostnaden")
+    # `expected` is in whole hundredths of a krona; a reported amount is compared after the same conversion
+    broken = [f"{name}: rapporterat {costs.get(name, 0)} kr, beräknat {text(value)}" for name, value in expected.items() if reported_units(costs.get(name, 0)) != value]
+    parts = sum(reported_units(costs.get(name, 0)) or 0 for name in expected if name != "comparable_total_cost_kr")
+    if reported_units(costs.get("comparable_total_cost_kr")) != parts:
+        broken.append(f"komponenterna summerar till {text(parts)}, totalen är {costs.get('comparable_total_cost_kr')} kr")
+    objective = ctx.result["solver"].get("objective_value_kr")
+    if reported_units(objective) != reported_units(costs.get("comparable_total_cost_kr")):
+        broken.append(f"solvermålet {objective} kr avviker från modellkostnaden")
     return rule("costs_recomputed", TECHNICAL, FAIL if broken else PASS,
                 "Kostnadskomponenter, summa eller solvermål avviker från omräkningen." if broken
-                else f"Lokaler (inklusive fast bokade), externa salstillfällen, pool, rörlig bemanning och betald personaltid räknas om och summerar till {expected['comparable_total_cost_ore']} öre.",
+                else f"Lokaler (inklusive fast bokade), externa salstillfällen, pool, rörlig bemanning och betald personaltid räknas om och summerar till {text(expected['comparable_total_cost_kr'])}.",
                 broken, "krav: kostnaderna summerar till modellkostnaden")
 
 
@@ -98,7 +100,7 @@ def _changed(ctx: Context) -> RuleResult:
 
 def _solver_report(ctx: Context) -> RuleResult:
     solver, costs = ctx.result["solver"], ctx.result.get("costs")
-    outcome, objective, bound, gap = solver.get("outcome"), solver.get("objective_value_ore"), solver.get("best_objective_bound_ore"), solver.get("relative_gap")
+    outcome, objective, bound, gap = solver.get("outcome"), solver.get("objective_value_kr"), solver.get("best_objective_bound_kr"), solver.get("relative_gap")
     problems = []
     if outcome == "optimal" and not (objective is not None and bound == objective and gap == 0):
         problems.append("optimal kräver gräns lika med mål och gap 0")

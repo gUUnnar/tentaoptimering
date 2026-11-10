@@ -40,7 +40,7 @@ LAYOUT: dict[str, tuple[str, ...]] = {
         "staffing.min_daily_rest_minutes", "staffing.travel_minutes", "staffing.min_paid_shift_minutes",
     ),
     "kostnad": (
-        "resources.pack", "cost.room_annual_per_seat_ore", "cost.staff_paid_minute_ore", "cost.staff_annual_ore", "cost.staff_session_ore", "cost.external_room_session_ore",
+        "resources.pack", "cost.room_annual_per_seat_kr", "cost.staff_paid_minute_kr", "cost.staff_annual_kr", "cost.staff_session_kr", "cost.external_room_session_kr",
         "cost.annualization_factor", "cost.avoidable_cost_definition",
     ),
     "korning": (

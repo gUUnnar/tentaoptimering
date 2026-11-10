@@ -5,8 +5,8 @@ import type {
 // Ren avledning av vyernas tillstånd ur en händelselista. Samma kod används för live och uppspelning.
 
 export type PhaseRun = { name: PhaseName; startedAt: number; finishedAt: number | null }
-export type BoundPoint = { t: number; lower_ore: number; round: number }
-export type IncumbentPoint = { t: number; cost_ore: number; source: string; changed_exams: number }
+export type BoundPoint = { t: number; lower_kr: number; round: number }
+export type IncumbentPoint = { t: number; cost_kr: number; source: string; changed_exams: number }
 export type DayCell = { date: string; kind: string; status: DayStatus; seconds: number; t: number; block?: string[] }
 
 export type JointState = {
@@ -55,7 +55,7 @@ export function applyEvent(state: JointState, event: JointEvent): JointState {
       next.started = { ...state.started, [event.kind]: { ...(state.started[event.kind] ?? {}), [event.date]: event.t } }
       break
     case "incumbent": next.incumbents = [...state.incumbents, toIncumbent(event)]; break
-    case "bound": next.bounds = [...state.bounds, { t: event.t, lower_ore: event.lower_ore, round: event.round }]; break
+    case "bound": next.bounds = [...state.bounds, { t: event.t, lower_kr: event.lower_kr, round: event.round }]; break
     case "warm_start": next.warmStart = event; break
     case "resources": next.resources = event; break
     case "finished": next.finished = event; break
@@ -63,7 +63,7 @@ export function applyEvent(state: JointState, event: JointEvent): JointState {
   return next
 }
 
-const toIncumbent = (event: IncumbentEvent): IncumbentPoint => ({ t: event.t, cost_ore: event.cost_ore, source: event.source, changed_exams: event.changed_exams })
+const toIncumbent = (event: IncumbentEvent): IncumbentPoint => ({ t: event.t, cost_kr: event.cost_kr, source: event.source, changed_exams: event.changed_exams })
 
 function findLastOpen(phases: PhaseRun[], name: PhaseName): number {
   for (let i = phases.length - 1; i >= 0; i--) if (phases[i].name === name && phases[i].finishedAt === null) return i
@@ -85,21 +85,21 @@ export function mergeEvents(existing: JointEvent[], incoming: JointEvent[]): Joi
 
 export const bestIncumbent = (state: JointState): IncumbentPoint | null => state.incumbents.at(-1) ?? null
 export const firstIncumbent = (state: JointState): IncumbentPoint | null => state.incumbents[0] ?? null
-export const bestBoundOre = (state: JointState): number | null =>
-  state.bounds.length ? Math.max(...state.bounds.map(point => point.lower_ore)) : null
+export const bestBoundKr = (state: JointState): number | null =>
+  state.bounds.length ? Math.max(...state.bounds.map(point => point.lower_kr)) : null
 
 /** Verifierad kostnad (övre gräns) enligt sista kända uppgift; slutuppgiften väger tyngre än mellanläget. */
-export function currentCostOre(state: JointState): number | null {
-  return state.finished?.cost_ore ?? bestIncumbent(state)?.cost_ore ?? null
+export function currentCostKr(state: JointState): number | null {
+  return state.finished?.cost_kr ?? bestIncumbent(state)?.cost_kr ?? null
 }
-export function currentBoundOre(state: JointState): number | null {
-  return state.finished?.bound_ore ?? bestBoundOre(state)
+export function currentBoundKr(state: JointState): number | null {
+  return state.finished?.bound_kr ?? bestBoundKr(state)
 }
 
 /** Gap som bråkdel av verifierad kostnad: (kostnad - undre gräns) / kostnad. */
-export function gapFraction(costOre: number | null, boundOre: number | null): number | null {
-  if (costOre === null || boundOre === null || costOre <= 0) return null
-  return Math.max(0, (costOre - boundOre) / costOre)
+export function gapFraction(costKr: number | null, boundKr: number | null): number | null {
+  if (costKr === null || boundKr === null || costKr <= 0) return null
+  return Math.max(0, (costKr - boundKr) / costKr)
 }
 
 export type DayGridCell =
@@ -166,8 +166,8 @@ export function costSeries(state: JointState, nowT: number): Point[] {
     const lowers = state.bounds.filter(p => p.t <= t)
     return {
       t,
-      upper: upper ? upper.cost_ore / 100_000_000 : undefined,
-      lower: lowers.length ? Math.max(...lowers.map(p => p.lower_ore)) / 100_000_000 : undefined,
+      upper: upper ? upper.cost_kr / 1_000_000 : undefined,
+      lower: lowers.length ? Math.max(...lowers.map(p => p.lower_kr)) / 1_000_000 : undefined,
     }
   })
 }

@@ -28,6 +28,7 @@ from tentaoptimering.joint_contract import (  # noqa: E402
     INPUT_SCHEMA_VERSION, CandidateSlot, ExamDemand, JointOptimizationInput, ParticipantGroup, Room, ScopeSummary,
     SolverSettings, StaffingCostPolicy, StaffingStep, write_problem, write_result,
 )
+from tentaoptimering.money import from_units  # noqa: E402
 from tentaoptimering.joint_optimizer import solve_joint_optimization  # noqa: E402
 from tentaoptimering.joint_strategy.aggregate import solve_master  # noqa: E402
 from tentaoptimering.joint_strategy.verification import peak_staff  # noqa: E402
@@ -63,12 +64,12 @@ class RelaxationAndDecompositionTests(unittest.TestCase):
                 if exact.solver.outcome == "optimal":
                     compared["optimal"] += 1
                     self.assertNotEqual(master.status, "infeasible")
-                    self.assertLessEqual(master.bound, exact.solver.objective_value_ore, "relaxation above the optimum")
+                    self.assertLessEqual(from_units(master.bound), exact.solver.objective_value_kr, "relaxation above the optimum")
                     self.assertIn(decomposed.solver.outcome, {"optimal", "feasible_not_proven"})
-                    self.assertGreaterEqual(decomposed.solver.objective_value_ore, exact.solver.objective_value_ore)
-                    self.assertLessEqual(decomposed.solver.best_objective_bound_ore, exact.solver.objective_value_ore)
+                    self.assertGreaterEqual(decomposed.solver.objective_value_kr, exact.solver.objective_value_kr)
+                    self.assertLessEqual(decomposed.solver.best_objective_bound_kr, exact.solver.objective_value_kr)
                     if decomposed.solver.outcome == "optimal":
-                        self.assertEqual(decomposed.solver.objective_value_ore, exact.solver.objective_value_ore)
+                        self.assertEqual(decomposed.solver.objective_value_kr, exact.solver.objective_value_kr)
                 if master.status == "infeasible":
                     self.assertEqual(exact.solver.outcome, "infeasible", "relaxation infeasible but joint model feasible")
                 if exact.solver.outcome == "infeasible":
@@ -106,13 +107,13 @@ def _two_day_problem(strategy: str) -> JointOptimizationInput:
         ExamDemand("c", (_group("c", 40),), 240, "Uppsala", ("d2-am", "d2-pm"), "d2-am", original_date=date(2026, 1, 13), original_start_minute=480),
     )
     rooms = (
-        Room("big", "b1", "Uppsala", 80, 800),
-        Room("small-1", "b2", "Uppsala", 40, 300),
-        Room("small-2", "b2", "Uppsala", 40, 300),
+        Room("big", "b1", "Uppsala", 80, 8),
+        Room("small-1", "b2", "Uppsala", 40, 3),
+        Room("small-2", "b2", "Uppsala", 40, 3),
     )
     return JointOptimizationInput(
         INPUT_SCHEMA_VERSION, "two-day", "hash", slots, demands, rooms,
-        StaffingCostPolicy((StaffingStep(100, 1),), 1000), SolverSettings(20, 1, 4, False, strategy, 0.0), (),
+        StaffingCostPolicy((StaffingStep(100, 1),), 10), SolverSettings(20, 1, 4, False, strategy, 0.0), (),
         ScopeSummary(3, 3, 0, 0, 3, 120), 30,
     )
 
@@ -123,7 +124,7 @@ class HandCalculatedStrategyTests(unittest.TestCase):
             with self.subTest(strategy=strategy):
                 result = solve_joint_optimization(_two_day_problem(strategy))
                 self.assertEqual(result.solver.outcome, "optimal")
-                self.assertEqual(result.costs.comparable_total_cost_ore, 1300)
+                self.assertEqual(result.costs.comparable_total_cost_kr, 13)
                 self.assertEqual(result.staff_pool_size, 1)
                 self.assertEqual(result.solver.strategy, strategy)
                 self.assertEqual(len({row["room_id"] for row in result.room_sessions}), 1)
@@ -133,7 +134,7 @@ class HandCalculatedStrategyTests(unittest.TestCase):
         self.assertEqual((master.status, master.bound, master.plans[0].pool), ("optimal", 1300, 1))
 
     def test_peak_staff_counts_preparation_and_closing_like_the_model(self) -> None:
-        problem = replace(_two_day_problem("decomposed"), staffing=StaffingCostPolicy((StaffingStep(100, 1),), 1000, 0, 30, 30))
+        problem = replace(_two_day_problem("decomposed"), staffing=StaffingCostPolicy((StaffingStep(100, 1),), 10, 0, 30, 30))
         sessions = [
             {"room_id": "small-1", "slot_id": "d1-am", "required_staff": 1, "available_again_minute": 480 + 360 + 30},
             {"room_id": "small-2", "slot_id": "d1-pm", "required_staff": 1, "available_again_minute": 840 + 240 + 30},
@@ -161,7 +162,7 @@ def _dense_case(seed: int):
         "calendar.start_times": ["08:00", "14:00"], "staffing.preparation_minutes": 30, "staffing.closing_minutes": 30,
         "staffing.ladder": [{"max_participants": 50, "required_staff": 1}, {"max_participants": 150, "required_staff": 2},
                             {"max_participants": 300, "required_staff": 3}],
-        "cost.room_annual_per_seat_ore": 100, "cost.staff_annual_ore": rng.choice((1000, 5000)), "cost.staff_session_ore": 0,
+        "cost.room_annual_per_seat_kr": 1, "cost.staff_annual_kr": rng.choice((10, 50)), "cost.staff_session_kr": 0,
         "solver.time_limit_seconds": 1.0, "rooms.allow_split_across_buildings": rng.random() < 0.5,
     }
     return events, rooms, overrides
@@ -179,7 +180,7 @@ class CutPathTests(unittest.TestCase):
             self.assertEqual(exact.solver.outcome, "optimal")
             self.assertGreater(int(re.search(r"cuts_(\d+)", decomposed.solver.raw_status).group(1)), 0, "the cut path was not used")
             self.assertEqual(decomposed.solver.outcome, "optimal")
-            self.assertEqual(decomposed.solver.objective_value_ore, exact.solver.objective_value_ore)
+            self.assertEqual(decomposed.solver.objective_value_kr, exact.solver.objective_value_kr)
             payload = _validate(Path(temp), problem, decomposed)
             self.assertEqual([item["rule_id"] for item in payload["rules"] if item["status"] == "fail"], [])
 
@@ -187,9 +188,9 @@ class CutPathTests(unittest.TestCase):
 def _external_hire_problem(strategy: str, days: int) -> JointOptimizationInput:
     """Hand case: one 50-person exam per day, fixed to its day.
 
-    An owned room costs 1 000 öre per year; an external room costs nothing per year but 400 öre per
-    session. Staff 100 öre per pool resource (pool 1 either way). Over two days hire is cheaper
-    (2 x 400 = 800 < 1 000); over three days the owned room is (1 200 > 1 000).
+    An owned room costs 10 kr per year; an external room costs nothing per year but 4 kr per
+    session. Staff 1 kr per pool resource (pool 1 either way). Over two days hire is cheaper
+    (2 x 4 = 8 < 10); over three days the owned room is (12 > 10).
     """
     slots = tuple(CandidateSlot(f"d{day}", date(2026, 1, 12 + day), "08:00", 480, 1200) for day in range(days))
     demands = tuple(
@@ -197,25 +198,25 @@ def _external_hire_problem(strategy: str, days: int) -> JointOptimizationInput:
                    original_date=date(2026, 1, 12 + day), original_start_minute=480)
         for day in range(days)
     )
-    rooms = (Room("owned", "b1", "Uppsala", 60, 1000), Room("hired", "b2", "Uppsala", 60, 0, 400))
+    rooms = (Room("owned", "b1", "Uppsala", 60, 10), Room("hired", "b2", "Uppsala", 60, 0, 4))
     return JointOptimizationInput(
         INPUT_SCHEMA_VERSION, "external", "hash", slots, demands, rooms,
-        StaffingCostPolicy((StaffingStep(100, 1),), 100), SolverSettings(20, 1, 4, False, strategy, 0.0), (),
+        StaffingCostPolicy((StaffingStep(100, 1),), 1), SolverSettings(20, 1, 4, False, strategy, 0.0), (),
         ScopeSummary(days, days, 0, 0, days, 50 * days), 30,
     )
 
 
 class ExternalHireTests(unittest.TestCase):
     def test_both_strategies_minimise_the_same_cost_with_external_hire(self) -> None:
-        expected = {2: ("hired", 0, 800, 900), 3: ("owned", 1000, 0, 1100)}
+        expected = {2: ("hired", 0, 8, 9), 3: ("owned", 10, 0, 11)}
         for days, (room, fixed, external, total) in expected.items():
             for strategy in ("monolithic", "decomposed"):
                 with self.subTest(days=days, strategy=strategy):
                     result = solve_joint_optimization(_external_hire_problem(strategy, days))
                     self.assertEqual(result.solver.outcome, "optimal")
                     self.assertEqual({row["room_id"] for row in result.room_sessions}, {room})
-                    self.assertEqual((result.costs.annual_room_cost_ore, result.costs.external_room_session_cost_ore,
-                                      result.costs.comparable_total_cost_ore), (fixed, external, total))
+                    self.assertEqual((result.costs.annual_room_cost_kr, result.costs.external_room_session_cost_kr,
+                                      result.costs.comparable_total_cost_kr), (fixed, external, total))
 
     def test_bound_and_optimum_agree_on_random_cases_with_external_hire(self) -> None:
         checked = 0
@@ -225,8 +226,8 @@ class ExternalHireTests(unittest.TestCase):
                 problem, _ = fx._solve(Path(temp), events, rooms, {**overrides, "solver.time_limit_seconds": 1.0})
                 rng = random.Random(seed)
                 problem = replace(problem, rooms=tuple(
-                    replace(room, external_session_cost_ore=rng.choice((0, 300, 2000)),
-                            annual_fixed_cost_ore=rng.choice((0, room.annual_fixed_cost_ore)))
+                    replace(room, external_session_cost_kr=rng.choice((0, 3, 20)),
+                            annual_fixed_cost_kr=rng.choice((0, room.annual_fixed_cost_kr)))
                     for room in problem.rooms))
                 exact = solve_joint_optimization(_with(problem, "monolithic"))
                 if exact.solver.outcome != "optimal":
@@ -234,18 +235,18 @@ class ExternalHireTests(unittest.TestCase):
                 checked += 1
                 master = solve_master(problem, 20.0, SolverSettings(20, 5, 4))
                 decomposed = solve_joint_optimization(_with(problem, "decomposed"))
-                self.assertLessEqual(master.bound, exact.solver.objective_value_ore, "relaxation above the optimum")
-                self.assertLessEqual(decomposed.solver.best_objective_bound_ore, exact.solver.objective_value_ore)
-                self.assertGreaterEqual(decomposed.solver.objective_value_ore, exact.solver.objective_value_ore)
+                self.assertLessEqual(from_units(master.bound), exact.solver.objective_value_kr, "relaxation above the optimum")
+                self.assertLessEqual(decomposed.solver.best_objective_bound_kr, exact.solver.objective_value_kr)
+                self.assertGreaterEqual(decomposed.solver.objective_value_kr, exact.solver.objective_value_kr)
                 if decomposed.solver.outcome == "optimal":
-                    self.assertEqual(decomposed.solver.objective_value_ore, exact.solver.objective_value_ore)
+                    self.assertEqual(decomposed.solver.objective_value_kr, exact.solver.objective_value_kr)
         self.assertGreaterEqual(checked, 5)
 
     def test_relaxation_bound_with_external_hire_is_valid_and_exact_here(self) -> None:
-        for days, total in ((2, 900), (3, 1100)):
+        for days, total in ((2, 9), (3, 11)):
             with self.subTest(days=days):
                 master = solve_master(_external_hire_problem("decomposed", days), 10.0, SolverSettings(10, 1, 4))
-                self.assertEqual((master.status, master.bound), ("optimal", total))
+                self.assertEqual((master.status, from_units(master.bound)), ("optimal", total))
 
 
 class WarmStartAndTimeTests(unittest.TestCase):
@@ -259,8 +260,8 @@ class WarmStartAndTimeTests(unittest.TestCase):
         self.assertEqual(earlier.solver.outcome, "optimal")  # all fixed: two exams share d1-am
         wide = _two_day_problem("decomposed")
         result = solve_joint_optimization(wide, self._saved(earlier))
-        self.assertLessEqual(result.costs.comparable_total_cost_ore, earlier.costs.comparable_total_cost_ore)
-        self.assertEqual(result.costs.comparable_total_cost_ore, 1300)
+        self.assertLessEqual(result.costs.comparable_total_cost_kr, earlier.costs.comparable_total_cost_kr)
+        self.assertEqual(result.costs.comparable_total_cost_kr, 13)
         with tempfile.TemporaryDirectory() as temp:
             payload = _validate(Path(temp), wide, result)
             self.assertEqual([item["rule_id"] for item in payload["rules"] if item["status"] == "fail"], [])
@@ -297,10 +298,10 @@ class GapLimitTests(unittest.TestCase):
                 with self.subTest(strategy=strategy):
                     result = solve_joint_optimization(_with(problem, strategy, gap=0.5))
                     if result.solver.outcome == "optimal":
-                        self.assertEqual(result.solver.best_objective_bound_ore, result.solver.objective_value_ore)
+                        self.assertEqual(result.solver.best_objective_bound_kr, result.solver.objective_value_kr)
                         self.assertEqual(result.solver.relative_gap, 0.0)
                     elif result.solver.outcome == "feasible_not_proven":
-                        self.assertLessEqual(result.solver.best_objective_bound_ore, result.solver.objective_value_ore)
+                        self.assertLessEqual(result.solver.best_objective_bound_kr, result.solver.objective_value_kr)
 
     def test_unknown_strategy_is_rejected(self) -> None:
         with self.assertRaises(ValueError):

@@ -120,7 +120,7 @@ Antalet kandidatpass per tenta är ungefär (2 × flyttfönster + 1) × starttid
 | Nivå | Vad strategin levererar | Hur det redovisas |
 |---|---|---|
 | A. Genomförbar | Alla tentor och deltagare placerade, kontrollerade dag för dag med den gemensamma modellen och oberoende eftervaliderade | `technical_validation = pass` |
-| B. Bra ekonomisk lösning | Verifierad kostnad, bevisad undre gräns från relaxationen och gap | `feasible_not_proven`, `best_objective_bound_ore`, `relative_gap`. Rapporten anger uttryckligen att kostnaden ligger mellan gränsen och lösningen och inte är bevisad maximal besparing. |
+| B. Bra ekonomisk lösning | Verifierad kostnad, bevisad undre gräns från relaxationen och gap | `feasible_not_proven`, `best_objective_bound_kr`, `relative_gap`. Rapporten anger uttryckligen att kostnaden ligger mellan gränsen och lösningen och inte är bevisad maximal besparing. |
 | C. Bevisat optimal | När alla dagar går ihop med relaxationens portfölj och pool är kostnaden lika med en bevisad undre gräns | `optimal` med gap 0 |
 
 Strategin stannar vid nivå B när gapet är högst `solver.relative_gap_limit` och fortsätter mot C bara inom tidsgränsen.
@@ -278,7 +278,7 @@ Verifierat med riktade tester och två större kontrollkörningar, inte med en n
 
 ### 8.1 Kostnadskorrekthet: extern salhyra (rättat)
 
-`external_session_cost_ore` saknades i både relaxationens och dagkontrollernas mål. Det gjorde att den nedbrutna strategin kunde välja en dyrare lösning än den monolitiska.
+`external_session_cost_kr` saknades i både relaxationens och dagkontrollernas mål. Det gjorde att den nedbrutna strategin kunde välja en dyrare lösning än den monolitiska.
 
 - **Relaxationen** räknar nu en extern kostnad för varje sal som används i ett pass. Gränsen förblir giltig: varje salstillfälle i en verklig lösning motsvarar en använd sal i relaxationen.
 - **Dagkontrollerna** minimerar alla kostnader per tillfälle (rörlig bemanning och extern hyra) i båda lägena.
@@ -286,7 +286,7 @@ Verifierat med riktade tester och två större kontrollkörningar, inte med en n
 
 Tester:
 
-- **Handräknat fall:** en tenta per dag, egen sal för 1 000 öre per år eller inhyrd sal för 400 öre per tillfälle. Över två dagar vinner inhyrning (900 öre totalt), över tre dagar den egna salen (1 100 öre). Båda strategierna och relaxationens gräns ger exakt dessa värden.
+- **Handräknat fall:** en tenta per dag, egen sal för 10 kr per år eller inhyrd sal för 4 kr per tillfälle. Över två dagar vinner inhyrning (9 kr totalt), över tre dagar den egna salen (11 kr). Båda strategierna och relaxationens gräns ger exakt dessa värden.
 - **12 slumpade fall med slumpad extern kostnad:** gränsen ligger aldrig över det monolitiska optimumet, och ett bevisat optimum är lika med det monolitiska.
 - **Kontroll:** testerna fallerar på den tidigare koden (relaxationens gräns blev 100 i stället för 900 och 1 100).
 
@@ -462,7 +462,7 @@ Detta steg handlar om genomförandets effektivitet. Parametrar, kostnadsdefiniti
   - tidsgränsen hålls med parallella kontroller (1 och 3 s);
   - avbrott före start ger ingen lösning. Avbrott mitt i körningen ger en fullständig validerad lösning eller ingen. Avbrott efter en verifierad varmstart ger `feasible_not_proven` med samma kostnad. Ett fel i en kontroll stoppar körningen utan kvarlämnade trådar;
   - en kontroll som missat deadline eller avbrutits cachas inte;
-  - varmstart: accepterad (kostnad omräknad med nya priser: 1 900 öre för den gamla placeringen, 1 800 öre optimum), avvisad p.g.a. otillåtet pass, tentor utan tidigare placering, dag som inte längre ryms (bevisat) och påhittad placering. En saknad sal noteras, och kontrollen görs med återstående salar. Kostnaden är i alla fall lika med den kalla körningens;
+  - varmstart: accepterad (kostnad omräknad med nya priser: 19 kr för den gamla placeringen, 18 kr optimum), avvisad p.g.a. otillåtet pass, tentor utan tidigare placering, dag som inte längre ryms (bevisat) och påhittad placering. En saknad sal noteras, och kontrollen görs med återstående salar. Kostnaden är i alla fall lika med den kalla körningens;
   - körningsval: fel hash, ändrat resultat med uppdaterat manifest (ny validering underkänner trots sparad pass), sparad underkänd status, körning utan placering, ogiltiga id:n, körningar av annat problem, och CLI-flöden med `--warm-start`, `--threads`, `--memory-mb` och `--sequential-day-checks`.
   - Testerna och granskningen hittade två fel i avbrottsvägen, nu rättade med riktade regressionstester (`tests/test_joint_cancel_regressions.py`):
     - `WallTime()` lästes på en lösare som aldrig startats, i loggningen av dagkontrollerna och av relaxationen. Ett avbrott mellan varvskontrollen och relaxationens lösning kraschade därför körningen. Nu används en gemensam `wall_time()` som ger 0 för en ostartad lösare.

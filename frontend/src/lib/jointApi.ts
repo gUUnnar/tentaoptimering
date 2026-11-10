@@ -67,7 +67,7 @@ export async function request<T>(path: string, options?: RequestInit): Promise<T
 export type BackendSummary = {
   run_id?: string; problem_id?: string | null; scenario_id?: string | null; created_at?: string | null
   solver_outcome: string | null; has_verified_solution: boolean; cost_is_proven_optimum?: boolean
-  cost_ore: number | null; lower_bound_ore: number | null; gap_ore?: number | null; gap_relative: number | null
+  cost_kr: number | null; lower_bound_kr: number | null; gap_kr?: number | null; gap_relative: number | null
   changed_exams: number | null; exams_total?: number | null; staff_pool_size?: number | null
   wall_time_seconds: number | null; first_solution_seconds: number | null
   first_solution_basis?: string | null; first_solution_source?: string | null
@@ -96,7 +96,7 @@ export function toJointSummary(raw: BackendSummary): JointSummary {
   const money = <T,>(value: T | null | undefined): T | null => verified ? value ?? null : null
   return {
     run_id: raw.run_id ?? null, problem_id: raw.problem_id ?? null, scenario_id: raw.scenario_id ?? null, created_at: raw.created_at ?? null,
-    cost_ore: money(raw.cost_ore), bound_ore: money(raw.lower_bound_ore), gap_ore: money(raw.gap_ore), gap: money(raw.gap_relative),
+    cost_kr: money(raw.cost_kr), bound_kr: money(raw.lower_bound_kr), gap_kr: money(raw.gap_kr), gap: money(raw.gap_relative),
     changed_exams: money(raw.changed_exams), exams_total: raw.exams_total ?? null, staff_pool_size: money(raw.staff_pool_size),
     first_solution_seconds: raw.first_solution_seconds ?? null, first_solution_basis: raw.first_solution_basis ?? null,
     first_solution_source: raw.first_solution_source ?? null, wall_seconds: raw.wall_time_seconds ?? null,

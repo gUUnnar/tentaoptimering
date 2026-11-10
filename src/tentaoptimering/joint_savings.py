@@ -16,6 +16,9 @@ from pathlib import Path
 import shutil
 from typing import Any
 
+from .legacy_money import loads as upgraded_loads
+from .money import kdiff
+
 from .app_paths import bundled_joint_catalog_path
 from .app_storage import AppStorage
 from .joint_inputs import run_real_subset
@@ -26,9 +29,9 @@ from .joint_toml import dump_scenario
 SCENARIO_COPY = "joint_scenario.toml"
 BASELINE_TIME_LIMIT_SECONDS = 120.0
 VERIFIED = ("optimal", "feasible_not_proven")
-COMPONENTS = (("annual_room_cost_ore", "Lokaler"), ("annual_staff_pool_cost_ore", "Vaktpool"),
-              ("external_room_session_cost_ore", "Externa salstillfällen"), ("staff_session_cost_ore", "Rörlig bemanning"),
-              ("staff_paid_time_cost_ore", "Betald personaltid"))
+COMPONENTS = (("annual_room_cost_kr", "Lokaler"), ("annual_staff_pool_cost_kr", "Vaktpool"),
+              ("external_room_session_cost_kr", "Externa salstillfällen"), ("staff_session_cost_kr", "Rörlig bemanning"),
+              ("staff_paid_time_cost_kr", "Betald personaltid"))
 
 
 def baseline_content(content: dict[str, Any]) -> dict[str, Any]:
@@ -57,7 +60,7 @@ def baseline_key(storage: AppStorage, content: dict[str, Any]) -> str:
 
 def _read(path: Path) -> dict[str, Any] | None:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = upgraded_loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
     return value if isinstance(value, dict) else None
@@ -73,7 +76,7 @@ def _verified(directory: Path) -> dict[str, Any] | None:
         return None
     if (validation.get("summary") or {}).get("technical_validation") != "pass":
         return None
-    return {"cost_ore": solver.get("objective_value_ore"), "bound_ore": solver.get("best_objective_bound_ore"), "costs": result["costs"],
+    return {"cost_kr": solver.get("objective_value_kr"), "bound_kr": solver.get("best_objective_bound_kr"), "costs": result["costs"],
             "staff_pool_size": result.get("staff_pool_size"), "changed_exams": result.get("changed_exam_demands"),
             "exams_total": coverage.get("exam_demands_total")}
 
@@ -100,12 +103,12 @@ def savings(storage: AppStorage, run_id: str) -> dict[str, Any]:
         return {"state": "unavailable", "key": key, "reason": "Referensen med låsta datum hittade ingen verifierad lösning (till exempel för att ursprungstillfällena inte ryms i de valda salarna), så ingen besparing kan redovisas."}
     if base is None:
         return {"state": "missing", "key": key}
-    low = (base["bound_ore"] if base["bound_ore"] is not None else base["cost_ore"]) - run["cost_ore"]
-    high = base["cost_ore"] - (run["bound_ore"] if run["bound_ore"] is not None else run["cost_ore"])
-    components = [{"key": field, "label": label, "baseline_ore": base["costs"].get(field), "run_ore": run["costs"].get(field)}
+    low = kdiff(base["bound_kr"] if base["bound_kr"] is not None else base["cost_kr"], run["cost_kr"])
+    high = kdiff(base["cost_kr"], run["bound_kr"] if run["bound_kr"] is not None else run["cost_kr"])
+    components = [{"key": field, "label": label, "baseline_kr": base["costs"].get(field), "run_kr": run["costs"].get(field)}
                   for field, label in COMPONENTS if base["costs"].get(field) or run["costs"].get(field)]
-    return {"state": "ready", "key": key, "baseline": base, "run": run, "potential_ore": base["cost_ore"] - run["cost_ore"],
-            "potential_low_ore": low, "potential_high_ore": high, "components": components}
+    return {"state": "ready", "key": key, "baseline": base, "run": run, "potential_kr": kdiff(base["cost_kr"], run["cost_kr"]),
+            "potential_low_kr": low, "potential_high_kr": high, "components": components}
 
 
 def compute_baseline(storage: AppStorage, run_id: str, cancel: CancelToken, catalog_path: Path | None = None) -> dict[str, Any]:

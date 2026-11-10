@@ -39,8 +39,8 @@ exam_event_ids = ["X"]
 "calendar.start_times" = ["08:00"]
 "calendar.weekdays" = [1, 2, 3, 4, 5]
 "staffing.ladder" = [{max_participants = 60, required_staff = 1}]
-"cost.room_annual_per_seat_ore" = 100
-"cost.staff_annual_ore" = 1000
+"cost.room_annual_per_seat_kr" = 1
+"cost.staff_annual_kr" = 10
 "solver.time_limit_seconds" = 10.0
 "solver.workers" = 1
 "solver.strategy" = "monolithic"
@@ -129,7 +129,7 @@ class TieBreakTests(unittest.TestCase):
         keep, kept, _ = self._solve('"wish.tiebreak" = "fewest_changes"\n')
         problem, moved, day = self._solve('"wish.tiebreak" = "wish_priority"\n')
         self.assertEqual((day, moved.changed_exam_demands), (date(2026, 1, 13), 1))
-        self.assertEqual(moved.solver.objective_value_ore, kept.solver.objective_value_ore)  # the tie-break never changes the cost
+        self.assertEqual(moved.solver.objective_value_kr, kept.solver.objective_value_kr)  # the tie-break never changes the cost
         self.assertEqual(problem.preference, "wish_priority")
 
     def test_penalties_put_the_wish_order_before_the_booked_occasion(self) -> None:

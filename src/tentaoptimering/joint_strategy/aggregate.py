@@ -26,6 +26,7 @@ from ortools.sat.python import cp_model
 
 from ..joint_blocking import reserved_rooms
 from ..joint_contract import ExamDemand, JointOptimizationInput, Room, SolverSettings, StaffingStep
+from ..money import to_units
 from ..joint_optimizer import _conflicts, _overlap, staffing_cut_edges
 from ..joint_preference import has_preference, penalty_weights
 from .resources import CancelToken, solve_cancellable, wall_time
@@ -164,9 +165,9 @@ def _build(problem: JointOptimizationInput, cuts: tuple[Cut, ...], hint: dict[st
     for room_id in reserved_rooms(problem):
         model.Add(owned[room_id] == 1)  # a reserved room is in use through its fixed booking (the reservations themselves are not relaxed in)
     cost = (
-        sum(room.annual_fixed_cost_ore * owned[room.room_id] for room in problem.rooms)
-        + problem.staffing.annual_cost_ore_per_staff * pool
-        + problem.staffing.cost_ore_per_staff_session * session_staff
+        sum(to_units(room.annual_fixed_cost_kr) * owned[room.room_id] for room in problem.rooms)
+        + to_units(problem.staffing.annual_cost_kr_per_staff) * pool
+        + to_units(problem.staffing.cost_kr_per_staff_session) * session_staff
         + external + paid
     )
     model.Minimize(cost)
@@ -276,11 +277,11 @@ def _staffing_bound(model, problem, slots, x, owned, cap, pool) -> tuple[Any, An
                 rise, run = y1 - y0, x1 - x0
                 model.Add(run * staff >= rise * occupancy + (run * y0 - rise * x0) * used)
             staff_terms.append((room.plan_area, occupancy, staff))
-            if room.external_session_cost_ore:
-                external.append(room.external_session_cost_ore * used)
-            if problem.staffing.paid_minute_cost_ore:
+            if room.external_session_cost_kr:
+                external.append(to_units(room.external_session_cost_kr) * used)
+            if problem.staffing.paid_minute_cost_kr:
                 length = max(problem.staffing.min_paid_minutes, prep + closing + shortest) + room.travel_paid_minutes
-                paid.append(problem.staffing.paid_minute_cost_ore * length * staff)
+                paid.append(to_units(problem.staffing.paid_minute_cost_kr) * length * staff)
         for area, load in load_by_area.items():
             model.Add(sum(occ for room_area, occ, _ in staff_terms if room_area == area) == sum(load))
         starting[slot.slot_id] = sum(staff for _, _, staff in staff_terms)

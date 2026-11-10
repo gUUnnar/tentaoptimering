@@ -22,9 +22,9 @@
       "new": 1,
       "old": null
     },
-    "cost_ore": {
+    "cost_kr": {
       "delta": null,
-      "new": 9000,
+      "new": 90,
       "old": null
     },
     "first_solution_seconds": {
@@ -32,14 +32,14 @@
       "new": 0.0,
       "old": 0.0
     },
-    "gap_ore": {
+    "gap_kr": {
       "delta": null,
       "new": 0,
       "old": null
     },
-    "lower_bound_ore": {
+    "lower_bound_kr": {
       "delta": null,
-      "new": 9000,
+      "new": 90,
       "old": null
     },
     "rooms_used": {
@@ -61,11 +61,11 @@
   "parameter_changes": [
     {
       "group": "kostnad",
-      "id": "cost.staff_annual_ore",
+      "id": "cost.staff_annual_kr",
       "label": "Årskostnad per vaktresurs",
-      "new": 3000,
-      "old": 1000,
-      "unit": "ore_per_year"
+      "new": 30,
+      "old": 10,
+      "unit": "kr_per_year"
     },
     {
       "group": "tid",
@@ -85,5 +85,5 @@
     "scenario_id": "pair",
     "solver_outcome": "optimal"
   },
-  "uncertainty_ore": null
+  "uncertainty_kr": null
 }

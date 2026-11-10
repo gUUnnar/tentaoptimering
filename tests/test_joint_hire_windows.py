@@ -26,7 +26,7 @@ from tentaoptimering.joint_validation import validate_run  # noqa: E402
 
 DAY1, DAY2 = date(2026, 6, 1), date(2026, 6, 2)
 SLOTS = (CandidateSlot("d1", DAY1, "08:00", 480, 1200), CandidateSlot("d2", DAY2, "08:00", 480, 1200))
-WINDOW_COST = 1_000_000
+WINDOW_COST = 10_000
 
 
 def _demand(demand_id: str, count: int, slot: str = "d1") -> ExamDemand:
@@ -57,39 +57,39 @@ class HireWindowCostTests(unittest.TestCase):
         result = solve_joint_optimization(_problem(demands, _halls(), (_window(),)))
         self.assertEqual(result.solver.outcome, "optimal")
         self.assertEqual({row["room_id"] for row in result.room_sessions}, {"hall-a", "hall-b"})
-        self.assertEqual(result.costs.external_room_session_cost_ore, WINDOW_COST)
-        self.assertEqual(result.costs.comparable_total_cost_ore, WINDOW_COST)
+        self.assertEqual(result.costs.external_room_session_cost_kr, WINDOW_COST)
+        self.assertEqual(result.costs.comparable_total_cost_kr, WINDOW_COST)
 
     def test_the_window_is_paid_once_for_sessions_on_several_days(self) -> None:
         demands = (_demand("e1", 80, "d1"), _demand("e2", 80, "d2"))
         result = solve_joint_optimization(_problem(demands, _halls(), (_window(),)))
-        self.assertEqual(result.costs.external_room_session_cost_ore, WINDOW_COST)
+        self.assertEqual(result.costs.external_room_session_cost_kr, WINDOW_COST)
 
     def test_a_cheaper_own_room_avoids_the_hire(self) -> None:
-        own = Room("own", "main", "Uppsala", 100, 5000)
+        own = Room("own", "main", "Uppsala", 100, 50)
         result = solve_joint_optimization(_problem((_demand("e1", 80),), (own, *_halls()), (_window(),)))
         self.assertEqual({row["room_id"] for row in result.room_sessions}, {"own"})
-        self.assertEqual(result.costs.external_room_session_cost_ore, 0)
-        self.assertEqual(result.costs.comparable_total_cost_ore, 5000)
+        self.assertEqual(result.costs.external_room_session_cost_kr, 0)
+        self.assertEqual(result.costs.comparable_total_cost_kr, 50)
 
     def test_a_hire_is_used_when_it_is_cheaper_than_owning_more_rooms(self) -> None:
-        own = Room("own", "main", "Uppsala", 100, 5_000_000)
+        own = Room("own", "main", "Uppsala", 100, 50000)
         result = solve_joint_optimization(_problem((_demand("e1", 80),), (own, *_halls()), (_window(),)))
-        self.assertEqual(result.costs.external_room_session_cost_ore, WINDOW_COST)
-        self.assertEqual(result.costs.annual_room_cost_ore, 0)
+        self.assertEqual(result.costs.external_room_session_cost_kr, WINDOW_COST)
+        self.assertEqual(result.costs.annual_room_cost_kr, 0)
 
     def test_a_window_outside_the_exam_days_costs_nothing(self) -> None:
         later = _window(start=DAY2 + timedelta(days=30), end=DAY2 + timedelta(days=34))
-        own = Room("own", "main", "Uppsala", 100, 5000)
+        own = Room("own", "main", "Uppsala", 100, 50)
         result = solve_joint_optimization(_problem((_demand("e1", 80),), (own, *_halls()), (later,)))
-        self.assertEqual(result.costs.external_room_session_cost_ore, 0)
+        self.assertEqual(result.costs.external_room_session_cost_kr, 0)
 
     def test_the_decomposed_strategy_falls_back_to_one_model(self) -> None:
         problem = replace(_problem((_demand("e1", 80),), _halls(), (_window(),)), solver=SolverSettings(20, 1, 1, False, "decomposed"))
         result = solve_joint_optimization(problem)
         self.assertEqual(result.solver.outcome, "optimal")
         self.assertEqual(result.solver.strategy, "monolithic")
-        self.assertEqual(result.costs.external_room_session_cost_ore, WINDOW_COST)
+        self.assertEqual(result.costs.external_room_session_cost_kr, WINDOW_COST)
 
 
 class HireWindowValidationTests(unittest.TestCase):
@@ -107,8 +107,8 @@ class HireWindowValidationTests(unittest.TestCase):
             write_run(run, problem_json, result_json)
             rules = {item["rule_id"]: item for item in validate_run(run)["rules"]}
             self.assertEqual(rules["costs_recomputed"]["status"], "pass")
-            result_json["costs"]["external_room_session_cost_ore"] -= WINDOW_COST  # a plan that forgets the hire is not accepted
-            result_json["costs"]["comparable_total_cost_ore"] -= WINDOW_COST
+            result_json["costs"]["external_room_session_cost_kr"] -= WINDOW_COST  # a plan that forgets the hire is not accepted
+            result_json["costs"]["comparable_total_cost_kr"] -= WINDOW_COST
             write_run(run, problem_json, result_json)
             rules = {item["rule_id"]: item for item in validate_run(run)["rules"]}
             self.assertEqual(rules["costs_recomputed"]["status"], "fail")
@@ -123,12 +123,12 @@ class HirePackTests(unittest.TestCase):
         self.assertEqual([item.window_id for item in pack.hire_windows], ["hw-fyrishov-2026-01", "hw-fyrishov-2026-06"])
         slots = tuple(CandidateSlot(f"s{index}", day, "08:00", 480, 1200) for index, day in enumerate(
             (date(2026, 1, 13), date(2026, 3, 10), date(2026, 6, 2))))
-        halls = tuple(Room(f"uu-fyrishov-hall-{letter}", "fyrishov", "Uppsala", 300, 0, external_session_cost_ore=900, kind="external")
+        halls = tuple(Room(f"uu-fyrishov-hall-{letter}", "fyrishov", "Uppsala", 300, 0, external_session_cost_kr=9, kind="external")
                       for letter in "def")
         rooms, windows = apply_hire_windows(pack, halls, slots)
         self.assertEqual([w.window_id for w in windows], ["hw-fyrishov-2026-01", "hw-fyrishov-2026-06"])
         for room in rooms:
-            self.assertEqual(room.external_session_cost_ore, 0)
+            self.assertEqual(room.external_session_cost_kr, 0)
             self.assertEqual(room.available_slot_ids, ("s0", "s2"))  # usable only inside the hire weeks, not on 10 March
         only_june = tuple(slot for slot in slots if slot.scheduled_date >= date(2026, 6, 1))
         _, june = apply_hire_windows(pack, halls, only_june)
@@ -138,9 +138,9 @@ class HirePackTests(unittest.TestCase):
         from tentaoptimering.resource_data import ResourceDataError, _hire_window
 
         with self.assertRaises(ResourceDataError):
-            _hire_window({"id": "x", "name": "x", "room_ids": [], "start": "2026-01-12", "end": "2026-01-16", "cost_ore": 1}, "simulated")
+            _hire_window({"id": "x", "name": "x", "room_ids": [], "start": "2026-01-12", "end": "2026-01-16", "cost_kr": 0.01}, "simulated")
         with self.assertRaises(ResourceDataError):
-            _hire_window({"id": "x", "name": "x", "room_ids": ["a"], "start": "2026-01-16", "end": "2026-01-12", "cost_ore": 1}, "simulated")
+            _hire_window({"id": "x", "name": "x", "room_ids": ["a"], "start": "2026-01-16", "end": "2026-01-12", "cost_kr": 0.01}, "simulated")
 
 
 if __name__ == "__main__":

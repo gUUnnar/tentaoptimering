@@ -114,11 +114,11 @@ class RunRecordTests(unittest.TestCase):
         self.assertTrue(meta["name"].startswith("B – Grundoptimering"))
         other = self.workspace.run("case")
         self.assertEqual(read_meta(self.workspace.directory(other))["kind"], "C")  # not the base scenario
-        changed = self.workspace.run("joint_base", parameters={"cost.room_annual_per_seat_ore": 777})
+        changed = self.workspace.run("joint_base", parameters={"cost.room_annual_per_seat_kr": 7.77})
         self.assertEqual(read_meta(self.workspace.directory(changed))["kind"], "C")
 
     def test_a_run_has_the_name_it_was_given_and_says_which_underlay_and_model_it_used(self) -> None:
-        run_id = self.workspace.run(name="  Min   körning med  dyrare salar ", parameters={"cost.room_annual_per_seat_ore": 777})
+        run_id = self.workspace.run(name="  Min   körning med  dyrare salar ", parameters={"cost.room_annual_per_seat_kr": 7.77})
         meta = read_meta(self.workspace.directory(run_id))
         self.assertEqual(meta["name"], "Min körning med dyrare salar")
         self.assertEqual(meta["dataset_hash"], json.loads((self.workspace.directory(run_id) / "joint_input.json").read_text(encoding="utf-8"))["dataset_hash"])
@@ -126,33 +126,33 @@ class RunRecordTests(unittest.TestCase):
         self.assertTrue(meta["created_at"].endswith("Z"))
 
     def test_without_a_name_the_run_gets_one_that_says_what_was_changed(self) -> None:
-        run_id = self.workspace.run(parameters={"cost.room_annual_per_seat_ore": 777})
+        run_id = self.workspace.run(parameters={"cost.room_annual_per_seat_kr": 7.77})
         self.assertRegex(read_meta(self.workspace.directory(run_id))["name"], r"^C – .*\d\d:\d\d$")
 
     def test_C_uses_exactly_the_values_the_user_chose_and_nothing_else_changes(self) -> None:
         reference = self.workspace.run()
-        run_id = self.workspace.run(parameters={"cost.room_annual_per_seat_ore": 777, "window.later_days": 1})
+        run_id = self.workspace.run(parameters={"cost.room_annual_per_seat_kr": 7.77, "window.later_days": 1})
         params = lambda rid: {item["parameter_id"]: item["value"] for item in json.loads((self.workspace.directory(rid) / "joint_input.json").read_text(encoding="utf-8"))["parameters"]}
         before, after = params(reference), params(run_id)
-        self.assertEqual({key for key in before if before[key] != after[key]}, {"cost.room_annual_per_seat_ore", "window.later_days"})
-        self.assertEqual((after["cost.room_annual_per_seat_ore"], after["window.later_days"]), (777, 1))
-        self.assertEqual(read_meta(self.workspace.directory(run_id))["changes_from_base"], {"cost.room_annual_per_seat_ore": 777, "window.later_days": 1})
+        self.assertEqual({key for key in before if before[key] != after[key]}, {"cost.room_annual_per_seat_kr", "window.later_days"})
+        self.assertEqual((after["cost.room_annual_per_seat_kr"], after["window.later_days"]), (7.77, 1))
+        self.assertEqual(read_meta(self.workspace.directory(run_id))["changes_from_base"], {"cost.room_annual_per_seat_kr": 7.77, "window.later_days": 1})
 
     def test_a_saved_run_is_not_changed_by_the_next_run(self) -> None:
         first = self.workspace.run(name="Första")
         saved = _digest(self.workspace.directory(first))
-        second = self.workspace.run(name="Andra", parameters={"cost.room_annual_per_seat_ore": 5})
+        second = self.workspace.run(name="Andra", parameters={"cost.room_annual_per_seat_kr": 0.05})
         self.assertNotEqual(first, second)
         self.assertEqual(_digest(self.workspace.directory(first)), saved)
         self.assertEqual({row["run_id"]: row["name"] for row in abc_compare.list_runs(self.workspace.storage)}, {first: "Första", second: "Andra"})
 
     def test_the_scenario_file_is_never_changed_by_a_run_with_other_values(self) -> None:
         source = (self.workspace.scenarios / "joint_base.toml").read_bytes()
-        self.workspace.run("joint_base", parameters={"cost.room_annual_per_seat_ore": 777})
+        self.workspace.run("joint_base", parameters={"cost.room_annual_per_seat_kr": 7.77})
         self.assertEqual((self.workspace.scenarios / "joint_base.toml").read_bytes(), source)
 
     def test_a_run_can_be_repeated_or_used_as_the_base_of_the_next(self) -> None:
-        first = self.workspace.run(name="Grund", parameters={"cost.room_annual_per_seat_ore": 777})
+        first = self.workspace.run(name="Grund", parameters={"cost.room_annual_per_seat_kr": 7.77})
         saved = _digest(self.workspace.directory(first))
         again = self.workspace.run(scenario_id_for_run(first), name="Igen")
         meta = read_meta(self.workspace.directory(again))
@@ -206,11 +206,11 @@ class CompareTests(unittest.TestCase):
         result = abc_compare.compare(self.storage, first, second)
         self.assertEqual([item["id"] for item in result["parameter_changes"]], ["window.later_days"])
         self.assertTrue(result["comparable"])
-        self.assertEqual(result["cost"]["model_difference"]["ore"], result["cost"]["right"]["total_ore"] - result["cost"]["left"]["total_ore"])
+        self.assertEqual(result["cost"]["model_difference"]["kr"], result["cost"]["right"]["total_kr"] - result["cost"]["left"]["total_kr"])
 
     def test_cost_is_not_compared_when_the_cost_assumptions_differ(self) -> None:
         first = self.workspace.run("joint_base")
-        second = self.workspace.run("joint_base", parameters={"cost.room_annual_per_seat_ore": 777})
+        second = self.workspace.run("joint_base", parameters={"cost.room_annual_per_seat_kr": 7.77})
         result = abc_compare.compare(self.storage, first, second)
         self.assertIsNone(result["cost"]["model_difference"])
         self.assertIs(result["cost"]["interpretable"], False)

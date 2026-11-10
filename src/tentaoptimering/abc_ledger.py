@@ -13,6 +13,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .legacy_money import loads as upgraded_loads
+
 from .joint_contract import JointOptimizationInput, Room, read_problem
 from .joint_options import building_id
 from .joint_pricing import COMPONENTS, PricedSession, price, staffing_totals
@@ -44,7 +46,7 @@ class Ledger:
     participants: int = 0
     complete: bool = True
     unpriced: list[dict[str, Any]] = field(default_factory=list)
-    gap_ore: int | None = None
+    gap_kr: float | None = None
     proven_optimum: bool | None = None
     observed_staffing: list[dict[str, Any]] = field(default_factory=list)
     # Temporary rules that were applied to price the booking (for example address-only bookings), shown with the result.
@@ -52,7 +54,7 @@ class Ledger:
 
     @property
     def total(self) -> int:
-        return self.components["comparable_total_cost_ore"]
+        return self.components["comparable_total_cost_kr"]
 
     @property
     def exam_ids(self) -> frozenset[str]:
@@ -64,7 +66,7 @@ def read_snapshot(directory: Path) -> dict[str, Any] | None:
     if not path.is_file():
         return None
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = upgraded_loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
     return value if isinstance(value, dict) else None
@@ -79,17 +81,17 @@ def _exam_row(exam: dict[str, Any]) -> dict[str, Any]:
 def run_ledger(directory: Path, profile: dict[str, Any]) -> Ledger:
     """The ledger of a saved run with a verified solution; `profile` is its `run_profile` (placement in the shared exam form)."""
     problem = read_problem(Path(directory) / "joint_input.json")
-    result = json.loads((Path(directory) / "joint_result.json").read_text(encoding="utf-8"))
+    result = upgraded_loads((Path(directory) / "joint_result.json").read_text(encoding="utf-8"))
     from .joint_pricing import sessions_from_result
 
     sessions = [replace(item, exam_ids=tuple(name.removeprefix("exam-") for name in item.exam_ids)) for item in sessions_from_result(problem, result)]  # event ids, as in A
     reported = result.get("costs") or {}
-    components = {name: int(reported.get(name, 0)) for name in (*COMPONENTS, "comparable_total_cost_ore")}
+    components = {name: reported.get(name, 0) for name in (*COMPONENTS, "comparable_total_cost_kr")}
     exams = {item["exam_event_id"]: _exam_row(item) for item in profile.get("exams", ()) if item.get("status") == "placed"}
     cost = profile.get("cost") or {}
     return Ledger(profile["ref"], profile["kind"], profile["name"], problem, read_snapshot(directory), COST_KIND_RUN, sessions, exams, components,
                   staffing_totals(problem, sessions), problem.dataset_hash, sum(item.participant_count for item in problem.demands), True, [],
-                  cost.get("gap_ore"), cost.get("proven_optimum"))
+                  cost.get("gap_kr"), cost.get("proven_optimum"))
 
 
 def _minutes(text: str | None) -> int | None:

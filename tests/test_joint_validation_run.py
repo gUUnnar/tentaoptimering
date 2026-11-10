@@ -33,8 +33,8 @@ exam_event_ids = ["X", "Y"]
 [parameters]
 "calendar.start_times" = ["08:00", "14:00"]
 "staffing.ladder" = [{max_participants = 60, required_staff = 1}]
-"cost.room_annual_per_seat_ore" = 100
-"cost.staff_annual_ore" = 1000
+"cost.room_annual_per_seat_kr" = 1
+"cost.staff_annual_kr" = 10
 "solver.time_limit_seconds" = 10.0
 "solver.workers" = 1
 """
@@ -174,7 +174,7 @@ class CliTests(unittest.TestCase):
         path = self.runs / run_id / "joint_result.json"
         original = path.read_text(encoding="utf-8")
         result = json.loads(original)
-        result["costs"]["annual_room_cost_ore"] += 1
+        result["costs"]["annual_room_cost_kr"] += 1
         path.write_text(json.dumps(result), encoding="utf-8")
         code, again = self._main("validate-joint-run", "--run-id", run_id)
         self.assertEqual((code, again["status"]), (3, "technical_validation_failed"))
@@ -224,11 +224,11 @@ class RealSubsetRegressionTests(unittest.TestCase):
     def test_real_run_numbers_are_recomputed_independently(self) -> None:
         result = json.loads((self.directory / "joint_result.json").read_text(encoding="utf-8"))
         self.assertEqual(result["solver"]["outcome"], "optimal")
-        self.assertEqual(result["costs"]["comparable_total_cost_ore"], 37_900_000)
+        self.assertEqual(result["costs"]["comparable_total_cost_kr"], 379000)
         self.assertEqual((result["staff_pool_size"], result["changed_exam_demands"]), (3, 4))
         rules = self._rules()
         self.assertIn("Poolen 3 täcker maximal samtidig bemanning 3", rules["staff_pool_covers_peak"]["reason"])
-        self.assertIn("37900000", rules["costs_recomputed"]["reason"])
+        self.assertIn("379000 kr", rules["costs_recomputed"]["reason"])
         self.assertIn("4 flyttade", rules["changed_exams_recomputed"]["reason"])
         self.assertIn("266", rules["scope_disclosed"]["reason"])
         self.assertIn("266", rules["population_completeness"]["reason"])

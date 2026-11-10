@@ -9,7 +9,7 @@ Dokumentet anger motorns kontrakt och godkännandekriterier. Det ersätter inte 
 
 Motorn ska gemensamt välja tentamensdatum/pass, salstillfällen, lokalportfölj och bemanning för användarens valda sammanhängande planeringsperiod. Perioden får vara en dag, en vecka, en termin eller längre inom dokumenterad datatäckning. En godkänd lösning täcker exakt hela den inkluderade efterfrågan. Om den inte kan göra det ska huvudmodellen rapportera ogenomförbarhet; en separat diagnostikmodell kan peka ut resursbrist men är inte en lösning.
 
-Ekonomiskt resultat uttrycks i öre. Först minimeras jämförbar årskostnad. Bland lösningar med samma kostnad minimeras sedan dokumenterade förändringspreferenser, exempelvis avvikelse från historiska datum och rum.
+Ekonomiskt resultat uttrycks i kronor (högst två decimaler; lösaren räknar internt i hundradelar, se `money.py`). Först minimeras jämförbar årskostnad. Bland lösningar med samma kostnad minimeras sedan dokumenterade förändringspreferenser, exempelvis avvikelse från historiska datum och rum.
 
 ## Kanoniskt tentamensbehov
 
@@ -106,10 +106,10 @@ För första terminskörningen i verklig datastorlek används dessutom en uttryc
 
 **Betald personaltid.** För varje sal och pass finns en produkt `vakter × betald längd` (`joint_paid_time.py`): betald längd är salstillfällets längsta tentamen plus förberedelse och avslut, lägst kortaste betalda pass, plus salens betalda restid, och noll om salen inte har något tillfälle. Kostnaden är kostnaden per betald minut gånger summan. Samma termer byggs för den monolitiska modellen och för varje dagkontroll i den dekomponerade strategin; relaxationen får en giltig undre gräns (varje vaktposition betalas minst den kortaste kandidattentamen i passet). Eftersom gränsen är svagare än den exakta kostnaden kan gapet vara större med betald tid, men resultatet kontrolleras alltid exakt dag för dag.
 
-**Externa salar** är salar utan fast årskostnad med en kostnad per salstillfälle (`Room.external_session_cost_ore`); kontraktet hade redan stödet och resursdata är nu dataadaptern som skapar dem.
+**Externa salar** är salar utan fast årskostnad med en kostnad per salstillfälle (`Room.external_session_cost_kr`); kontraktet hade redan stödet och resursdata är nu dataadaptern som skapar dem.
 
 **Fasta bokningar** (`Reservation`) spärrar en sal för en tid: ett salstillfälle måste sluta minst ställtiden före bokningens start eller börja minst ställtiden efter dess slut, och en sal med en fast bokning är alltid använd (`owned = 1`). Relaxationen fixerar bara att salen är använd; själva spärren prövas i dagkontrollerna. `joint_blocking.py`.
 
-**Kontrakt.** `joint-optimization-input-v3` lägger till `reservations`, `resource_basis`, `Room.name/cost_object_id/cost_origin/kind/travel_paid_minutes` och `StaffingCostPolicy.paid_minute_cost_ore/min_paid_minutes`; resultatet `staffing_summary` och `costs.staff_paid_time_cost_ore`. Äldre filer läses med standardvärden.
+**Kontrakt.** `joint-optimization-input-v3` lägger till `reservations`, `resource_basis`, `Room.name/cost_object_id/cost_origin/kind/travel_paid_minutes` och `StaffingCostPolicy.paid_minute_cost_kr/min_paid_minutes`; resultatet `staffing_summary` och `costs.staff_paid_time_cost_kr`. Äldre filer läses med standardvärden.
 
 **Prissättning av en given plan.** `joint_pricing.py` prissätter vilken plan som helst (en körning eller den faktiska bokningen) med en sparad körnings regler; den används av jämförelsen (`abc_ledger.py`, `abc_explain.py`) och testas mot optimeraren och valideraren i `tests/test_joint_paid_time_differential.py`.

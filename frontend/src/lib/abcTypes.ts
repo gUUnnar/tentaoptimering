@@ -14,7 +14,7 @@ export type AbcRun = {
   created_at: string | null
   solver_outcome: string | null
   has_placement: boolean
-  cost_ore: number | null
+  cost_kr: number | null
   exam_count: number
   changes_from_base: Record<string, unknown> | null
   /** Byggd på det underlag som gäller nu; null när det inte går att avgöra. */
@@ -97,14 +97,14 @@ export type AbcCostSide =
   | { kind: "historical"; available: false; note: string }
   | { kind: "model"; available: false }
   | {
-    kind: "model"; available: true; total_ore: number | null; lower_bound_ore: number | null; gap_ore: number | null
-    proven_optimum: boolean | null; components: { key: string; label: string; ore: number | null }[]; note: string
+    kind: "model"; available: true; total_kr: number | null; lower_bound_kr: number | null; gap_kr: number | null
+    proven_optimum: boolean | null; components: { key: string; label: string; kr: number | null }[]; note: string
   }
 
 export type AbcCost = {
   left: AbcCostSide
   right: AbcCostSide
-  model_difference: { ore: number; uncertainty_ore: number | null; label: string } | null
+  model_difference: { kr: number; uncertainty_kr: number | null; label: string } | null
   interpretation: string | null
   interpretable: boolean | null
   savings_requirements: string[]
@@ -161,28 +161,28 @@ export type ExplainedBasisSide = {
   staffing_origin: "model_calculated" | "model_calculated_from_booked_places"
   priced_by: "own" | "the_other_alternative"
   reservations: string | null
-  optimum: { gap_ore: number | null; proven: boolean | null }
+  optimum: { gap_kr: number | null; proven: boolean | null }
 }
 
-export type ExplainedDriver = { kind: string; text: string; ore?: number; room_id?: string; count?: number; paid_minutes?: number; passes?: number }
+export type ExplainedDriver = { kind: string; text: string; kr?: number; room_id?: string; count?: number; paid_minutes?: number; passes?: number }
 
 export type ExplainedItem = {
   key: "rooms" | "external" | "staff"
   label: string
-  left_ore: number
-  right_ore: number
+  left_kr: number
+  right_kr: number
   /** Null när totalskillnaden spärras (ofullständigt eller oförenligt underlag): bara före och efter visas. */
-  difference_ore: number | null
+  difference_kr: number | null
   /** Förändrat resursutnyttjande (samma priser) respektive ändrade priser och antaganden; null när uppdelning inte går. */
-  usage_ore: number | null
-  assumption_ore: number | null
-  parts?: { key: string; label: string; left_ore: number; right_ore: number; difference_ore: number | null }[]
+  usage_kr: number | null
+  assumption_kr: number | null
+  parts?: { key: string; label: string; left_kr: number; right_kr: number; difference_kr: number | null }[]
   drivers: ExplainedDriver[]
 }
 
-export type ExplainedRealization = { status: string; reason: string; contract: { name: string; avoidable: string; notice_months: number | null; earliest_release_date: string | null; one_off_cost_ore: number | null; origin: ExplainOrigin } | null }
+export type ExplainedRealization = { status: string; reason: string; contract: { name: string; avoidable: string; notice_months: number | null; earliest_release_date: string | null; one_off_cost_kr: number | null; origin: ExplainOrigin } | null }
 
-export type ExplainedRoomSide = { used: boolean; reserved_only: boolean; sessions: number; booked_minutes: number; fixed_ore: number; external_ore: number; peak_participants: number }
+export type ExplainedRoomSide = { used: boolean; reserved_only: boolean; sessions: number; booked_minutes: number; fixed_kr: number; external_kr: number; peak_participants: number }
 
 export type ExplainedRoom = {
   room_id: string
@@ -194,16 +194,16 @@ export type ExplainedRoom = {
   status: "kept" | "avoidable" | "added"
   left: ExplainedRoomSide
   right: ExplainedRoomSide
-  difference_ore: number
-  fixed_difference_ore: number
-  external_difference_ore: number
+  difference_kr: number
+  fixed_difference_kr: number
+  external_difference_kr: number
   booked_minutes_difference: number
   reserved_only: boolean
 }
 
 export type ExplainedSession = {
   room_id: string; room: string; date: string; start: string; end: string; participants: number; staff: number
-  paid_minutes: number; external_ore: number; external: boolean; exams: string[]
+  paid_minutes: number; external_kr: number; external: boolean; exams: string[]
 }
 
 export type ExplainedExamChange = {
@@ -221,15 +221,15 @@ export type ExplainedStaffTotals = { passes: number; paid_minutes: number; worke
 /** Det som finns när båda sidor har en verifierad lösning, också när totalskillnaden spärras (`available` falskt). */
 export type ExplainedDetail = {
     basis: { left: ExplainedBasisSide; right: ExplainedBasisSide }
-    total: { left_ore: number; right_ore: number; difference_ore: number | null; label: string }
-    split: { available: boolean; usage_ore?: number; assumption_ore?: number; same_prices?: boolean; note?: string; reason?: string }
+    total: { left_kr: number; right_kr: number; difference_kr: number | null; label: string }
+    split: { available: boolean; usage_kr?: number; assumption_kr?: number; same_prices?: boolean; note?: string; reason?: string }
     items: ExplainedItem[]
     rooms: ExplainedRoom[]
     added_rooms: string[]
     sessions: {
       removed: ExplainedSession[]; added: ExplainedSession[]; changed: { before: ExplainedSession; after: ExplainedSession; paid_minutes_difference: number }[]
       unchanged: number; counts: { left: number; right: number; removed: number; added: number; changed: number }; truncated: boolean
-      external: { left: number; right: number; avoided: ExplainedSession[]; added: ExplainedSession[]; avoided_ore: number; added_ore: number }
+      external: { left: number; right: number; avoided: ExplainedSession[]; added: ExplainedSession[]; avoided_kr: number; added_kr: number }
     }
     staffing: {
       unit: string; left: ExplainedStaffTotals; right: ExplainedStaffTotals; difference: ExplainedStaffTotals
@@ -240,16 +240,16 @@ export type ExplainedDetail = {
     }
     exams: { compared: number; unchanged: number; time_changed: number; room_changed: number; changed: ExplainedExamChange[]; changed_count: number; truncated: boolean }
     realization: {
-      items: { room_id: string; name: string; kind: string; modelled_saving_ore: number; realization: ExplainedRealization }[]
-      summary: { modelled_saving_ore: number; verified_ore: number; conditional_ore: number; blocked_ore: number; note: string }
+      items: { room_id: string; name: string; kind: string; modelled_saving_kr: number; realization: ExplainedRealization }[]
+      summary: { modelled_saving_kr: number; verified_kr: number; conditional_kr: number; blocked_kr: number; note: string }
       contract_basis: { pack_id: string; origin: ExplainOrigin; sha256: string } | null
       note: string
     }
     savings_kinds: {
       historical: { available: boolean; note: string }
-      model_calculated: { available: boolean; difference_ore: number | null }
-      theoretical_annual_potential: { available: boolean; ore: number | null; note: string }
-      verified_realisable: { available: boolean; ore: number; note: string }
+      model_calculated: { available: boolean; difference_kr: number | null }
+      theoretical_annual_potential: { available: boolean; kr: number | null; note: string }
+      verified_realisable: { available: boolean; kr: number; note: string }
     }
     summary: string | null
     data_quality: { simulated: boolean; flags: { key: string; text: string }[] }

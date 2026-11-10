@@ -15,8 +15,8 @@ export const FEATURED_PARAM_IDS: readonly string[] = [
   "rooms.selection",
   "rooms.include_observed_unregistered",
   "demand.variation_pct",
-  "cost.room_annual_per_seat_ore",
-  "cost.staff_annual_ore",
+  "cost.room_annual_per_seat_kr",
+  "cost.staff_annual_kr",
   "solver.time_limit_seconds",
 ]
 

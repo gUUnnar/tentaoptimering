@@ -33,6 +33,7 @@ from ..joint_contract import (
     RESULT_SCHEMA_VERSION, CostBreakdown, CoverageSummary, JointOptimizationInput, JointOptimizationResult, SolverSummary,
 )
 from ..joint_costing import staffing_summary
+from ..money import from_units
 from ..joint_optimizer import _is_changed, _limitations, _verification
 from ..joint_progress import ProgressSink, emit, finished_event, phase, resources_event
 from .aggregate import Cut, solve_master
@@ -77,18 +78,19 @@ def solve_decomposed(
         total, changed = cost(problem, list(parts.values()))[-1], _changed(problem, list(parts.values()))
         if best is None or (total, changed) < best[:2]:
             best, best_source = (total, changed, parts), source
-            emit(progress, "incumbent", cost_ore=total, source=source, changed_exams=changed)
+            emit(progress, "incumbent", cost_kr=from_units(total), source=source, changed_exams=changed)
         if first_at is None:
             first_at = time.perf_counter() - started
             report.first_solution_seconds, report.first_solution_source = first_at, source
-            LOG.debug("first complete solution after %.1f s (%s): %s öre", first_at, source, total)
+            LOG.debug("first complete solution after %.1f s (%s): %s kr", first_at, source, from_units(total))
         return total
 
     hint = None
     if start is not None:
         with phase(progress, "warm_start_check"):
             parts, hint = warm_start(checker, *start, report)
-            report.verified_cost_ore = consider(parts, "warm start")
+            verified = consider(parts, "warm start")
+            report.verified_cost_kr = None if verified is None else from_units(verified)
         if parts is not None:
             report.status = ACCEPTED
     for rounds in range(1, MAX_ROUNDS + 1):
@@ -111,7 +113,7 @@ def solve_decomposed(
             break
         lower = max(lower, master.bound or 0)
         if master.bound is not None:
-            emit(progress, "bound", lower_ore=lower, round=rounds)
+            emit(progress, "bound", lower_kr=from_units(lower), round=rounds)
         economic = master.plans[0]
         hint = economic.choice
         parts, new_cuts = verify(checker, economic)
@@ -135,7 +137,7 @@ def solve_decomposed(
             problem, "no_feasibility_conclusion", "decomposed_cancelled" if report.interrupted else "decomposed_no_verified_solution",
             started, rounds, "Körningen avbröts innan någon dag-för-dag-verifierad lösning fanns." if report.interrupted
             else "Ingen dag-för-dag-verifierad lösning hittades inom tidsgränsen."), report.interrupted)
-    report.final_cost_ore, report.final_source = best[0], best_source
+    report.final_cost_kr, report.final_source = from_units(best[0]), best_source
     return finished_event(progress, _result(problem, list(best[2].values()), lower, proven, started, rounds, len(cuts), first_at,
                                             report.interrupted), report.interrupted)
 
@@ -164,14 +166,14 @@ def _result(problem, parts, lower, proven, started, rounds, cut_count, first_at,
         solver=SolverSummary(
             outcome="optimal" if proven and bound == total else "feasible_not_proven",
             raw_status=f"decomposed_rounds_{rounds}_cuts_{cut_count}_first_solution_{first_at:.0f}s" + ("_cancelled" if interrupted else ""),
-            objective_value_ore=total,
-            best_objective_bound_ore=bound,
+            objective_value_kr=from_units(total),
+            best_objective_bound_kr=from_units(bound),
             relative_gap=0.0 if bound == total else (total - bound) / max(1, total),
             wall_time_seconds=time.perf_counter() - started,
             change_preference_status="heuristic_history_plan_swapped_where_verified",
             strategy="decomposed",
         ),
-        costs=CostBreakdown(room_cost, external, pool_cost, session_cost, total, paid_cost),
+        costs=CostBreakdown(*(from_units(value) for value in (room_cost, external, pool_cost, session_cost, total, paid_cost))),
         coverage=CoverageSummary(
             len(problem.demands), len(schedule), participants, physical, non_room,
             len(schedule) == len(problem.demands) and physical + non_room == participants,

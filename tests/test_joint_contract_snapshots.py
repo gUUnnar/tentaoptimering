@@ -69,7 +69,7 @@ def build() -> dict[str, dict]:
     owner = Case()
     workspace = Workspace(owner)
     first = _run(workspace)
-    second = _run(workspace, parameters={"cost.staff_annual_ore": 3000, "window.later_days": 1})
+    second = _run(workspace, parameters={"cost.staff_annual_kr": 30, "window.later_days": 1})
     job = workspace.start()
     done = _wait_for_end(workspace.jobs, job["job_id"])
     out["events_completed"] = one_event_per_type(done)
@@ -110,7 +110,7 @@ class ContractSnapshotTests(unittest.TestCase):
         self.assertTrue(verified["parameters_changed_from_default"])
         self.assertTrue(verified["has_verified_solution"])
         self.assertFalse(unverified["has_verified_solution"])
-        self.assertIsNone(unverified["cost_ore"])  # no cost without a verified solution
+        self.assertIsNone(unverified["cost_kr"])  # no cost without a verified solution
         self.assertIsInstance(load("events_failed")["error"], str)  # text, not an object
         self.assertIn("elapsed_seconds", load("events_completed"))
         options = load("options")

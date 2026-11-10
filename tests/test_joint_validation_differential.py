@@ -47,8 +47,8 @@ def _random_case(seed: int):
             [{"max_participants": 50, "required_staff": 1}, {"max_participants": 100, "required_staff": 2}, {"max_participants": 300, "required_staff": 3}],
         )),
         "staffing.preparation_minutes": rng.choice((0, 15, 30)), "staffing.closing_minutes": rng.choice((0, 15, 30)),
-        "cost.room_annual_per_seat_ore": rng.choice((0, 100, 200)), "cost.staff_annual_ore": rng.choice((0, 1000, 5000)),
-        "cost.staff_session_ore": rng.choice((0, 50)), "digital.partial_support_policy": rng.choice(("allow_unverified", "exclude")),
+        "cost.room_annual_per_seat_kr": rng.choice((0, 100, 200)), "cost.staff_annual_kr": rng.choice((0, 1000, 5000)),
+        "cost.staff_session_kr": rng.choice((0, 50)), "digital.partial_support_policy": rng.choice(("allow_unverified", "exclude")),
         "digital.unknown_demand_policy": rng.choice(("require_e_exam", "assume_paper")),
         "demand.variation_pct": rng.choice((0, 0, 10, -10)),
     }

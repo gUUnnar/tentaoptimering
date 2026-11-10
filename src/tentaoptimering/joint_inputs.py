@@ -14,6 +14,8 @@ from typing import Any
 
 import pandas as pd
 
+from .legacy_money import upgrade_scenario
+from .money import kmul
 from .joint_contract import (
     INPUT_SCHEMA_VERSION,
     CandidateSlot,
@@ -56,7 +58,7 @@ def build_real_subset_problem(
 
     Every behaviour below is driven by the frozen parameter values, never by raw scenario keys.
     """
-    config = tomllib.loads(config_path.read_text(encoding="utf-8"))
+    config = upgrade_scenario(tomllib.loads(config_path.read_text(encoding="utf-8")))  # an older file in öre is read as kronor
     if config.get("schema_version") != "joint-real-subset-v1":
         raise ValueError(f"Okänd konfigurationsversion: {config.get('schema_version')}")
     demands_frame = pd.read_csv(processed_dir / "optimization_demands.csv", encoding="utf-8-sig")
@@ -82,7 +84,7 @@ def build_real_subset_problem(
     if values["rooms.include_observed_unregistered"]:
         inventory_path = processed_dir / "room_inventory.csv"
         inventory = pd.read_csv(inventory_path, encoding="utf-8-sig") if inventory_path.is_file() else None
-        price = int(values["cost.room_annual_per_seat_ore"])
+        price = values["cost.room_annual_per_seat_kr"]
         extra = observed_unregistered_rooms(inventory, config["subset"]["plan_area"], tuple(slot.slot_id for slot in slots), {room.room_id for room in rooms})
         rooms = rooms + tuple(with_price(room, price) for room in extra)
     ladder = tuple(
@@ -104,11 +106,11 @@ def build_real_subset_problem(
         rooms=rooms,
         staffing=StaffingCostPolicy(
             ladder=ladder,
-            annual_cost_ore_per_staff=staff["annual_cost_ore_per_staff"]["value"],
-            cost_ore_per_staff_session=int(values["cost.staff_session_ore"]),
+            annual_cost_kr_per_staff=staff["annual_cost_kr_per_staff"]["value"],
+            cost_kr_per_staff_session=values["cost.staff_session_kr"],
             preparation_minutes=int(values["staffing.preparation_minutes"]),
             closing_minutes=int(values["staffing.closing_minutes"]),
-            paid_minute_cost_ore=staff["paid_minute_cost_ore"]["value"],
+            paid_minute_cost_kr=staff["paid_minute_cost_kr"]["value"],
             min_paid_minutes=staff["min_paid_minutes"]["value"],
         ),
         solver=SolverSettings(
@@ -279,8 +281,8 @@ def _rooms(
                 building_id=building_id(str(row.reference_address)),
                 plan_area=str(row.reference_city),
                 capacity=int(row.capacity_seats),
-                annual_fixed_cost_ore=int(row.capacity_seats) * int(values["cost.room_annual_per_seat_ore"]),
-                external_session_cost_ore=0,
+                annual_fixed_cost_kr=kmul(values["cost.room_annual_per_seat_kr"], int(row.capacity_seats)),
+                external_session_cost_kr=0,
                 digital_capabilities=capabilities,
                 available_slot_ids=tuple(
                     slot.slot_id for slot in slots
@@ -358,7 +360,7 @@ def run_real_subset(
             # The solver may have ended well, but the run did not: its held-back success event must not end the log.
             progress.discard("finished")
             if not progress.has("finished"):
-                emit(progress, "finished", outcome="failed", cost_ore=None, bound_ore=None,
+                emit(progress, "finished", outcome="failed", cost_kr=None, bound_kr=None,
                      cancelled=bool(cancel and cancel.cancelled), error=f"{type(error).__name__}: {error}")
         raise
     finally:

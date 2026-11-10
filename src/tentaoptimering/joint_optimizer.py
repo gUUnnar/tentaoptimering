@@ -23,6 +23,7 @@ from .joint_blocking import apply_reservations, reserved_rooms
 from .joint_costing import staffing_summary
 from .joint_hire import add_hire_windows
 from .joint_paid_time import add_paid_time
+from .money import from_units, to_units
 from .joint_preference import has_preference, penalty_weights
 from .joint_progress import ProgressSink, emit, finished_event
 
@@ -91,17 +92,17 @@ def _solve(
         for (exam, slot_id), var in variables.selected.items():
             model.AddHint(var, int(seed[0].get(exam) == slot_id))
     room_cost = sum(
-        room.annual_fixed_cost_ore * variables.owned[room.room_id]
+        to_units(room.annual_fixed_cost_kr) * variables.owned[room.room_id]
         for room in problem.rooms
     )
     external_cost = sum(
-        room.external_session_cost_ore * variables.sessions[room.room_id, slot.slot_id]
+        to_units(room.external_session_cost_kr) * variables.sessions[room.room_id, slot.slot_id]
         for room in problem.rooms
         for slot in problem.slots
     )
     external_cost = external_cost + add_hire_windows(model, problem, variables.sessions)
-    staff_pool_cost = problem.staffing.annual_cost_ore_per_staff * variables.staff_pool
-    staff_session_cost = problem.staffing.cost_ore_per_staff_session * sum(variables.staff.values())
+    staff_pool_cost = to_units(problem.staffing.annual_cost_kr_per_staff) * variables.staff_pool
+    staff_session_cost = to_units(problem.staffing.cost_kr_per_staff_session) * sum(variables.staff.values())
     paid_time_cost = add_paid_time(model, problem, variables)
     total_cost = room_cost + external_cost + staff_pool_cost + staff_session_cost + paid_time_cost
     changed_terms = _change_terms(problem, variables.selected)
@@ -156,12 +157,12 @@ def _solve(
         if _is_changed(demand_by_id[row["exam_demand_id"]], row["slot_id"], slots)
     )
     costs = CostBreakdown(
-        annual_room_cost_ore=int(solver.Value(room_cost)),
-        external_room_session_cost_ore=int(solver.Value(external_cost)),
-        annual_staff_pool_cost_ore=int(solver.Value(staff_pool_cost)),
-        staff_session_cost_ore=int(solver.Value(staff_session_cost)),
-        comparable_total_cost_ore=int(solver.Value(total_cost)),
-        staff_paid_time_cost_ore=int(solver.Value(paid_time_cost)) if not isinstance(paid_time_cost, int) else 0,
+        annual_room_cost_kr=from_units(solver.Value(room_cost)),
+        external_room_session_cost_kr=from_units(solver.Value(external_cost)),
+        annual_staff_pool_cost_kr=from_units(solver.Value(staff_pool_cost)),
+        staff_session_cost_kr=from_units(solver.Value(staff_session_cost)),
+        comparable_total_cost_kr=from_units(solver.Value(total_cost)),
+        staff_paid_time_cost_kr=from_units(solver.Value(paid_time_cost)) if not isinstance(paid_time_cost, int) else 0,
     )
     return JointOptimizationResult(
         schema_version=RESULT_SCHEMA_VERSION,
@@ -169,8 +170,8 @@ def _solve(
         solver=SolverSummary(
             outcome="optimal" if proven else "feasible_not_proven",
             raw_status=economic_solver.StatusName(economic_status).lower(),
-            objective_value_ore=cost_value,
-            best_objective_bound_ore=bound,
+            objective_value_kr=from_units(cost_value),
+            best_objective_bound_kr=from_units(bound),
             relative_gap=gap,
             wall_time_seconds=elapsed,
             change_preference_status=change_status,

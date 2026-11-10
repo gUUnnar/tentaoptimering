@@ -22,7 +22,7 @@ function checks(kind: string, t: number, outcomes: Record<string, DayStatus>): D
   })
   return out
 }
-const finished = (t: number, extra: Record<string, unknown> = {}): Draft => ({ type: "finished", outcome: "feasible_not_proven", cost_ore: 1, bound_ore: 1, cancelled: false, t, ...extra })
+const finished = (t: number, extra: Record<string, unknown> = {}): Draft => ({ type: "finished", outcome: "feasible_not_proven", cost_kr: 1, bound_kr: 1, cancelled: false, t, ...extra })
 
 const OK: DayStatus = "optimal"
 const FAIL: DayStatus = "infeasible"
@@ -31,12 +31,12 @@ const FAIL: DayStatus = "infeasible"
 function threeRounds(): JointEvent[] {
   return numbered([
     { type: "warm_start", decision: "not_used", explanation: "Ingen tidigare körning kunde användas.", source_run_id: null, t: 0 },
-    phase("relaxation", 0, "started"), { type: "bound", lower_ore: 100, round: 1, t: 10 }, phase("relaxation", 10, "finished"),
+    phase("relaxation", 0, "started"), { type: "bound", lower_kr: 100, round: 1, t: 10 }, phase("relaxation", 10, "finished"),
     phase("day_checks", 10, "started"), ...checks("day", 10, { "2026-01-12": FAIL, "2026-01-13": FAIL, "2026-01-14": OK, "2026-01-15": FAIL, "2026-01-16": FAIL }), phase("day_checks", 20, "finished"),
     phase("repair", 20, "started"), ...checks("diagnosis", 20, { "2026-01-12": FAIL, "2026-01-13": OK }), phase("repair", 25, "finished"),
-    phase("relaxation", 25, "started"), { type: "bound", lower_ore: 120, round: 2, t: 33 }, phase("relaxation", 33, "finished"),
+    phase("relaxation", 25, "started"), { type: "bound", lower_kr: 120, round: 2, t: 33 }, phase("relaxation", 33, "finished"),
     phase("day_checks", 33, "started"), ...checks("day", 33, { "2026-01-12": FAIL, "2026-01-13": OK, "2026-01-17": FAIL }), phase("day_checks", 38, "finished"),
-    phase("relaxation", 38, "started"), { type: "bound", lower_ore: 130, round: 3, t: 44 }, phase("relaxation", 44, "finished"),
+    phase("relaxation", 38, "started"), { type: "bound", lower_kr: 130, round: 3, t: 44 }, phase("relaxation", 44, "finished"),
     phase("day_checks", 44, "started"), ...checks("day", 44, { "2026-01-12": OK, "2026-01-13": OK }), phase("day_checks", 47, "finished"),
     phase("history", 47, "started"), ...checks("history", 47, { "2026-01-12": OK }), phase("history", 50, "finished"),
     phase("finalize", 50, "started"), phase("finalize", 52, "finished"), finished(52),
@@ -89,8 +89,8 @@ describe("tidslinje: varv och segment i körordning", () => {
   })
 
   it("undre gräns per varv hör till den grova planen", () => {
-    assert.deepEqual([1, 2, 3].map(round => timeline.blocks[round].segments[0].boundOre), [100, 120, 130])
-    assert.equal(timeline.blocks[1].segments[1].boundOre, null)
+    assert.deepEqual([1, 2, 3].map(round => timeline.blocks[round].segments[0].boundKr), [100, 120, 130])
+    assert.equal(timeline.blocks[1].segments[1].boundKr, null)
   })
 
   it("sammanfattning i klartext, härledd ur händelserna", () => {
@@ -155,7 +155,7 @@ describe("tidslinje: pågående, avbruten och misslyckad körning", () => {
   })
 
   it("misslyckad körning", () => {
-    const events = numbered([...upTo(15).map(event => ({ ...event })) as unknown as Draft[], finished(16, { outcome: "failed", cost_ore: null, bound_ore: null, error: "fel" })])
+    const events = numbered([...upTo(15).map(event => ({ ...event })) as unknown as Draft[], finished(16, { outcome: "failed", cost_kr: null, bound_kr: null, error: "fel" })])
     const timeline = buildTimeline(events, 20)
     assert.equal(timeline.ended, "failed")
     assert.equal(timeline.blocks[1].segments.at(-1)?.status, "stopped")

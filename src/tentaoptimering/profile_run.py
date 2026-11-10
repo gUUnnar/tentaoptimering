@@ -19,9 +19,9 @@ from .profile_common import room_usage, utilization
 from .run_meta import KIND_USER, read_meta, staleness
 from .wishes import RANKS, date_rank
 
-COMPONENT_LABELS = (("annual_room_cost_ore", "Lokaler"), ("annual_staff_pool_cost_ore", "Vaktpool"),
-                    ("external_room_session_cost_ore", "Externa salstillfällen"), ("staff_session_cost_ore", "Rörlig bemanning"),
-                    ("staff_paid_time_cost_ore", "Betald personaltid"))
+COMPONENT_LABELS = (("annual_room_cost_kr", "Lokaler"), ("annual_staff_pool_cost_kr", "Vaktpool"),
+                    ("external_room_session_cost_kr", "Externa salstillfällen"), ("staff_session_cost_kr", "Rörlig bemanning"),
+                    ("staff_paid_time_cost_kr", "Betald personaltid"))
 DIAGNOSIS_FILE = "joint_diagnosis.json"
 
 
@@ -60,7 +60,7 @@ def run_profile(storage: AppStorage, run_id: str, current_dataset_hash: str | No
     base = {"ref": run_id, "kind": kind, "name": run_name(storage, run_id, meta), "meta": meta, "stale": stale,
             "scope": {"exam_count": len(problem.get("demands", [])), "participants": sum(sum(g["participant_count"] for g in d["participant_groups"]) for d in problem.get("demands", []))},
             "dataset_hash": problem.get("dataset_hash"), "summary": {key: summary.get(key) for key in (
-                "solver_outcome", "has_verified_solution", "cost_ore", "lower_bound_ore", "gap_ore", "cost_is_proven_optimum", "changed_exams", "staff_pool_size",
+                "solver_outcome", "has_verified_solution", "cost_kr", "lower_bound_kr", "gap_kr", "cost_is_proven_optimum", "changed_exams", "staff_pool_size",
                 "wall_time_seconds", "unverified_reason", "cancelled", "verdicts", "planning_basis")}}
     if not summary["has_verified_solution"]:
         return {**base, "available": False, "unavailable_reason": summary.get("unverified_reason") or "Körningen har ingen verifierad lösning.", "exams": [], "metrics": {},
@@ -130,9 +130,9 @@ def _placed(storage: AppStorage, directory: Path, problem: dict[str, Any], resul
         "metrics": {"rooms_used": len(used), "rooms_in_model_register": len(used - outside), "rooms_outside_model_register": len(outside), "addresses_without_room": 0,
                     "non_physical_places": 0, "staff_pool": result.get("staff_pool_size")},
         "wish_distribution": distribution, "room_usage": room_usage(items), "utilization": utilization(items, per_day), "unplaced": [],
-        "cost": {"kind": "model", "available": True, "total_ore": summary.get("cost_ore"), "lower_bound_ore": summary.get("lower_bound_ore"), "gap_ore": summary.get("gap_ore"),
+        "cost": {"kind": "model", "available": True, "total_kr": summary.get("cost_kr"), "lower_bound_kr": summary.get("lower_bound_kr"), "gap_kr": summary.get("gap_kr"),
                  "proven_optimum": summary.get("cost_is_proven_optimum"),
-                 "components": [{"key": key, "label": label, "ore": costs.get(key)} for key, label in COMPONENT_LABELS if costs.get(key)],
+                 "components": [{"key": key, "label": label, "kr": costs.get(key)} for key, label in COMPONENT_LABELS if costs.get(key)],
                  "note": "Modellkostnad med scenariots proxypriser och antaganden. Inte faktisk kostnad och inte en verifierad besparing."},
         "notes": notes + list(result.get("limitations") or [])[:6],
     }

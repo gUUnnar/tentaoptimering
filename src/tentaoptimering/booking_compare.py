@@ -19,6 +19,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .legacy_money import loads as upgraded_loads
+
 import pandas as pd
 
 from .app_storage import AppStorage
@@ -30,7 +32,7 @@ RESULT_FILE, INPUT_FILE = "joint_result.json", "joint_input.json"
 
 def _json(path: Path) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = upgraded_loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
     return value if isinstance(value, dict) else {}

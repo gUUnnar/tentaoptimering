@@ -14,6 +14,9 @@ from pathlib import Path
 import re
 from typing import Any
 
+from .legacy_money import loads as upgraded_loads
+from .money import kdiff
+
 from .app_storage import AppStorage
 from .joint_parameters import group_of
 from .joint_scenarios import scenario_id_for_problem
@@ -24,14 +27,14 @@ from .parameter_catalog import ParameterCatalog
 PREVIOUS = "previous"
 _RUN_ID = re.compile(r"^(\d{8}T\d{6})Z-(.+)$")
 NO_PREVIOUS = "Ingen tidigare körning av samma scenario"
-_COST_METRICS = ("cost_ore", "lower_bound_ore", "gap_ore")
-_METRICS = ("cost_ore", "lower_bound_ore", "gap_ore", "changed_exams", "staff_pool_size", "rooms_used", "wall_time_seconds",
+_COST_METRICS = ("cost_kr", "lower_bound_kr", "gap_kr")
+_METRICS = ("cost_kr", "lower_bound_kr", "gap_kr", "changed_exams", "staff_pool_size", "rooms_used", "wall_time_seconds",
             "first_solution_seconds")
 
 
 def _read(path: Path) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = upgraded_loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
     return value if isinstance(value, dict) else {}
@@ -115,15 +118,15 @@ def _assumption_text(found: dict[str, list[str]]) -> str:
 
 def _metric(old: Any, new: Any, with_delta: bool) -> dict[str, Any]:
     both = isinstance(old, (int, float)) and isinstance(new, (int, float))
-    return {"old": old, "new": new, "delta": new - old if both and with_delta else None}
+    return {"old": old, "new": new, "delta": kdiff(new, old) if both and with_delta else None}
 
 
-def _kronor(ore: float) -> str:
-    return f"{round(abs(ore) / 100):,}".replace(",", " ") + " kr"
+def _kronor(amount: float) -> str:
+    return f"{round(abs(amount)):,}".replace(",", " ") + " kr"
 
 
 def interpret(delta: int | None, uncertainty: int | None) -> tuple[bool | None, str]:
-    """(interpretable, Swedish sentence) for a cost difference (new minus old) and the search uncertainty, both in öre."""
+    """(interpretable, Swedish sentence) for a cost difference (new minus old) and the search uncertainty, both in kronor."""
     suffix = " Beloppen är modellkostnad med scenariots proxypriser, inte faktisk kostnad."
     if delta is None:
         return None, "Kostnaden kan inte jämföras eftersom en av körningarna saknar kostnad." + suffix
@@ -154,8 +157,8 @@ def compare_runs(storage: AppStorage, run_id: str, base: str | None, catalog: Pa
     other = {**other, "rooms_used": rooms_used(base_directory)}
     current = {**current, "rooms_used": rooms_used(directory)}
     metrics = {name: _metric(other.get(name), current.get(name), reason is None) for name in _METRICS}
-    gaps = [item.get("gap_ore") for item in (other, current)]
-    uncertainty = max(gaps) if all(isinstance(gap, int) for gap in gaps) else None
+    gaps = [item.get("gap_kr") for item in (other, current)]
+    uncertainty = max(gaps) if all(isinstance(gap, (int, float)) and not isinstance(gap, bool) for gap in gaps) else None
     changes = _parameter_changes(catalog, old_params, new_params)
     if any(assumption_changes(changes).values()):
         for name in _COST_METRICS:  # N-5: amounts are compared only between runs with the same assumptions
@@ -184,7 +187,7 @@ def _incomparable(directory: Path, base_directory: Path, current: dict[str, Any]
 
 def _result(run: dict[str, Any], base: dict[str, Any] | None, comparable: bool, reason: str | None,
             changes: list[dict[str, Any]], metrics: dict[str, Any], uncertainty: int | None) -> dict[str, Any]:
-    cost = metrics.get("cost_ore", {})
+    cost = metrics.get("cost_kr", {})
     if base is None:
         interpretable, text = None, "Det finns ingen tidigare körning av samma scenario att jämföra med."
     elif not comparable:
@@ -197,5 +200,5 @@ def _result(run: dict[str, Any], base: dict[str, Any] | None, comparable: bool, 
             interpretable = False
             text = f"{_assumption_text(found)} Beloppen är modellkostnad med scenariots proxypriser, inte faktisk kostnad."
     return {"assumption_changes": assumption_changes(changes), "run": run, "base": base, "comparable": comparable, "reason": reason, "parameter_changes": changes,
-            "metrics": metrics, "uncertainty_ore": uncertainty if comparable else None, "interpretable": interpretable,
+            "metrics": metrics, "uncertainty_kr": uncertainty if comparable else None, "interpretable": interpretable,
             "interpretation": text}

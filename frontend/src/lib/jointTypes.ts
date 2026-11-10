@@ -1,5 +1,5 @@
 // Typer för API-kontraktet för optimeringen (/api/joint-runs/*, /api/runs/{id}/events, .../warm-start).
-// Belopp är alltid heltal i öre i API:et; gränssnittet visar och matar in kronor (se paramUnits.ts).
+// Belopp är alltid kronor (kr) i API:et och i gränssnittet; ingen omräkning sker.
 
 // ---- Scenarier och parametrar --------------------------------------------------------------------------------------
 
@@ -133,8 +133,8 @@ export type BatchEvent = EventBase & {
 export type DayEvent = EventBase & { type: "day"; date: string; kind: string; status: DayStatus; seconds: number; block?: string[] }
 /** En dagkontroll har börjat. */
 export type DayStartedEvent = EventBase & { type: "day_started"; date: string; kind: string; block?: string[] }
-export type IncumbentEvent = EventBase & { type: "incumbent"; cost_ore: number; source: string; changed_exams: number }
-export type BoundEvent = EventBase & { type: "bound"; lower_ore: number; round: number }
+export type IncumbentEvent = EventBase & { type: "incumbent"; cost_kr: number; source: string; changed_exams: number }
+export type BoundEvent = EventBase & { type: "bound"; lower_kr: number; round: number }
 export type WarmStartEvent = EventBase & {
   type: "warm_start"; decision: WarmStartDecisionName; explanation: string; source_run_id: string | null
 }
@@ -142,7 +142,7 @@ export type ResourcesEvent = EventBase & {
   type: "resources"; threads: number; memory_mb: number | null; parallel_checks: number; workers_per_check: number
 }
 export type FinishedEvent = EventBase & {
-  type: "finished"; outcome: string; cost_ore: number | null; bound_ore: number | null; cancelled: boolean; error?: string | null
+  type: "finished"; outcome: string; cost_kr: number | null; bound_kr: number | null; cancelled: boolean; error?: string | null
 }
 
 export type JointEvent =
@@ -157,7 +157,7 @@ export type EventsResponse = {
 }
 
 export type WarmStartCandidate = {
-  run_id: string; problem_id: string; solver_outcome: string; cost_ore: number | null
+  run_id: string; problem_id: string; solver_outcome: string; cost_kr: number | null
   has_placement: boolean; stored_technical_validation: string | null; warm_start_decision: string | null
 }
 
@@ -165,16 +165,16 @@ export type WarmStartRecheck = {
   status: string; reasons: string[]; notes: string[]
   exams_reused: number; exams_without_start: number; exams_not_allowed: number
   days_checked: number; days_failed: number; check_seconds: number
-  verified_cost_ore: number | null; hint_exams: number
+  verified_cost_kr: number | null; hint_exams: number
   first_solution_seconds: number | null; first_solution_source: string | null
-  final_cost_ore: number | null; final_source: string | null; interrupted: boolean
+  final_cost_kr: number | null; final_source: string | null; interrupted: boolean
 }
 
 export type WarmStartRecord = {
   decision: WarmStartDecisionName
   explanation: string
   requested: string
-  source: { run_id: string; cost_ore: number | null; technical_validation_now: string | null; result_sha256: string } | null
+  source: { run_id: string; cost_kr: number | null; technical_validation_now: string | null; result_sha256: string } | null
   changed_parameters: string[]
   recheck: WarmStartRecheck | null
   execution: { threads: number; memory_mb: number | null; parallel_day_checks: boolean; workers_per_check: number }
@@ -188,7 +188,7 @@ export type VerdictValue = string | { status?: string; reason?: string; [key: st
 export type JointSummary = {
   run_id: string | null; problem_id: string | null; scenario_id: string | null; created_at: string | null
   /** Alla kostnadsmått är null när körningen saknar verifierad lösning. */
-  cost_ore: number | null; bound_ore: number | null; gap_ore: number | null
+  cost_kr: number | null; bound_kr: number | null; gap_kr: number | null
   gap: number | null // gap som bråkdel, t.ex. 0.075
   changed_exams: number | null; exams_total: number | null; staff_pool_size: number | null
   first_solution_seconds: number | null; first_solution_basis: string | null; first_solution_source: string | null
@@ -223,7 +223,7 @@ export type CompareRunRef = {
 export type CompareParameterChange = { id: string; label: string; group: string; unit: string | null; old: unknown; new: unknown }
 export type MetricDelta = { old: number | null; new: number | null; delta: number | null }
 export type MetricKey =
-  | "cost_ore" | "lower_bound_ore" | "gap_ore" | "changed_exams" | "staff_pool_size" | "rooms_used"
+  | "cost_kr" | "lower_bound_kr" | "gap_kr" | "changed_exams" | "staff_pool_size" | "rooms_used"
   | "wall_time_seconds" | "first_solution_seconds"
 
 /** Antaganden som skiljer mellan körningarna, som läsbara namn. Är någon lista icke-tom går kostnadsskillnaden inte att tolka. */
@@ -236,7 +236,7 @@ export type CompareResult = {
   reason: string | null
   parameter_changes: CompareParameterChange[]
   metrics: Partial<Record<MetricKey, MetricDelta>>
-  uncertainty_ore: number | null
+  uncertainty_kr: number | null
   interpretable: boolean | null
   interpretation: string
   assumption_changes: AssumptionChanges

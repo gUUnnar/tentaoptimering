@@ -44,7 +44,7 @@ export function RunOptionsPanel({ problemId, options, onChange, hasChanges }: Pr
           <input type="radio" name={`${id}-candidate`} className="mt-0.5" disabled={!item.has_placement} checked={options.specific === item.run_id} onChange={() => set({ specific: item.run_id })}/>
           <span className="space-y-0.5">
             <span className="block font-mono text-[11px]">{item.run_id}</span>
-            <span className="block">Verifierad kostnad {formatKr(item.cost_ore)} · {outcomeLabel(item.solver_outcome)}</span>
+            <span className="block">Verifierad kostnad {formatKr(item.cost_kr)} · {outcomeLabel(item.solver_outcome)}</span>
             <span className="flex flex-wrap items-center gap-1.5">Teknisk eftervalidering när den sparades: <VerdictChip status={item.stored_technical_validation}/> <span className="text-slate-800">(kontrolleras om nu)</span></span>
             {!item.has_placement && <span className="block text-amber-900">Saknar sparad placering och kan inte användas.</span>}
           </span>

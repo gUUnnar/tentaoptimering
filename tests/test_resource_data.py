@@ -37,7 +37,7 @@ valid_to = "2026-12-31"
 id = "ko-shared"
 name = "Delat avtal"
 kind = "internal_rent"
-annual_cost_ore = 9000
+annual_cost_kr = 90
 avoidable = "unknown"
 origin = "simulated"
 
@@ -60,15 +60,15 @@ cost_object_id = "ko-shared"
 origin = "simulated"
 [room.charge]
 basis = "per_hour"
-price_ore = 1000
+price_kr = 10
 min_billed_minutes = 120
 assumed_billed_minutes = 300
 terms = "test"
 
 [staff]
-paid_minute_cost_ore = 7
+paid_minute_cost_kr = 0.07
 min_paid_shift_minutes = 90
-pool_annual_cost_ore = 0
+pool_annual_cost_kr = 0
 origin = "simulated"
 """
 
@@ -127,8 +127,8 @@ class PackContractTests(unittest.TestCase):
     def test_external_charge_is_a_priced_session(self) -> None:
         pack = resolve_pack("simulated_dev_2026", BUNDLED)
         hall_d, hall_f = pack.room("uu-fyrishov-hall-d"), pack.room("uu-fyrishov-hall-f")
-        self.assertEqual(hall_d.charge.session_cost_ore, 300000 * 300 // 60)  # 3 000 kr per hour, a pass billed as 5 hours
-        self.assertEqual(hall_f.charge.session_cost_ore, 1200000)  # a flat price per session
+        self.assertEqual(hall_d.charge.session_cost_kr, 15000)  # 3 000 kr per hour, a pass billed as 5 hours
+        self.assertEqual(hall_f.charge.session_cost_kr, 12000)  # a flat price per session
 
     def test_malformed_packs_are_refused_with_the_record_named(self) -> None:
         cases = {
@@ -155,27 +155,27 @@ class PackInRunTests(unittest.TestCase):
             problem = _build(Path(temp), {"resources.pack": "test_pack"})
         rooms = {room.room_id: room for room in problem.rooms}
         # uu-r1 shares a 9 000 contract with ext-hall (two rooms of the object): an even share of 4 500 (model calculated)
-        self.assertEqual((rooms["uu-r1"].annual_fixed_cost_ore, rooms["uu-r1"].cost_origin, rooms["uu-r1"].name), (4500, "model_calculated", "Sal ett"))
+        self.assertEqual((rooms["uu-r1"].annual_fixed_cost_kr, rooms["uu-r1"].cost_origin, rooms["uu-r1"].name), (45, "model_calculated", "Sal ett"))
         self.assertEqual(rooms["uu-r1"].travel_paid_minutes, 10)
         # uu-r2 is not in the pack: the per-seat parameter prices it and says so
-        self.assertEqual((rooms["uu-r2"].annual_fixed_cost_ore, rooms["uu-r2"].cost_origin), (6000, "parameter_proxy"))
+        self.assertEqual((rooms["uu-r2"].annual_fixed_cost_kr, rooms["uu-r2"].cost_origin), (60, "parameter_proxy"))
         hall = rooms["ext-hall"]
-        self.assertEqual((hall.kind, hall.annual_fixed_cost_ore, hall.external_session_cost_ore, hall.capacity), ("external", 0, 1000 * 300 // 60, 60))
+        self.assertEqual((hall.kind, hall.annual_fixed_cost_kr, hall.external_session_cost_kr, hall.capacity), ("external", 0, 50, 60))
         self.assertEqual(problem.resource_basis["pack"]["pack_id"], "test_pack")
         self.assertTrue(any("uu-r2" in text for text in problem.resource_basis["warnings"]))
 
     def test_staff_values_come_from_the_pack_unless_the_user_changed_the_parameter(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
-            packed = _build(Path(temp), {"resources.pack": "test_pack", "cost.staff_annual_ore": 0})
-        self.assertEqual((packed.staffing.paid_minute_cost_ore, packed.staffing.min_paid_minutes), (7, 90))
-        self.assertEqual(packed.resource_basis["staff"]["paid_minute_cost_ore"]["source"], "resource_data")
+            packed = _build(Path(temp), {"resources.pack": "test_pack", "cost.staff_annual_kr": 0})
+        self.assertEqual((packed.staffing.paid_minute_cost_kr, packed.staffing.min_paid_minutes), (0.07, 90))
+        self.assertEqual(packed.resource_basis["staff"]["paid_minute_cost_kr"]["source"], "resource_data")
         with tempfile.TemporaryDirectory() as temp:
-            changed = _build(Path(temp), {"resources.pack": "test_pack", "cost.staff_paid_minute_ore": 11})
-        self.assertEqual(changed.staffing.paid_minute_cost_ore, 11)
-        self.assertEqual(changed.resource_basis["staff"]["paid_minute_cost_ore"]["source"], "parameter")
+            changed = _build(Path(temp), {"resources.pack": "test_pack", "cost.staff_paid_minute_kr": 0.11})
+        self.assertEqual(changed.staffing.paid_minute_cost_kr, 0.11)
+        self.assertEqual(changed.resource_basis["staff"]["paid_minute_cost_kr"]["source"], "parameter")
         with tempfile.TemporaryDirectory() as temp:
             none = _build(Path(temp), {})
-        self.assertEqual((none.staffing.paid_minute_cost_ore, none.resource_basis["pack"]), (0, None))
+        self.assertEqual((none.staffing.paid_minute_cost_kr, none.resource_basis["pack"]), (0, None))
         self.assertNotIn("ext-hall", {room.room_id for room in none.rooms})
 
     def test_excluded_rooms_leave_the_model(self) -> None:

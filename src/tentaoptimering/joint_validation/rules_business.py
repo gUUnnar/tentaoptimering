@@ -27,9 +27,9 @@ _GROUPS = {
                              "staffing.min_break_minutes", "staffing.max_continuous_minutes", "staffing.max_daily_minutes",
                              "staffing.min_daily_rest_minutes", "staffing.travel_minutes", "staffing.min_paid_shift_minutes")),
     "cost_basis_verified": (
-        "Kostnadsgrund", ("cost.room_annual_per_seat_ore", "cost.staff_annual_ore", "cost.staff_session_ore",
-                          "cost.external_room_session_ore", "cost.annualization_factor", "cost.avoidable_cost_definition",
-                          "cost.staff_paid_minute_ore", "resources.pack")),
+        "Kostnadsgrund", ("cost.room_annual_per_seat_kr", "cost.staff_annual_kr", "cost.staff_session_kr",
+                          "cost.external_room_session_kr", "cost.annualization_factor", "cost.avoidable_cost_definition",
+                          "cost.staff_paid_minute_kr", "resources.pack")),
     "demand_basis_verified": (
         "Efterfrågegrund", ("demand.measure", "demand.variation_pct", "demand.rounding", "demand.planning_share_ordinary_pct",
          "demand.planning_share_retake_pct", "demand.capacity_safety_margin_pct")),

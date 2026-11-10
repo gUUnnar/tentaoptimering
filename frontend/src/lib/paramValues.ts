@@ -1,5 +1,5 @@
 import type { ParameterInfo, ParamValueType } from "./jointTypes.ts"
-import { oreToKrText, parseKrToOre, unitInfo } from "./paramUnits.ts"
+import { krToText, parseKr, unitInfo } from "./paramUnits.ts"
 
 // Redigeringsutkast, tolkning och validering per värdetyp. Utkastet är det som användaren skriver (oftast text);
 // tolkningen ger det värde som skickas till API:et, eller ett begripligt felmeddelande.
@@ -39,7 +39,7 @@ export function toDraft(param: ParameterInfo, value: unknown = param.value): unk
   switch (param.value_type) {
     case "integer": case "number":
       if (typeof value !== "number") return text(value)
-      return isMoney(param) ? oreToKrText(value) : String(value).replace(".", ",")
+      return isMoney(param) ? krToText(value) : String(value).replace(".", ",")
     case "boolean": return value === true
     case "choice": return value
     case "date": case "time": return text(value)
@@ -162,12 +162,12 @@ export function parseDraft(param: ParameterInfo, draft: unknown, context: ParseC
   switch (param.value_type) {
     case "integer": {
       const input = text(draft)
-      if (isMoney(param)) { const kr = parseKrToOre(input); return kr.ok ? ok(kr.ore) : fail(kr.error) }
+      if (isMoney(param)) { const kr = parseKr(input); return kr.ok ? ok(kr.kr) : fail(kr.error) }
       return parseInteger(input)
     }
     case "number": {
       const input = text(draft)
-      if (isMoney(param)) { const kr = parseKrToOre(input); return kr.ok ? ok(kr.ore) : fail(kr.error) }
+      if (isMoney(param)) { const kr = parseKr(input); return kr.ok ? ok(kr.kr) : fail(kr.error) }
       return parseNumber(input)
     }
     case "boolean": return ok(draft === true)

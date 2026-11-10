@@ -15,7 +15,7 @@ const toRef = (value: unknown): CompareRunRef | null => {
   } : null
 }
 
-const METRIC_KEYS: MetricKey[] = ["cost_ore", "lower_bound_ore", "gap_ore", "changed_exams", "staff_pool_size", "rooms_used", "wall_time_seconds", "first_solution_seconds"]
+const METRIC_KEYS: MetricKey[] = ["cost_kr", "lower_bound_kr", "gap_kr", "changed_exams", "staff_pool_size", "rooms_used", "wall_time_seconds", "first_solution_seconds"]
 
 /** Läser jämförelsesvaret defensivt: saknade mått blir null, aldrig noll. */
 export function toCompareResult(raw: unknown): CompareResult {
@@ -38,7 +38,7 @@ export function toCompareResult(raw: unknown): CompareResult {
       return { id: str(change.id) ?? "", label: str(change.label) ?? str(change.id) ?? "", group: str(change.group) ?? "", unit: str(change.unit), old: change.old, new: change.new }
     }),
     metrics,
-    uncertainty_ore: num(body.uncertainty_ore),
+    uncertainty_kr: num(body.uncertainty_kr),
     interpretable: typeof body.interpretable === "boolean" ? body.interpretable : null,
     interpretation: str(body.interpretation) ?? "",
     assumption_changes: { cost: strings(obj(body.assumption_changes).cost), demand: strings(obj(body.assumption_changes).demand) },
@@ -49,9 +49,9 @@ export function toCompareResult(raw: unknown): CompareResult {
 
 type MetricKind = "money" | "count" | "seconds"
 export const METRIC_DEFS: { key: MetricKey; label: string; kind: MetricKind; hint?: string }[] = [
-  { key: "cost_ore", label: "Verifierad kostnad", kind: "money", hint: "Lägsta kontrollerade modellerade årliga kapacitetskostnad för valt urval." },
-  { key: "lower_bound_ore", label: "Undre gräns", kind: "money", hint: "Lägsta kostnad som bevisats möjlig." },
-  { key: "gap_ore", label: "Avstånd mellan dem", kind: "money", hint: "Verifierad kostnad minus undre gräns. Optimum ligger någonstans däremellan." },
+  { key: "cost_kr", label: "Verifierad kostnad", kind: "money", hint: "Lägsta kontrollerade modellerade årliga kapacitetskostnad för valt urval." },
+  { key: "lower_bound_kr", label: "Undre gräns", kind: "money", hint: "Lägsta kostnad som bevisats möjlig." },
+  { key: "gap_kr", label: "Avstånd mellan dem", kind: "money", hint: "Verifierad kostnad minus undre gräns. Optimum ligger någonstans däremellan." },
   { key: "changed_exams", label: "Flyttade tentor", kind: "count" },
   { key: "staff_pool_size", label: "Vaktpool", kind: "count", hint: "Antal vakter i den anonyma poolen." },
   { key: "rooms_used", label: "Salar som används", kind: "count" },
@@ -71,7 +71,7 @@ function formatValue(kind: MetricKind, value: number | null): string {
 export function formatDelta(kind: MetricKind, delta: number | null): { text: string; direction: "up" | "down" | "same" | "unknown" } {
   if (delta === null) return { text: DASH, direction: "unknown" }
   const magnitude = Math.abs(delta)
-  const rounded = kind === "money" ? Math.round(magnitude / 100) : kind === "count" ? Math.round(magnitude) : Math.round(magnitude * 10) / 10
+  const rounded = kind === "money" ? Math.round(magnitude) : kind === "count" ? Math.round(magnitude) : Math.round(magnitude * 10) / 10
   if (rounded === 0) return { text: SAME, direction: "same" }
   const body = kind === "money" ? formatKr(magnitude) : kind === "count" ? formatCount(magnitude) : formatDuration(magnitude)
   return delta > 0 ? { text: `+${body}`, direction: "up" } : { text: `${MINUS}${body}`, direction: "down" }
@@ -82,7 +82,7 @@ export const assumptionsChanged = (result: CompareResult): boolean =>
   result.assumption_changes.cost.length > 0 || result.assumption_changes.demand.length > 0
 
 const PHYSICAL_KEYS: ReadonlySet<MetricKey> = new Set(["rooms_used", "staff_pool_size", "changed_exams"])
-const MONEY_KEYS: ReadonlySet<MetricKey> = new Set(["cost_ore", "lower_bound_ore", "gap_ore"])
+const MONEY_KEYS: ReadonlySet<MetricKey> = new Set(["cost_kr", "lower_bound_kr", "gap_kr"])
 const TIME_KEYS: ReadonlySet<MetricKey> = new Set(["wall_time_seconds", "first_solution_seconds"])
 export const NOT_COMPARED_TEXT = "Jämförs inte (andra antaganden)"
 

@@ -51,11 +51,11 @@ class StartReport:
     days_checked: int = 0
     days_failed: int = 0
     check_seconds: float | None = None
-    verified_cost_ore: int | None = None
+    verified_cost_kr: int | None = None
     hint_exams: int = 0
     first_solution_seconds: float | None = None
     first_solution_source: str | None = None
-    final_cost_ore: int | None = None
+    final_cost_kr: int | None = None
     final_source: str | None = None
     interrupted: bool = False
     source_run_id: str | None = None  # for the progress event only; not part of the saved report

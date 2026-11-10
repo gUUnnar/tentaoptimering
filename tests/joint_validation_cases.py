@@ -6,9 +6,9 @@ worked out on paper, so the validator is checked against an independent answer.
 Reference case (all times Monday 2026-01-12 unless stated, Tuesday is 2026-01-13):
 
     slots   s1 Mon 08:00   s2 Mon 14:00   s3 Tue 08:00   s4 Wed 08:00 (reference only, for the fixed exam)
-    rooms   R1 100 seats, digital, cost 10 000   R2 60 seats, paper only, cost 6 000   (same building)
+    rooms   R1 100 seats, digital, cost 100   R2 60 seats, paper only, cost 60   (same building)
     ladder  <=50 -> 1 staff, <=100 -> 2, <=150 -> 3; preparation 30, closing 30, turnaround 30
-    costs   pool 1 000 per staff, 100 per staffed room session
+    costs   pool 10 per staff, 1 per staffed room session (kronor)
 
     A  50 participants, 4 h, original s1  -> s1 in R2        session (R2,s1) 50 -> 1 staff   ends 12:00
     B  50 participants, 4 h, digital, original s2 -> s1 in R1 session (R1,s1) 50 -> 1 staff   ends 12:00 (changed)
@@ -19,7 +19,7 @@ Reference case (all times Monday 2026-01-12 unless stated, Tuesday is 2026-01-13
 
     staff windows [start-30, end+30): Monday R1/R2 s1 = 07:30-12:30 (2), s2 = 13:30-16:30 (1) -> Monday peak 2;
     Tuesday R1 s3 (2) + R2 s3 (1) = 3 -> pool 3
-    costs   rooms 10 000 + 6 000 = 16 000; pool 3 x 1 000 = 3 000; sessions (1+1+1+2+1) x 100 = 600; total 19 600
+    costs   rooms 100 + 60 = 160; pool 3 x 10 = 30; sessions (1+1+1+2+1) x 1 = 6; total 196
     changed exams: B only (1)
     participants: 290 in total, 260 placed in rooms, 30 without room
 """
@@ -77,21 +77,21 @@ def reference_problem() -> dict[str, Any]:
             _demand("E", 40, 2, "s2", start=840),
         ],
         "rooms": [
-            {"room_id": "R1", "building_id": "b1", "plan_area": "Uppsala", "capacity": 100, "annual_fixed_cost_ore": 10000,
-             "external_session_cost_ore": 0, "digital_capabilities": ["paper", "e_exam"], "available_slot_ids": None, "digital_support_basis": "all_places"},
-            {"room_id": "R2", "building_id": "b1", "plan_area": "Uppsala", "capacity": 60, "annual_fixed_cost_ore": 6000,
-             "external_session_cost_ore": 0, "digital_capabilities": ["paper"], "available_slot_ids": None, "digital_support_basis": "unknown"},
+            {"room_id": "R1", "building_id": "b1", "plan_area": "Uppsala", "capacity": 100, "annual_fixed_cost_kr": 100,
+             "external_session_cost_kr": 0, "digital_capabilities": ["paper", "e_exam"], "available_slot_ids": None, "digital_support_basis": "all_places"},
+            {"room_id": "R2", "building_id": "b1", "plan_area": "Uppsala", "capacity": 60, "annual_fixed_cost_kr": 60,
+             "external_session_cost_kr": 0, "digital_capabilities": ["paper"], "available_slot_ids": None, "digital_support_basis": "unknown"},
         ],
         "staffing": {"ladder": [{"max_participants": 50, "required_staff": 1}, {"max_participants": 100, "required_staff": 2},
                                 {"max_participants": 150, "required_staff": 3}],
-                     "annual_cost_ore_per_staff": 1000, "cost_ore_per_staff_session": 100, "preparation_minutes": 30, "closing_minutes": 30},
+                     "annual_cost_kr_per_staff": 10, "cost_kr_per_staff_session": 1, "preparation_minutes": 30, "closing_minutes": 30},
         "solver": {"time_limit_seconds": 5.0, "random_seed": 1, "num_workers": 1, "deterministic": False},
         "parameters": [
             _param("window.earlier_days", 1), _param("window.later_days", 1), _param("calendar.weekdays", [1, 2, 3, 4, 5]),
             _param("calendar.blocked_ranges", []), _param("calendar.start_times", ["08:00", "14:00"]),
             _param("calendar.earliest_start_time", "08:00"), _param("calendar.latest_end_time", "20:00"),
             _param("calendar.start_date", ""), _param("calendar.end_date", "2026-01-13"),
-            _param("staffing.ladder", [], "assumption"), _param("cost.room_annual_per_seat_ore", 100),
+            _param("staffing.ladder", [], "assumption"), _param("cost.room_annual_per_seat_kr", 100),
             _param("rules.student_conflicts", False, "source_data", "contract_only"),
         ],
         "scope": {"source_activities_total": 20, "included_source_activities": 13, "unresolved_source_activities": 7,
@@ -113,10 +113,10 @@ def _session(room: str, slot: str, demands: list[str], count: int, staff: int, a
 def reference_result() -> dict[str, Any]:
     return {
         "schema_version": RESULT_VERSION, "problem_id": "hand-case",
-        "solver": {"outcome": "optimal", "raw_status": "optimal", "objective_value_ore": 19600, "best_objective_bound_ore": 19600,
+        "solver": {"outcome": "optimal", "raw_status": "optimal", "objective_value_kr": 196, "best_objective_bound_kr": 196,
                    "relative_gap": 0.0, "wall_time_seconds": 0.1, "change_preference_status": "optimal_at_economic_optimum"},
-        "costs": {"annual_room_cost_ore": 16000, "external_room_session_cost_ore": 0, "annual_staff_pool_cost_ore": 3000,
-                  "staff_session_cost_ore": 600, "comparable_total_cost_ore": 19600},
+        "costs": {"annual_room_cost_kr": 160, "external_room_session_cost_kr": 0, "annual_staff_pool_cost_kr": 30,
+                  "staff_session_cost_kr": 6, "comparable_total_cost_kr": 196},
         "coverage": {"exam_demands_total": 5, "exam_demands_scheduled": 5, "participants_total": 290,
                      "participants_assigned_to_rooms": 260, "non_room_participants_scheduled": 30, "technical_placement_complete": True},
         "staff_pool_size": 3, "changed_exam_demands": 1,
@@ -160,7 +160,7 @@ def pair_case(preparation: int, closing: int, pool: int) -> tuple[dict[str, Any]
         item for item in problem["parameters"] if item["parameter_id"] not in ("calendar.start_times", "calendar.end_date")
     ] + [_param("calendar.start_times", ["08:00", "10:30"]), _param("calendar.end_date", "2026-01-12")]
     problem["staffing"]["preparation_minutes"], problem["staffing"]["closing_minutes"] = preparation, closing
-    problem["staffing"]["cost_ore_per_staff_session"] = 0
+    problem["staffing"]["cost_kr_per_staff_session"] = 0
     problem["scope"].update(modeled_exam_demands=2, modeled_participants=60, unresolved_source_activities=0)
     result = reference_result()
     result["assignments"] = [
@@ -169,9 +169,9 @@ def pair_case(preparation: int, closing: int, pool: int) -> tuple[dict[str, Any]
     ]
     result["room_sessions"] = [_session("R1", "a", ["P"], 30, 1, 630), _session("R2", "b", ["Q"], 30, 1, 780)]
     result["schedule"] = [_schedule("P", "a", "a", "2026-01-12", 480, 30), _schedule("Q", "b", "b", "2026-01-12", 630, 30)]
-    total = 16000 + 1000 * pool
-    result["costs"].update(annual_staff_pool_cost_ore=1000 * pool, staff_session_cost_ore=0, comparable_total_cost_ore=total)
-    result["solver"].update(objective_value_ore=total, best_objective_bound_ore=total)
+    total = 160 + 10 * pool
+    result["costs"].update(annual_staff_pool_cost_kr=10 * pool, staff_session_cost_kr=0, comparable_total_cost_kr=total)
+    result["solver"].update(objective_value_kr=total, best_objective_bound_kr=total)
     result["coverage"].update(exam_demands_total=2, exam_demands_scheduled=2, participants_total=60,
                               participants_assigned_to_rooms=60, non_room_participants_scheduled=0)
     result["staff_pool_size"], result["changed_exam_demands"], result["limitations"] = pool, 0, []

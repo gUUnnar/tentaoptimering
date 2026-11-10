@@ -13,14 +13,15 @@ from typing import Any
 from ortools.sat.python import cp_model
 
 from .joint_contract import JointOptimizationInput
+from .money import to_units
 
 
 def paid_time_active(problem: JointOptimizationInput) -> bool:
-    return problem.staffing.paid_minute_cost_ore > 0
+    return problem.staffing.paid_minute_cost_kr > 0
 
 
 def add_paid_time(model: cp_model.CpModel, problem: JointOptimizationInput, variables: Any) -> Any:
-    """The cost (öre) of the paid staff time of all room sessions as a linear expression, or 0 when it is not priced."""
+    """The cost (in solver units, hundredths of a krona) of the paid staff time of all room sessions as a linear expression, or 0 when it is not priced."""
     if not paid_time_active(problem):
         return 0
     prep, closing = problem.staffing.preparation_minutes, problem.staffing.closing_minutes
@@ -46,4 +47,4 @@ def add_paid_time(model: cp_model.CpModel, problem: JointOptimizationInput, vari
             minutes = model.NewIntVar(0, max_staff * (core_high + room.travel_paid_minutes), f"paid_min_{name}")
             model.AddMultiplicationEquality(minutes, [variables.staff[key], length])
             terms.append(minutes)
-    return problem.staffing.paid_minute_cost_ore * sum(terms)
+    return to_units(problem.staffing.paid_minute_cost_kr) * sum(terms)

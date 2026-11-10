@@ -26,7 +26,7 @@
       "type": "phase"
     },
     {
-      "lower_ore": 7000,
+      "lower_kr": 70,
       "round": 1,
       "seq": 5,
       "t": 0.031,
@@ -61,16 +61,16 @@
     },
     {
       "changed_exams": 1,
-      "cost_ore": 7000,
+      "cost_kr": 70,
       "seq": 13,
       "source": "round 1",
       "t": 0.046,
       "type": "incumbent"
     },
     {
-      "bound_ore": 7000,
+      "bound_kr": 70,
       "cancelled": false,
-      "cost_ore": 7000,
+      "cost_kr": 70,
       "outcome": "optimal",
       "seq": 16,
       "t": 0.108,

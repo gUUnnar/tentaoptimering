@@ -24,6 +24,8 @@ from pathlib import Path
 import re
 from typing import Any
 
+from .legacy_money import loads as upgraded_loads
+
 from .joint_contract import RESULT_SCHEMA_VERSION, JointOptimizationInput
 from .joint_validation import validate_run
 from .joint_validation.integrity import INPUT_FILE, MANIFEST_FILE, RESULT_FILE, sha256
@@ -53,7 +55,7 @@ class StartSource:
         solver = self.result.get("solver") or {}
         return {
             "run_id": self.run_id, "problem_id": self.problem_id, "result_sha256": self.result_sha256,
-            "solver_outcome": solver.get("outcome"), "cost_ore": solver.get("objective_value_ore"),
+            "solver_outcome": solver.get("outcome"), "cost_kr": solver.get("objective_value_kr"),
             "technical_validation_now": self.technical_validation,
         }
 
@@ -83,7 +85,7 @@ def inspect_run(runs_dir: Path, run_id: str) -> tuple[StartSource | None, list[s
     if missing:
         return None, [f"Körningens artefakter saknas: {', '.join(missing)}."]
     try:
-        problem, result, manifest = (json.loads((run_dir / name).read_text(encoding="utf-8")) for name in (INPUT_FILE, RESULT_FILE, MANIFEST_FILE))
+        problem, result, manifest = (upgraded_loads((run_dir / name).read_text(encoding="utf-8")) for name in (INPUT_FILE, RESULT_FILE, MANIFEST_FILE))
     except (OSError, ValueError) as error:
         return None, [f"Körningens artefakter kan inte läsas: {error}."]
     if not all(isinstance(item, dict) for item in (problem, result, manifest)):
@@ -112,7 +114,7 @@ def _stored_validation(run_dir: Path) -> str | None:
     if not path.is_file():
         return None
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = upgraded_loads(path.read_text(encoding="utf-8"))
         return str(value["summary"]["technical_validation"])
     except (OSError, ValueError, KeyError, TypeError):
         return "fail"
@@ -198,7 +200,7 @@ def read_decision(runs_dir: Path, run_id: str) -> dict[str, Any] | None:
     if not _SAFE_RUN_ID.fullmatch(run_id):
         raise ValueError("Körnings-id har ogiltigt format.")
     path = Path(runs_dir) / run_id / WARM_START_FILE
-    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
+    return upgraded_loads(path.read_text(encoding="utf-8")) if path.is_file() else None
 
 
 def list_candidates(runs_dir: Path, problem_id: str | None = None) -> list[dict[str, Any]]:
@@ -216,8 +218,8 @@ def list_candidates(runs_dir: Path, problem_id: str | None = None) -> list[dict[
         if not _SAFE_RUN_ID.fullmatch(name) or not all((directory / item).is_file() for item in (INPUT_FILE, RESULT_FILE, MANIFEST_FILE)):
             continue
         try:
-            problem = json.loads((directory / INPUT_FILE).read_text(encoding="utf-8"))
-            result = json.loads((directory / RESULT_FILE).read_text(encoding="utf-8"))
+            problem = upgraded_loads((directory / INPUT_FILE).read_text(encoding="utf-8"))
+            result = upgraded_loads((directory / RESULT_FILE).read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
         if not isinstance(problem, dict) or not isinstance(result, dict) or (problem_id is not None and problem.get("problem_id") != problem_id):
@@ -225,7 +227,7 @@ def list_candidates(runs_dir: Path, problem_id: str | None = None) -> list[dict[
         solver = result.get("solver") if isinstance(result.get("solver"), dict) else {}
         rows.append({
             "run_id": name, "problem_id": problem.get("problem_id"), "solver_outcome": solver.get("outcome"),
-            "cost_ore": solver.get("objective_value_ore"), "has_placement": bool(result.get("schedule")),
+            "cost_kr": solver.get("objective_value_kr"), "has_placement": bool(result.get("schedule")),
             "stored_technical_validation": _stored_validation(directory),
             "warm_start_decision": (read_decision(runs_dir, name) or {}).get("decision"),
         })
@@ -241,12 +243,12 @@ def report_lines(record: dict[str, Any]) -> list[str]:
     lines = ["", "## Varmstart och beräkningsresurser", "",
              f"- Begärd varmstart: `{record['requested']}`; beslut: `{record['decision']}`.", f"- {record['explanation']}"]
     if record.get("source"):
-        lines.append(f"- Startkörning: `{record['source']['run_id']}` (kostnad {record['source']['cost_ore']} öre, "
+        lines.append(f"- Startkörning: `{record['source']['run_id']}` (kostnad {record['source']['cost_kr']} kr, "
                      f"oberoende teknisk kontroll nu: `{record['source']['technical_validation_now']}`).")
         if record["changed_parameters"]:
             lines.append(f"- Ändrade parametrar sedan startkörningen: {', '.join(record['changed_parameters'])}.")
-        if recheck.get("verified_cost_ore") is not None:
-            lines.append(f"- Kostnad för den omkontrollerade startplaceringen i den nya instansen: {recheck['verified_cost_ore']} öre.")
+        if recheck.get("verified_cost_kr") is not None:
+            lines.append(f"- Kostnad för den omkontrollerade startplaceringen i den nya instansen: {recheck['verified_cost_kr']} kr.")
     if recheck.get("first_solution_seconds") is not None:
         lines.append(f"- Första verifierade lösning efter {recheck['first_solution_seconds']:.1f} s (källa: {recheck['first_solution_source']}).")
     if record.get("execution"):

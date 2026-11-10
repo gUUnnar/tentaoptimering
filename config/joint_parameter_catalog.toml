@@ -1,4 +1,4 @@
-catalog_version = "2.7.0"
+catalog_version = "3.0.0"
 
 [[parameter]]
 id = "demand.variation_pct"
@@ -398,12 +398,12 @@ engine_support = "implemented"
 honored_by = "joint_paid_time.add_paid_time"
 
 [[parameter]]
-id = "cost.room_annual_per_seat_ore"
+id = "cost.room_annual_per_seat_kr"
 legacy_ids = ["annual_room_cost"]
 group = "Kostnader"
 label = "Årlig lokalkostnad per plats"
-value_type = "integer"
-unit = "ore_per_year"
+value_type = "number"
+unit = "kr_per_year"
 default = 0
 default_basis = "assumption"
 help_text = "Provisorisk kostnadsregel för långsiktigt disponerade salar."
@@ -411,23 +411,23 @@ engine_support = "implemented"
 honored_by = "joint_inputs.build_real_subset_problem"
 
 [[parameter]]
-id = "cost.external_room_session_ore"
+id = "cost.external_room_session_kr"
 group = "Kostnader"
 label = "Externhyra per salstillfälle"
-value_type = "integer"
-unit = "ore_per_session"
+value_type = "number"
+unit = "kr_per_session"
 default = 0
 default_basis = "assumption"
 help_text = "Kontraktet och optimeraren kan kostnadssätta externa salstillfällen, men dataadaptern har ännu ingen källa för externa lokalalternativ. Värdet ignoreras tills en extern lokal kan anges."
 engine_support = "contract_only"
 
 [[parameter]]
-id = "cost.staff_annual_ore"
+id = "cost.staff_annual_kr"
 legacy_ids = ["annual_staff_cost"]
 group = "Kostnader"
 label = "Årskostnad per vaktresurs"
-value_type = "integer"
-unit = "ore_per_year"
+value_type = "number"
+unit = "kr_per_year"
 default = 0
 default_basis = "assumption"
 help_text = "Kostnad för dimensionerande anonym samtidig bemanningsresurs."
@@ -435,11 +435,11 @@ engine_support = "implemented"
 honored_by = "joint_optimizer.solve_joint_optimization"
 
 [[parameter]]
-id = "cost.staff_session_ore"
+id = "cost.staff_session_kr"
 group = "Kostnader"
 label = "Kostnad per vakt och salstillfälle"
-value_type = "integer"
-unit = "ore_per_session"
+value_type = "number"
+unit = "kr_per_session"
 default = 0
 default_basis = "assumption"
 help_text = "Rörlig kostnad per regelberäknad vaktnärvaro."
@@ -714,11 +714,11 @@ engine_support = "implemented"
 honored_by = "joint_optimizer.solve_joint_optimization"
 
 [[parameter]]
-id = "cost.staff_paid_minute_ore"
+id = "cost.staff_paid_minute_kr"
 group = "Kostnader"
 label = "Kostnad per betald personalminut"
-value_type = "integer"
-unit = "ore_per_minute"
+value_type = "number"
+unit = "kr_per_minute"
 default = 0
 default_basis = "assumption"
 help_text = "Kostnad per betald minut och vaktposition. Den betalda tiden är förberedelse, skrivtid, avslut och sluttid för salstillfället, lägst kortaste betalda pass, plus salens betalda restid. Står värdet på 0 används värdet i vald resursdata (parameter resources.pack) om det finns; ett ändrat värde här gäller före resursdatan."

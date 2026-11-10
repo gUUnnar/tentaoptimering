@@ -14,6 +14,8 @@ import shutil
 import threading
 import time
 from typing import Any
+
+from .legacy_money import loads as upgraded_loads
 from uuid import uuid4
 
 from .app_paths import bundled_joint_catalog_path
@@ -144,6 +146,6 @@ def diagnose_run(storage: AppStorage, run_id: str, progress: DiagnosisProgress |
 def saved_diagnosis(storage: AppStorage, run_id: str) -> dict[str, Any] | None:
     path = storage.run_directory(run_id) / FILE
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return upgraded_loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None

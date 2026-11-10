@@ -38,7 +38,7 @@ def _case(participants: int, rooms: tuple[int, ...], ladder: tuple[StaffingStep,
                           original_start_minute=480),)
     rooms_ = tuple(Room(f"r{index}", "b1", "Uppsala", seats, 0) for index, seats in enumerate(rooms, start=1))
     return JointOptimizationInput(
-        INPUT_SCHEMA_VERSION, "ladder", "hash", slots, demands, rooms_, StaffingCostPolicy(ladder, 1000),
+        INPUT_SCHEMA_VERSION, "ladder", "hash", slots, demands, rooms_, StaffingCostPolicy(ladder, 10),
         SolverSettings(20, 1, 1, False, strategy, 0.0), (), ScopeSummary(1, 1, 0, 0, 1, participants), 30,
     )
 
@@ -57,7 +57,7 @@ class LadderTests(unittest.TestCase):
                 with self.subTest(strategy=strategy, participants=participants):
                     result, failing = self._solve(_case(participants, (260,), BUSINESS, strategy))
                     self.assertEqual(result.solver.outcome, "optimal")
-                    self.assertEqual((result.staff_pool_size, result.costs.comparable_total_cost_ore), (guards, 1000 * guards))
+                    self.assertEqual((result.staff_pool_size, result.costs.comparable_total_cost_kr), (guards, 10 * guards))
                     self.assertEqual(failing, [])
 
     def test_the_same_exam_needs_fewer_guards_with_the_earlier_ladder_so_costs_are_not_comparable(self) -> None:

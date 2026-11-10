@@ -19,6 +19,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from .money import ksum
+
 VERIFIED_ORIGINS = ("observed",)
 
 
@@ -39,8 +41,8 @@ def classify_room(snapshot: dict[str, Any] | None, room_id: str, kind: str, stil
                 "reason": "Rummet saknar kopplat hyres- eller avtalsobjekt i resursdatan; om hyran kan avvecklas är okänt, så besparingen är villkorad."}
     origin = cost_object["provenance"]["origin"]
     contract = {"cost_object_id": cost_object["cost_object_id"], "name": cost_object["name"], "kind": cost_object["kind"],
-                "annual_cost_ore": cost_object["annual_cost_ore"], "avoidable": cost_object["avoidable"], "notice_months": cost_object["notice_months"],
-                "earliest_release_date": cost_object["earliest_release_date"], "one_off_cost_ore": cost_object["one_off_cost_ore"], "origin": origin}
+                "annual_cost_kr": cost_object["annual_cost_kr"], "avoidable": cost_object["avoidable"], "notice_months": cost_object["notice_months"],
+                "earliest_release_date": cost_object["earliest_release_date"], "one_off_cost_kr": cost_object["one_off_cost_kr"], "origin": origin}
     siblings = sorted(item["room_id"] for item in snapshot["rooms"] if item.get("cost_object_id") == cost_object["cost_object_id"] and item["room_id"] != room_id)
     shared_in_use = sorted(set(siblings) & still_used)
     if cost_object["kind"] == "external_hire" or kind == "external":
@@ -68,12 +70,12 @@ def _origin_text(origin: str) -> str:
 def summarize(items: list[dict[str, Any]]) -> dict[str, Any]:
     """Modelled saving of the freed rooms split by what can be said about it. Verified is zero unless an item is verified."""
     def total(*statuses: str) -> int:
-        return sum(item["modelled_saving_ore"] for item in items if item["realization"]["status"] in statuses)
+        return ksum(item["modelled_saving_kr"] for item in items if item["realization"]["status"] in statuses)
 
     return {
-        "modelled_saving_ore": sum(item["modelled_saving_ore"] for item in items),
-        "verified_ore": total("verified", "external_per_booking"),
-        "conditional_ore": total("possible_unverified", "conditional"),
-        "blocked_ore": total("blocked_shared", "blocked_contract"),
+        "modelled_saving_kr": ksum(item["modelled_saving_kr"] for item in items),
+        "verified_kr": total("verified", "external_per_booking"),
+        "conditional_kr": total("possible_unverified", "conditional"),
+        "blocked_kr": total("blocked_shared", "blocked_contract"),
         "note": "Modellbesparing är det modellen räknar som sparad kostnad. Verifierad besparing kräver observerade avtalsuppgifter och redovisas aldrig för simulerade, antagna eller modellberäknade uppgifter.",
     }

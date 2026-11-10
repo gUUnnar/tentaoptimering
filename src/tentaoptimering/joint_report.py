@@ -9,11 +9,11 @@ from .joint_contract import JointOptimizationInput
 
 def proof_lines(solver: Any) -> list[str]:
     """A solution without an optimality proof is never presented as the largest possible saving."""
-    if solver.outcome != "feasible_not_proven" or solver.best_objective_bound_ore is None:
+    if solver.outcome != "feasible_not_proven" or solver.best_objective_bound_kr is None:
         return []
     return [
         f"- Kostnaden är en verifierad övre gräns, inte ett bevisat optimum: den lägsta möjliga kostnaden i modellen "
-        f"ligger mellan {solver.best_objective_bound_ore} och {solver.objective_value_ore} öre. "
+        f"ligger mellan {solver.best_objective_bound_kr} och {solver.objective_value_kr} kr. "
         "Besparingen får därför inte redovisas som bevisad maximal besparing.",
     ]
 
@@ -37,8 +37,8 @@ def build_report(problem: JointOptimizationInput, result: Any) -> str:
         f"# Gemensam verklig delmängd: {problem.problem_id}", "",
         f"- Solverutfall: `{solver.outcome}` (`{solver.raw_status}`), strategi `{solver.strategy}`.",
         f"- Beräkningstid: {solver.wall_time_seconds:.3f} sekunder.",
-        f"- Funnet jämförbart kostnadsmål: {solver.objective_value_ore} öre.",
-        f"- Bästa kostnadsgräns: {solver.best_objective_bound_ore} öre.",
+        f"- Funnet jämförbart kostnadsmål: {solver.objective_value_kr} kr.",
+        f"- Bästa kostnadsgräns: {solver.best_objective_bound_kr} kr.",
         f"- Relativt gap: {solver.relative_gap}.",
         *proof_lines(solver),
         f"- Teknisk placeringsfullständighet: {result.coverage.technical_placement_complete}.",
@@ -48,11 +48,11 @@ def build_report(problem: JointOptimizationInput, result: Any) -> str:
         "## Verifieringsstatus", "",
         *[f"- {key}: {value}" for key, value in (result.verification or {}).items()], "",
         "## Kostnadskomponenter", "",
-        f"- Långsiktiga salar: {costs.annual_room_cost_ore if costs else None} öre.",
-        f"- Externa salstillfällen: {costs.external_room_session_cost_ore if costs else None} öre.",
-        f"- Årlig bemanningspool: {costs.annual_staff_pool_cost_ore if costs else None} öre.",
-        f"- Rörlig salstillfällesbemanning: {costs.staff_session_cost_ore if costs else None} öre.",
-        f"- Betald personaltid: {costs.staff_paid_time_cost_ore if costs else None} öre.", "",
+        f"- Långsiktiga salar: {costs.annual_room_cost_kr if costs else None} kr.",
+        f"- Externa salstillfällen: {costs.external_room_session_cost_kr if costs else None} kr.",
+        f"- Årlig bemanningspool: {costs.annual_staff_pool_cost_kr if costs else None} kr.",
+        f"- Rörlig salstillfällesbemanning: {costs.staff_session_cost_kr if costs else None} kr.",
+        f"- Betald personaltid: {costs.staff_paid_time_cost_kr if costs else None} kr.", "",
         *resource_lines(problem, result),
         "## Datatäckning och begränsningar", "",
         f"- Modellerade tentamensbehov: {problem.scope.modeled_exam_demands} av en uttryckligen vald delmängd.",

@@ -20,11 +20,12 @@ import math
 import re
 from typing import Any, Callable
 
+from .money import has_at_most_two_decimals
 from .parameter_catalog import ParameterCatalog, ParameterDefinition
 
 _CLOCK = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 MAX_INT = 2_147_483_647
-MAX_ORE = 100_000_000_000  # keeps cost sums far from the solver's 64-bit limit
+MAX_KR = 1_000_000_000  # one billion kronor: keeps cost sums (in solver units, hundredths) far from the solver's 64-bit limit
 
 # (lowest, highest) for numeric parameters. A parameter that is not listed gets the default limits of its type.
 _LIMITS: dict[str, tuple[float | None, float | None]] = {
@@ -86,7 +87,7 @@ def _limits(definition: ParameterDefinition) -> tuple[float | None, float | None
         return _LIMITS[definition.parameter_id]
     if definition.unit == "percent":
         return _PERCENT_LIMITS
-    return (0, MAX_ORE) if definition.unit.startswith("ore") else (0, None)
+    return (0, MAX_KR) if definition.unit.startswith("kr") else (0, None)
 
 
 def _in_limits(definition: ParameterDefinition, value: float) -> str | None:
@@ -105,6 +106,8 @@ def _integer(definition: ParameterDefinition, value: Any) -> str | None:
 def _number(definition: ParameterDefinition, value: Any) -> str | None:
     if not _is_number(value):
         return "Värdet måste vara ett tal."
+    if definition.unit.startswith("kr") and not has_at_most_two_decimals(value):
+        return "Belopp i kronor får ha högst två decimaler."
     return _in_limits(definition, value)
 
 

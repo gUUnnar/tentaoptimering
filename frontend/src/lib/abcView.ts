@@ -18,9 +18,9 @@ export const KIND_EXPLANATION: Record<AbcKind, string> = {
 }
 
 /** Resultatet av en körning i klartext, utan att presentera en kostnad som saknar verifierad lösning. */
-export function outcomeText(run: Pick<AbcRun, "solver_outcome" | "has_placement" | "cost_ore">): string {
+export function outcomeText(run: Pick<AbcRun, "solver_outcome" | "has_placement" | "cost_kr">): string {
   if (!run.has_placement) return run.solver_outcome === "infeasible" ? "Ingen genomförbar lösning" : "Ingen lösning"
-  const cost = run.cost_ore === null ? "" : `, modellkostnad ${formatKr(run.cost_ore)}`
+  const cost = run.cost_kr === null ? "" : `, modellkostnad ${formatKr(run.cost_kr)}`
   return run.solver_outcome === "optimal" ? `Bevisat optimal${cost}` : `Lösning, optimum ej bevisat${cost}`
 }
 
@@ -54,7 +54,7 @@ export const percentOf = (value: number | null | undefined, total: number | null
 export function costSideText(side: AbcCostSide): { kindLabel: string; value: string; note: string | null } {
   if (side.kind === "historical") return { kindLabel: "Historisk kostnad", value: "saknas i underlaget", note: side.note }
   if (!side.available) return { kindLabel: "Modellkostnad", value: "ingen verifierad lösning", note: null }
-  return { kindLabel: "Modellkostnad", value: formatKr(side.total_ore), note: side.note }
+  return { kindLabel: "Modellkostnad", value: formatKr(side.total_kr), note: side.note }
 }
 
 /** Beläggningen över tid som serie för diagrammet: ett datum per punkt med båda sidornas andel (null där en sida saknar uppgift). */

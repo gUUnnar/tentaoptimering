@@ -21,6 +21,7 @@ from typing import Any
 from ortools.sat.python import cp_model
 
 from ..joint_contract import JointOptimizationInput, Room, SolverSettings
+from ..money import to_units
 from ..joint_optimizer import _build_variables_and_constraints, _extract
 from ..joint_paid_time import add_paid_time, paid_time_active
 from ..joint_preference import max_penalty, penalty_weights
@@ -92,17 +93,17 @@ def solve_part(
     weights = penalty_weights(sub)  # the second goal: booked occasions, or the business's wishes in order
     changes = [weight * variables.selected[key] for key, weight in weights.items()]
     scale = max_penalty(weights) + 1  # cost first, then the preference
-    session_cost = sub.staffing.cost_ore_per_staff_session * sum(variables.staff.values()) + sum(
-        room.external_session_cost_ore * variables.sessions[room.room_id, slot.slot_id]
-        for room in sub.rooms for slot in sub.slots if room.external_session_cost_ore
+    session_cost = to_units(sub.staffing.cost_kr_per_staff_session) * sum(variables.staff.values()) + sum(
+        to_units(room.external_session_cost_kr) * variables.sessions[room.room_id, slot.slot_id]
+        for room in sub.rooms for slot in sub.slots if room.external_session_cost_kr
     ) + add_paid_time(model, sub, variables)
     if pool_cap is not None:
         model.Add(variables.staff_pool <= pool_cap)
         cost = session_cost
     else:
         cost = (
-            sum(room.annual_fixed_cost_ore * variables.owned[room.room_id] for room in sub.rooms if room.room_id in extra_rooms)
-            + sub.staffing.annual_cost_ore_per_staff * variables.staff_pool + session_cost
+            sum(to_units(room.annual_fixed_cost_kr) * variables.owned[room.room_id] for room in sub.rooms if room.room_id in extra_rooms)
+            + to_units(sub.staffing.annual_cost_kr_per_staff) * variables.staff_pool + session_cost
         )
     model.Minimize(scale * cost + sum(changes))
     built = time.perf_counter()
@@ -118,11 +119,11 @@ def solve_part(
         return "unknown", None, None
     assignments, sessions, schedule = _extract(sub, solver, variables, slots)
     pool_bound = None
-    only_pool = (sub.staffing.cost_ore_per_staff_session == 0 and not any(room.external_session_cost_ore for room in sub.rooms)
+    only_pool = (sub.staffing.cost_kr_per_staff_session == 0 and not any(room.external_session_cost_kr for room in sub.rooms)
                  and not paid_time_active(sub))
-    if pool_cap is None and sub.staffing.annual_cost_ore_per_staff > 0 and not extra_rooms and only_pool:
+    if pool_cap is None and sub.staffing.annual_cost_kr_per_staff > 0 and not extra_rooms and only_pool:
         # objective = scale * staff_cost * pool + changes, with changes < scale
-        pool_bound = int(solver.BestObjectiveBound() // (scale * sub.staffing.annual_cost_ore_per_staff))
+        pool_bound = int(solver.BestObjectiveBound() // (scale * to_units(sub.staffing.annual_cost_kr_per_staff)))
     return ("optimal" if status == cp_model.OPTIMAL else "feasible"), Part(days, assignments, sessions, schedule), pool_bound
 
 

@@ -5,7 +5,7 @@ import { compareOptions, costSideText, latestOfKind, outcomeText, percentOf, run
 
 const run = (over: Partial<AbcRun>): AbcRun => ({
   run_id: "20261014T120000Z-joint_base", name: "B – Grundoptimering, 12:00", named: true, kind: "B", base_run_id: null, problem_id: "joint_base",
-  created_at: null, solver_outcome: "feasible_not_proven", has_placement: true, cost_ore: 150_000_000, exam_count: 10, changes_from_base: null, current_underlay: true, ...over,
+  created_at: null, solver_outcome: "feasible_not_proven", has_placement: true, cost_kr: 1_500_000, exam_count: 10, changes_from_base: null, current_underlay: true, ...over,
 })
 
 describe("A, B och C i gränssnittet", () => {
@@ -19,7 +19,7 @@ describe("A, B och C i gränssnittet", () => {
     assert.match(options[2].label, /^C · Egen$/)
   })
   it("utfall utan lösning visar ingen kostnad", () => {
-    assert.equal(outcomeText(run({ has_placement: false, solver_outcome: "infeasible", cost_ore: null })), "Ingen genomförbar lösning")
+    assert.equal(outcomeText(run({ has_placement: false, solver_outcome: "infeasible", cost_kr: null })), "Ingen genomförbar lösning")
     assert.match(outcomeText(run({})), /optimum ej bevisat, modellkostnad/)
     assert.match(outcomeText(run({ solver_outcome: "optimal" })), /^Bevisat optimal/)
   })
@@ -40,7 +40,7 @@ describe("A, B och C i gränssnittet", () => {
   it("kostnadssidor skiljer historisk kostnad från modellkostnad", () => {
     assert.equal(costSideText({ kind: "historical", available: false, note: "n" }).kindLabel, "Historisk kostnad")
     assert.equal(costSideText({ kind: "model", available: false }).value, "ingen verifierad lösning")
-    assert.match(costSideText({ kind: "model", available: true, total_ore: 100_000, lower_bound_ore: null, gap_ore: null, proven_optimum: false, components: [], note: "m" }).value, /1\s?000 kr/)
+    assert.match(costSideText({ kind: "model", available: true, total_kr: 1_000, lower_bound_kr: null, gap_kr: null, proven_optimum: false, components: [], note: "m" }).value, /1\s?000 kr/)
   })
   it("beläggningsserien slår ihop datum och lämnar saknade värden tomma", () => {
     const day = (date: string, share: number | null) => ({ date, exams: 1, seats: 1, rooms: 1, capacity_known: 1, peak_seats_in_known_rooms: 1, share })

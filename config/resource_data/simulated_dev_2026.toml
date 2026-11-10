@@ -1,6 +1,6 @@
 # SIMULERADE resursuppgifter för utveckling och test. Inga värden här är observerade eller avtalade.
 # Verkliga uppgifter läggs i en egen fil med samma schema (resource-data-v1) i den här mappen och väljs med
-# parametern `resources.pack`; ingen kod behöver ändras. Alla belopp anges i hela öre.
+# parametern `resources.pack`; ingen kod behöver ändras. Alla belopp anges i kronor (högst två decimaler).
 schema_version = "resource-data-v1"
 
 [pack]
@@ -19,11 +19,11 @@ valid_to = "2026-12-31"
 id = "ko-bergsbrunnagatan-15"
 name = "Hyresavtal Bergsbrunnagatan 15 (sal 1 och 2)"
 kind = "internal_rent"
-annual_cost_ore = 65250000
+annual_cost_kr = 652500
 avoidable = "no"
 notice_months = 12
 earliest_release_date = "2027-12-31"
-one_off_cost_ore = 0
+one_off_cost_kr = 0
 origin = "simulated"
 source = "Påhittat testvärde: gemensamt avtal för två salar, ej uppsägningsbart inom planeringshorisonten."
 
@@ -31,11 +31,11 @@ source = "Påhittat testvärde: gemensamt avtal för två salar, ej uppsägnings
 id = "ko-fyrislundsgatan-80"
 name = "Hyresavtal Fyrislundsgatan 80 (sal 1 och 2)"
 kind = "internal_rent"
-annual_cost_ore = 42000000
+annual_cost_kr = 420000
 avoidable = "yes"
 notice_months = 6
 earliest_release_date = "2027-07-01"
-one_off_cost_ore = 2500000
+one_off_cost_kr = 25000
 origin = "simulated"
 source = "Påhittat testvärde: uppsägningsbart med sex månaders varsel och en engångskostnad."
 
@@ -43,7 +43,7 @@ source = "Påhittat testvärde: uppsägningsbart med sex månaders varsel och en
 id = "ko-rabyvagen-95"
 name = "Hyresavtal Räbyvägen 95 (sal 1 till 3)"
 kind = "internal_rent"
-annual_cost_ore = 60600000
+annual_cost_kr = 606000
 avoidable = "unknown"
 origin = "simulated"
 source = "Påhittat testvärde: avtalsvillkor (uppsägning, engångskostnad) saknas; en besparing är bara villkorad."
@@ -52,10 +52,10 @@ source = "Påhittat testvärde: avtalsvillkor (uppsägning, engångskostnad) sak
 id = "ko-fyrishov-extern"
 name = "Externhyra Fyrishov (hallar D, E och F)"
 kind = "external_hire"
-annual_cost_ore = 0
+annual_cost_kr = 0
 avoidable = "yes"
 notice_months = 0
-one_off_cost_ore = 0
+one_off_cost_kr = 0
 origin = "simulated"
 source = "Påhittat testvärde: hyr per tillfälle, ingen fast kostnad; varje undvikt bokning är en verklig besparing."
 
@@ -63,7 +63,7 @@ source = "Påhittat testvärde: hyr per tillfälle, ingen fast kostnad; varje un
 id = "ko-campus-gotland"
 name = "Lokalkostnad Campus Gotland, B40"
 kind = "internal_rent"
-annual_cost_ore = 9000000
+annual_cost_kr = 90000
 avoidable = "unknown"
 origin = "simulated"
 source = "Påhittat testvärde."
@@ -74,7 +74,7 @@ source = "Påhittat testvärde."
 id = "uu-bergsbrunnagatan-15-sal-1"
 name = "Bergsbrunnagatan 15, Sal 1"
 kind = "internal"
-annual_cost_ore = 30900000
+annual_cost_kr = 309000
 cost_object_id = "ko-bergsbrunnagatan-15"
 travel_paid_minutes = 0
 origin = "simulated"
@@ -84,7 +84,7 @@ source = "Fördelning av avtalsobjektets kostnad efter antal platser (206 av 435
 id = "uu-bergsbrunnagatan-15-sal-2"
 name = "Bergsbrunnagatan 15, Sal 2"
 kind = "internal"
-annual_cost_ore = 34350000
+annual_cost_kr = 343500
 cost_object_id = "ko-bergsbrunnagatan-15"
 travel_paid_minutes = 0
 origin = "simulated"
@@ -94,7 +94,7 @@ source = "Fördelning av avtalsobjektets kostnad efter antal platser (229 av 435
 id = "uu-fyrislundsgatan-80-sal-1"
 name = "Fyrislundsgatan 80, Sal 1"
 kind = "internal"
-annual_cost_ore = 30000000
+annual_cost_kr = 300000
 cost_object_id = "ko-fyrislundsgatan-80"
 travel_paid_minutes = 15
 origin = "simulated"
@@ -104,7 +104,7 @@ source = "Fördelning av avtalsobjektets kostnad efter antal platser (200 av 280
 id = "uu-fyrislundsgatan-80-sal-2"
 name = "Fyrislundsgatan 80, Sal 2"
 kind = "internal"
-annual_cost_ore = 12000000
+annual_cost_kr = 120000
 cost_object_id = "ko-fyrislundsgatan-80"
 travel_paid_minutes = 15
 origin = "simulated"
@@ -114,7 +114,7 @@ source = "Fördelning av avtalsobjektets kostnad efter antal platser (80 av 280)
 id = "uu-rabyvagen-95-sal-1"
 name = "Räbyvägen 95, Sal 1"
 kind = "internal"
-annual_cost_ore = 14400000
+annual_cost_kr = 144000
 cost_object_id = "ko-rabyvagen-95"
 travel_paid_minutes = 15
 origin = "simulated"
@@ -124,7 +124,7 @@ source = "Fördelning av avtalsobjektets kostnad efter antal platser (96 av 404)
 id = "uu-rabyvagen-95-sal-2"
 name = "Räbyvägen 95, Sal 2"
 kind = "internal"
-annual_cost_ore = 19200000
+annual_cost_kr = 192000
 cost_object_id = "ko-rabyvagen-95"
 travel_paid_minutes = 15
 origin = "simulated"
@@ -134,7 +134,7 @@ source = "Fördelning av avtalsobjektets kostnad efter antal platser (128 av 404
 id = "uu-rabyvagen-95-sal-3"
 name = "Räbyvägen 95, Sal 3"
 kind = "internal"
-annual_cost_ore = 27000000
+annual_cost_kr = 270000
 cost_object_id = "ko-rabyvagen-95"
 travel_paid_minutes = 15
 origin = "simulated"
@@ -144,7 +144,7 @@ source = "Fördelning av avtalsobjektets kostnad efter antal platser (180 av 404
 id = "uu-campus-gotland-b40"
 name = "Campus Gotland, B40"
 kind = "internal"
-annual_cost_ore = 9000000
+annual_cost_kr = 90000
 cost_object_id = "ko-campus-gotland"
 origin = "simulated"
 
@@ -164,7 +164,7 @@ origin = "simulated"
 source = "Kapacitet: största observerade bokning i bokningsunderlaget. Pris: påhittat."
 [room.charge]
 basis = "per_hour"
-price_ore = 300000
+price_kr = 3000
 min_billed_minutes = 240
 assumed_billed_minutes = 300
 terms = "3 000 kr per timme, lägst 4 timmar debiteras; ett pass räknas som 5 timmar."
@@ -183,7 +183,7 @@ origin = "simulated"
 source = "Kapacitet: största observerade bokning i bokningsunderlaget. Pris: påhittat."
 [room.charge]
 basis = "per_hour"
-price_ore = 330000
+price_kr = 3300
 min_billed_minutes = 240
 assumed_billed_minutes = 300
 terms = "3 300 kr per timme, lägst 4 timmar debiteras; ett pass räknas som 5 timmar."
@@ -202,7 +202,7 @@ origin = "simulated"
 source = "Kapacitet: största observerade bokning i bokningsunderlaget. Pris: påhittat."
 [room.charge]
 basis = "per_session"
-price_ore = 1200000
+price_kr = 12000
 min_billed_minutes = 0
 assumed_billed_minutes = 0
 terms = "12 000 kr per tillfälle oavsett längd."
@@ -210,9 +210,9 @@ terms = "12 000 kr per tillfälle oavsett längd."
 # ---- Personal ------------------------------------------------------------------------------------------------------
 
 [staff]
-paid_minute_cost_ore = 450
+paid_minute_cost_kr = 4.5
 min_paid_shift_minutes = 120
-pool_annual_cost_ore = 0
+pool_annual_cost_kr = 0
 origin = "simulated"
 source = "Påhittad timkostnad 270 kr inklusive lönebikostnader. Verklig kostnad kommer från lön/Retendo."
 rules_basis = "Kortaste betalda pass 2 timmar följer lokalt kollektivavtal UFV-PA 2023/4939 §2.2 (verifierat i avtalet). Timkostnaden är simulerad."
@@ -228,7 +228,7 @@ name = "Fyrishov, januariveckan"
 room_ids = ["uu-fyrishov-hall-d", "uu-fyrishov-hall-e", "uu-fyrishov-hall-f"]
 start = "2026-01-12"
 end = "2026-01-16"
-cost_ore = 60000000
+cost_kr = 600000
 origin = "simulated"
 source = "Påhittad fördelning: 1,2 mnkr hyra och kringkostnader per år delat lika på två tillfällen. Uppgift från Fyrishovs kostnadsunderlag (fyrishov.txt), uppdelning saknas."
 
@@ -238,7 +238,7 @@ name = "Fyrishov, juniveckan"
 room_ids = ["uu-fyrishov-hall-d", "uu-fyrishov-hall-e", "uu-fyrishov-hall-f"]
 start = "2026-06-01"
 end = "2026-06-05"
-cost_ore = 60000000
+cost_kr = 600000
 origin = "simulated"
 source = "Påhittad fördelning: 1,2 mnkr hyra och kringkostnader per år delat lika på två tillfällen. Uppgift från Fyrishovs kostnadsunderlag (fyrishov.txt), uppdelning saknas."
 

@@ -31,14 +31,14 @@ export function summaryView(summary: JointSummary): SummaryView {
     const stats: StatView[] = summary.wall_seconds !== null ? [{ label: "Total tid", value: formatDuration(summary.wall_seconds) }] : []
     return { verified: false, reason: summary.unverified_reason ?? fallback, stats, outcomeText: null, statement: null }
   }
-  const gap = summary.gap ?? gapFraction(summary.cost_ore, summary.bound_ore)
+  const gap = summary.gap ?? gapFraction(summary.cost_kr, summary.bound_kr)
   const basis = firstSolutionBasisText(summary.first_solution_basis)
   const firstHint = [basis, summary.first_solution_source ? `från ${sourceLabel(summary.first_solution_source)}` : ""].filter(Boolean).join(", ")
-  const statement = costStatement(summary.cost_ore, summary.bound_ore, summary.proven_optimum)
+  const statement = costStatement(summary.cost_kr, summary.bound_kr, summary.proven_optimum)
   const costStats: StatView[] = [
-      { label: "Verifierad kostnad", hint: `Lägsta kontrollerade ${COST_NAME.toLowerCase()} ${COST_SCOPE}`, value: formatKr(summary.cost_ore) },
-      { label: "Undre gräns", hint: "Lägsta kostnad som bevisats möjlig", value: formatKr(summary.bound_ore) },
-      { label: "Gap", hint: summary.gap_ore !== null ? `${formatKr(summary.gap_ore)} över undre gräns` : "Avstånd mellan de två", value: formatGap(gap) },
+      { label: "Verifierad kostnad", hint: `Lägsta kontrollerade ${COST_NAME.toLowerCase()} ${COST_SCOPE}`, value: formatKr(summary.cost_kr) },
+      { label: "Undre gräns", hint: "Lägsta kostnad som bevisats möjlig", value: formatKr(summary.bound_kr) },
+      { label: "Gap", hint: summary.gap_kr !== null ? `${formatKr(summary.gap_kr)} över undre gräns` : "Avstånd mellan de två", value: formatGap(gap) },
   ]
   const otherStats: StatView[] = [
       { label: "Flyttade tentor", hint: summary.exams_total !== null ? `av ${formatCount(summary.exams_total)}` : undefined, value: formatCount(summary.changed_exams) },

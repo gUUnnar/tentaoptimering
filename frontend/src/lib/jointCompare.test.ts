@@ -7,31 +7,31 @@ import { COMPARE_OK } from "./testing/paramFixture.ts"
 
 describe("jämförelse av körningar", () => {
   it("läser svaret defensivt: saknade mått blir null, aldrig noll", () => {
-    const result = toCompareResult({ run: { run_id: "r2", scenario_id: "s" }, base: null, comparable: false, reason: "Ingen tidigare körning.", metrics: { cost_ore: { old: null, new: 5 } } })
+    const result = toCompareResult({ run: { run_id: "r2", scenario_id: "s" }, base: null, comparable: false, reason: "Ingen tidigare körning.", metrics: { cost_kr: { old: null, new: 5 } } })
     assert.equal(result.base, null)
-    assert.equal(result.metrics.cost_ore?.delta, null)
-    assert.equal(result.metrics.cost_ore?.new, 5)
+    assert.equal(result.metrics.cost_kr?.delta, null)
+    assert.equal(result.metrics.cost_kr?.new, 5)
     assert.equal(result.metrics.changed_exams, undefined)
     assert.equal(result.interpretable, null)
     assert.deepEqual(result.parameter_changes, [])
   })
 
   it("formaterar skillnader med tydligt tecken", () => {
-    assert.deepEqual(formatDelta("money", -1_300_000), { text: "−13 000 kr", direction: "down" })
+    assert.deepEqual(formatDelta("money", -13_000), { text: "−13 000 kr", direction: "down" })
     assert.equal(formatDelta("count", 8).text, "+8")
     assert.equal(formatDelta("count", 0).text, "Oförändrat")
-    assert.equal(formatDelta("money", 40).text, "Oförändrat", "under en krona räknas som oförändrat")
+    assert.equal(formatDelta("money", 0.4).text, "Oförändrat", "under en krona räknas som oförändrat")
     assert.equal(formatDelta("seconds", null).text, "–")
     assert.match(formatDelta("seconds", -179.2).text, /^−2 min 59 s$/)
   })
 
   it("måtttabellen visar gammalt, nytt och skillnad och räknar fram saknad skillnad", () => {
     const rows = metricRows(COMPARE_OK)
-    const cost = rows.find(row => row.key === "cost_ore")!
+    const cost = rows.find(row => row.key === "cost_kr")!
     assert.match(cost.old, /^1\s823\s000 kr$/)
     assert.match(cost.new, /^1\s810\s000 kr$/)
     assert.match(cost.delta, /^−13 000 kr$/)
-    assert.equal(rows.find(row => row.key === "lower_bound_ore")!.delta, "Oförändrat")
+    assert.equal(rows.find(row => row.key === "lower_bound_kr")!.delta, "Oförändrat")
     assert.equal(rows.find(row => row.key === "changed_exams")!.delta, "+8")
     const first = rows.find(row => row.key === "first_solution_seconds")!
     assert.equal(first.new, "–")
@@ -47,7 +47,7 @@ describe("jämförelse av körningar", () => {
       run: { run_id: "r2", scenario_id: "s", problem_id: "p", solver_outcome: "optimal", has_verified_solution: true },
       base: { run_id: "r1", scenario_id: "s", has_verified_solution: false },
       comparable: false, reason: "Körningarna gäller olika tentamängder.", interpretation: "Körningarna gäller olika tentamängder.",
-      uncertainty_ore: null, interpretable: null, metrics: { cost_ore: { old: 100, new: 90, delta: null } },
+      uncertainty_kr: null, interpretable: null, metrics: { cost_kr: { old: 100, new: 90, delta: null } },
     })
     assert.equal(result.base?.has_verified_solution, false)
     assert.equal(result.run.problem_id, "p")
@@ -88,7 +88,7 @@ describe("jämförelse av körningar", () => {
 
 describe("ärliga texter", () => {
   it("visar intervall utan bevisat optimum", () => {
-    const statement = costStatement(180_050_000, 173_900_000, false)
+    const statement = costStatement(1_800_500, 1_739_000, false)
     assert.equal(statement.proven, false)
     assert.match(statement.headline, /1\s?739\s?000–1\s?800\s?500 kr/)
     assert.match(statement.note, /ingen besparing/)
@@ -106,7 +106,7 @@ describe("ärliga texter", () => {
     assert.deepEqual(describeVerdict({ status: "not_evaluated", reason: "x", a: 1 }).details, [["a", "1"]])
   })
   it("formaterar tal på svenska", () => {
-    assert.match(formatKr(182_300_000), /^1\s?823\s?000 kr$/)
+    assert.match(formatKr(1_823_000), /^1\s?823\s?000 kr$/)
     assert.equal(formatKr(null), "–")
     assert.equal(formatDuration(124), "2 min 04 s")
     assert.equal(formatDuration(8.34), "8,3 s")
