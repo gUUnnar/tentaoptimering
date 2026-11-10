@@ -93,6 +93,8 @@ def build_real_subset_problem(
         rooms, values, parameters, config["subset"]["plan_area"], slots, catalog_path, processed_dir,
         {item["event_id"] for item in events},
     )
+    if "demand_source" in ready:  # which Ladok source the modelled demand rests on; an older underlay has none
+        basis = {**basis, "demand_sources": {str(key): int(count) for key, count in ready["demand_source"].fillna("unknown").value_counts().items()}}
     return JointOptimizationInput(
         schema_version=INPUT_SCHEMA_VERSION,
         problem_id=str(config["scenario"]["id"]),

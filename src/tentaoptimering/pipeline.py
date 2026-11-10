@@ -10,6 +10,7 @@ import pandas as pd
 from .attendance import ATTENDANCE_FILE, QUALITY_FILE, load_attendance, normalize_attendance
 from .canonical_demand import build_scope_report, provisional_scope_decisions
 from .loaders import load_bookings, load_ladok, load_leases
+from .ladok_occasions import EXTRACT_SOURCE, OCCASION_SOURCE, load_occasions, to_activities
 from .linkage import candidate_linkage
 from .model_inputs import (
     build_optimization_inputs,
@@ -90,6 +91,19 @@ def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     frame.to_csv(path, index=False, encoding="utf-8-sig")
 
 
+def _with_occasion_demand(ladok: pd.DataFrame, sources: SourceFiles) -> pd.DataFrame:
+    """Add Ladok activity occasions dated after the extract's last date (optional source); the extract keeps every date it has."""
+    if not sources.ladok_occasions.is_file():
+        return ladok
+    last = ladok["start_date"].dropna().max()
+    extra = normalize_ladok(to_activities(load_occasions(sources.ladok_occasions), last))
+    if extra.empty:
+        return ladok
+    extra["activity_id"] = [f"occ-{index:06d}" for index in range(1, len(extra) + 1)]
+    extra["demand_source"] = OCCASION_SOURCE
+    return pd.concat([ladok, extra], ignore_index=True)
+
+
 def run_pipeline(
     source_dir: Path, processed_dir: Path, report_dir: Path, step: Callable[[str], None] | None = None
 ) -> PipelineOutputs:
@@ -104,6 +118,8 @@ def run_pipeline(
     leases = load_leases(sources.leases)
     notify("normalize")
     bookings, ladok, leases = normalize_bookings(bookings), normalize_ladok(ladok), normalize_leases(leases)
+    ladok["demand_source"] = EXTRACT_SOURCE
+    ladok = _with_occasion_demand(ladok, sources)
     notify("link")
     linkage = candidate_linkage(bookings, ladok)
     parameter_path = REPO_ROOT / "config" / "data_preparation.toml"

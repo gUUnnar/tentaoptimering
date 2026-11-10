@@ -141,7 +141,8 @@ def _build_candidate_relations(
     ladok: pd.DataFrame, event_courses: pd.DataFrame, demand_column: str
 ) -> pd.DataFrame:
     key_columns = ["course_code", "scheduled_date", "booking_start_time"]
-    activities = ladok.loc[:, ["activity_id", "course_code", "start_date", "start_time", demand_column]].copy()
+    source_column = ["demand_source"] if "demand_source" in ladok else []
+    activities = ladok.loc[:, ["activity_id", "course_code", "start_date", "start_time", demand_column, *source_column]].copy()
     activities = activities.rename(
         columns={"start_date": "scheduled_date", "start_time": "booking_start_time"}
     ).dropna(subset=key_columns)
@@ -342,6 +343,7 @@ def build_optimization_inputs(
             "demand_value",
             "demand_measure_source_field",
             "demand_input_status",
+            *(["demand_source"] if "demand_source" in candidates else []),
         ],
     ].copy()
     demands.insert(0, "demand_id", demands["activity_id"])

@@ -23,6 +23,10 @@ HEADER_ROW = 5  # the export starts with four metadata rows and an empty row
 COLUMNS = ["status", "name", "datum", "ort", "lokal", "platser", "anmalda", "kurskod", "kurs", "kurstillfalle", "modul", "anmalningsperiod",
            "anonymt", "prefix", "ansvarig", "typ", "senast_andrad", "info", "installd"]
 KEPT_STATUS = ("Publicerat", "Utkast")
+OCCASION_SOURCE = "ladok_occasion_list"
+EXTRACT_SOURCE = "ladok_extract"
+# Activity types that are exams the model places; PM and submission tasks are not exams in a room.
+EXCLUDED_TYPES = ("PM", "Inlämningsuppgift")
 
 
 def load_occasions(path: Path) -> pd.DataFrame:
@@ -40,6 +44,25 @@ def load_occasions(path: Path) -> pd.DataFrame:
     for name in ("platser", "anmalda"):
         kept[name] = pd.to_numeric(kept[name], errors="coerce")
     return kept
+
+
+def to_activities(occasions: pd.DataFrame, after_date: str | None) -> pd.DataFrame:
+    """Occasion rows as raw Ladok activities (the columns of `loaders.LADOK_COLUMNS`) for dates after `after_date`.
+
+    The Ladok extract stays authoritative wherever it has rows: only occasions dated after its last date are used, so that no
+    period mixes two demand measures. `Antal anmälda` becomes `registered_count`; an occasion without it keeps an empty count
+    (never zero) and therefore never becomes ready demand. Exam types that are not exams in a room (PM, submission) are left out.
+    """
+    rows = occasions[occasions["date"].notna()]
+    if after_date:
+        rows = rows[rows["date"].astype(str) > str(after_date)]
+    rows = rows[~rows["typ"].astype("string").str.strip().isin(EXCLUDED_TYPES) & rows["kurskod"].notna()]
+    place = rows[["ort", "lokal"]].astype("string").apply(lambda row: ", ".join(part.strip() for part in row if pd.notna(part) and part.strip()), axis=1)
+    return pd.DataFrame({
+        "course_code": rows["kurskod"].astype("string"), "name_sv": rows["name"], "start_date": rows["date"].astype(str), "start_time": rows["time"],
+        "activity_type": rows["typ"], "location": place.mask(place.eq(""), pd.NA), "registration_flag": pd.NA, "total_count": pd.NA,
+        "registered_count": rows["anmalda"], "cancelled_count": pd.NA, "added_count": pd.NA, "re_registered_or_early_term_count": pd.NA,
+    }).reset_index(drop=True)
 
 
 def reconcile(occasions: pd.DataFrame, bookings: pd.DataFrame, ladok_activities: pd.DataFrame) -> dict[str, Any]:

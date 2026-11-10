@@ -54,6 +54,10 @@ Den normaliserade bokningsplaceringen och motsvarande tentahändelse ska kunna h
 
 För analys av utnyttjande redovisas mått explicit: **bokade salstimmar**, **dokumenterade tillgängliga salstimmar**, **bokade platser**, **anmälda tentander**, **faktiskt närvarande** eller **verklig lokalbeläggning** beroende på källans definition. Gör aldrig en kvot mellan olika korn utan att förklara relationen, nämnaren och täckningsgraden. Specifika nya tabeller/kolumner fastställs först när leveransens schema granskats.
 
+## Efterfrågan efter uttagets sista datum (Ladoks tillfällelista)
+
+Ladok-uttaget (`ladok_activities.csv`) täcker bara 12 januari–31 mars. Om den valfria källfilen *Ladok ALLA aktivitetstillfällen* finns läggs dess tillfällen **efter uttagets sista datum** till som Ladok-aktiviteter (`activity_id` `occ-NNNNNN`), med `Antal anmälda` som `registered_count` och kolumnen `demand_source` (`ladok_extract` eller `ladok_occasion_list`) som följer med till `optimization_demands.csv` och, som antal per källa, till körningens underlagsbas (`demand_sources`). PM och inlämningsuppgifter ingår inte; ett saknat antal är okänt, aldrig noll. Samma kandidatnyckel som för uttaget (kurskod, datum, starttid) används mot bokningarna.
+
 ## Närvaro (rapporterad användning)
 
 Närvarouppföljningen (*Alla tentor vt2026 närvarouppföljning.xlsx*) är en **valfri** källfil som förberedelsen läser om den finns. Den blir `attendance.csv` och `attendance_quality.json` (ett eget datakorn bredvid bokning, beställning och Ladok): en rad per tenta och lokalangivelse, med närvaro, justerade skrivplatser, andel och flaggor för exakta dubbletter (borttagna och räknade), närvaro över platser, datum i statuskolumnen och Fyrishov. Den är inte kopplad till en bokad sal eller till modellens efterfrågan, lokalangivelsen behålls som den är skriven och saknade värden är okända, aldrig noll. `/api/attendance` ger sammanfattningen per månad och tenttyp.

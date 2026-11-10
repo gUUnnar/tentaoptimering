@@ -72,8 +72,9 @@ class SourceTests(unittest.TestCase):
             facts = inspect_source_dir(folder)
             optional = facts["optional_files"]
             self.assertNotIn("attendance", [item["role"] for item in facts["files"]])
-            self.assertEqual([item["role"] for item in optional], ["attendance"])
+            self.assertEqual([item["role"] for item in optional], ["attendance", "ladok_occasions"])
             self.assertTrue(optional[0]["found"])
+            self.assertFalse(optional[1]["found"])
             self.assertFalse(facts["ready"])  # the required sources are still missing; the optional one never makes it ready
             self.assertNotIn("attendance", [role for role, _label, _path in sources.roles()])
 
