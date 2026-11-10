@@ -54,6 +54,10 @@ Den normaliserade bokningsplaceringen och motsvarande tentahändelse ska kunna h
 
 För analys av utnyttjande redovisas mått explicit: **bokade salstimmar**, **dokumenterade tillgängliga salstimmar**, **bokade platser**, **anmälda tentander**, **faktiskt närvarande** eller **verklig lokalbeläggning** beroende på källans definition. Gör aldrig en kvot mellan olika korn utan att förklara relationen, nämnaren och täckningsgraden. Specifika nya tabeller/kolumner fastställs först när leveransens schema granskats.
 
+## Närvaro (rapporterad användning)
+
+Närvarouppföljningen (*Alla tentor vt2026 närvarouppföljning.xlsx*) är en **valfri** källfil som förberedelsen läser om den finns. Den blir `attendance.csv` och `attendance_quality.json` (ett eget datakorn bredvid bokning, beställning och Ladok): en rad per tenta och lokalangivelse, med närvaro, justerade skrivplatser, andel och flaggor för exakta dubbletter (borttagna och räknade), närvaro över platser, datum i statuskolumnen och Fyrishov. Den är inte kopplad till en bokad sal eller till modellens efterfrågan, lokalangivelsen behålls som den är skriven och saknade värden är okända, aldrig noll. `/api/attendance` ger sammanfattningen per månad och tenttyp.
+
 ## Resursdata: namngivna lokaler, avtalsobjekt, externhyra och personalregler
 
 Kostnader och avtalsvillkor ligger i ett **resurspaket**: en TOML-fil i `config/resource_data/` med schemat `resource-data-v1` (`resource_data.py`). Ett paket väljs med parametern `resources.pack`; ett nytt paket med verkliga uppgifter läggs som en ny fil och en ny rad bland valen i katalogen, utan kodändring. Samma kontrakt bär verkliga och simulerade uppgifter. Den medföljande `simulated_dev_2026.toml` är **simulerad** och används tills verkliga uppgifter finns.
