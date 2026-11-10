@@ -73,6 +73,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `joint_paid_time.py` | Betald personaltid i CP-SAT-modellen: vaktar × betald längd per sal och pass. |
 | `joint_costing.py` | Optimerarens egna salstillfällesrader omsatta till betald tid och kostnad (via `joint_pricing`). |
 | `attendance.py` | Närvarouppföljningen som eget datakorn: inläsning, normalisering, dubbletter och kvalitetsflaggor, sammanfattning av närvaro mot justerade platser per månad och tenttyp. |
+| `ladok_occasions.py` | Avstämning av Ladoks aktivitetstillfällesllista mot bokningar och Ladok-uttaget (täckning per månad, koppling på prefix och datum); skriver ingen efterfrågan. |
 | `attendance_api.py` | Skrivskyddad route `/api/attendance` över den förberedda närvarofilen. |
 | `joint_hire.py` | Förhyrning av hel extern anläggning (Fyrishov): en fast kostnad per period som uppstår om någon av salarna används, i optimeringsmodellen och i prissättningen. |
 | `abc_hire.py` | Förhyrningsfönster per alternativ i den förklarade skillnaden (hyrd/ej hyrd, kostnad, skillnad). |
@@ -180,6 +181,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `tests/test_joint_optimizer.py` | Handräknade referensfall för kostnadsavvägning, full täckning, samtentor, digitalt krav, kurskrock, ställtid och kontraktsrundresa. |
 | `tests/test_joint_paid_time.py` | Betald personaltid och fasta bokningar med handräknade svar: pass, kortaste pass, restid, fler betalda timmar när lokalbesparingen är större, spärrade salar, ställtid och oanvänd men bokad sal; monolitisk och dekomponerad strategi och den oberoende valideraren. |
 | `tests/test_joint_paid_time_differential.py` | 30 slumpade problem med betald tid, restid, externhyra och fasta bokningar: optimerare, `joint_pricing` och validerare överens, och båda strategierna når samma optimum. |
+| `tests/test_ladok_occasions.py` | Inläsning av tillfällesllistan (upprepade rubriker bort) och avstämningens räkning mot bokningar och uttaget. |
 | `tests/test_attendance.py` | Närvaro: dubbletter, rader över platser, okända värden, sammanfattning med handräknade tal, valfri källfil och routens svar utan förberedd fil. |
 | `tests/test_joint_hire_windows.py` | Förhyrning av hel anläggning med handräknade svar: en gång per period oavsett antal hallar och pass, undviks när egen sal är billigare, fönster utanför tentadagarna, fallback från dekomponerad strategi, simulerat paket och den oberoende valideraren. |
 | `tests/test_resource_data.py` | Resurspaketets kontrakt (ursprung, felaktiga paket nekas), hur paketet prissätter salar och personal i en körning, bortvalda salar, frysning och reservationsbyggaren på syntetiska bokningar. |
