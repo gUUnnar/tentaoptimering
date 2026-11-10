@@ -98,6 +98,23 @@ class NamedRoom:
 
 
 @dataclass(frozen=True)
+class HireWindow:
+    """A hire of a whole external facility for a period (for example Fyrishov, which must be hired in full).
+
+    The cost is incurred once if any of the rooms is used in the period, whatever number of rooms and sessions is used;
+    the rooms are usable only inside the window.
+    """
+
+    window_id: str
+    name: str
+    room_ids: tuple[str, ...]
+    start: str
+    end: str
+    cost_ore: int
+    provenance: Provenance
+
+
+@dataclass(frozen=True)
 class StaffRules:
     """Cost and pay rules for the paid staff time. `None` means the pack does not say; the parameters then decide."""
 
@@ -130,6 +147,7 @@ class ResourcePack:
     valid_to: str | None
     cost_objects: tuple[CostObject, ...] = ()
     rooms: tuple[NamedRoom, ...] = ()
+    hire_windows: tuple[HireWindow, ...] = ()
     staff: StaffRules | None = None
     actual_staffing: tuple[ActualStaffing, ...] = ()
     sha256: str = ""
@@ -189,7 +207,8 @@ def load_pack(path: Path) -> ResourcePack:
     pack = ResourcePack(
         pack_id=pack_id, name=_text(header, "name", "pack"), origin=origin, description=str(header.get("description", "")),
         replaced_by=str(header.get("replaced_by", "")), valid_from=_day(header.get("valid_from"), "pack"), valid_to=_day(header.get("valid_to"), "pack"),
-        cost_objects=cost_objects, rooms=rooms, staff=_staff(document.get("staff"), origin),
+        cost_objects=cost_objects, rooms=rooms, hire_windows=tuple(_hire_window(item, origin) for item in document.get("hire_window", ())),
+        staff=_staff(document.get("staff"), origin),
         actual_staffing=tuple(_actual(item, origin) for item in document.get("actual_staffing", ())),
         sha256=hashlib.sha256(raw).hexdigest(),
     )
@@ -202,7 +221,7 @@ def pack_basis(pack: ResourcePack) -> dict[str, Any]:
     origins = sorted({item.provenance.origin for item in pack.rooms} | {item.provenance.origin for item in pack.cost_objects}
                      | ({pack.staff.provenance.origin} if pack.staff else set()))
     return {"pack_id": pack.pack_id, "pack_sha256": pack.sha256, "pack_origin": pack.origin, "origins": origins,
-            "rooms": len(pack.rooms), "cost_objects": len(pack.cost_objects), "valid_from": pack.valid_from, "valid_to": pack.valid_to}
+            "rooms": len(pack.rooms), "hire_windows": len(pack.hire_windows), "cost_objects": len(pack.cost_objects), "valid_from": pack.valid_from, "valid_to": pack.valid_to}
 
 
 def write_snapshot(pack: ResourcePack, path: Path) -> str:
@@ -289,6 +308,21 @@ def _room(item: dict[str, Any], pack_origin: str) -> NamedRoom:
     )
 
 
+def _hire_window(item: dict[str, Any], pack_origin: str) -> HireWindow:
+    key = _text(item, "id", "hire_window")
+    where = f"hire_window {key}"
+    rooms = item.get("room_ids")
+    if not isinstance(rooms, list) or not rooms or not all(isinstance(value, str) for value in rooms):
+        raise ResourceDataError(f"{where}: room_ids måste vara en icke-tom lista med sal-id:n.")
+    start, end = _day(item.get("start"), where), _day(item.get("end"), where)
+    if start is None or end is None or start > end:
+        raise ResourceDataError(f"{where}: start och end måste vara datum och start får inte ligga efter end.")
+    cost = _money(item.get("cost_ore"), where)
+    if cost is None:
+        raise ResourceDataError(f"{where}: cost_ore (hela förhyrningens kostnad i öre) saknas.")
+    return HireWindow(key, _text(item, "name", where), tuple(rooms), start, end, cost, _provenance(item, where, pack_origin))
+
+
 def _staff(item: dict[str, Any] | None, pack_origin: str) -> StaffRules | None:
     if item is None:
         return None
@@ -325,6 +359,18 @@ def _check(pack: ResourcePack) -> None:
         if room.kind == "internal" and room.cost_object_id is None and room.annual_cost_ore is None:
             raise ResourceDataError(f"Den interna salen {room.room_id} måste ange annual_cost_ore eller cost_object_id.")
     known = set(ids)
+    window_ids = [item.window_id for item in pack.hire_windows]
+    if len(window_ids) != len(set(window_ids)):
+        raise ResourceDataError("Resursdata har dubblerade förhyrningsfönster.")
+    for window in pack.hire_windows:
+        for room_id in window.room_ids:
+            named = next((item for item in pack.rooms if item.room_id == room_id), None)
+            if named is None or named.kind != "external":
+                raise ResourceDataError(f"Förhyrningen {window.window_id} hänvisar till {room_id}, som inte är en extern sal i resursdatan.")
+    for room_id in {room for window in pack.hire_windows for room in window.room_ids}:
+        spans = sorted((w.start, w.end) for w in pack.hire_windows if room_id in w.room_ids)
+        if any(later[0] <= earlier[1] for earlier, later in zip(spans, spans[1:])):
+            raise ResourceDataError(f"Förhyrningsfönstren för {room_id} överlappar varandra.")
     for row in pack.actual_staffing:
         if row.room_id not in known:
             raise ResourceDataError(f"Faktisk bemanning hänvisar till okänd sal {row.room_id}.")

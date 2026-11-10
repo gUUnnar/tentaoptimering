@@ -19,7 +19,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from .joint_contract import CandidateSlot, ParameterValue, Reservation, Room
+from .joint_contract import CandidateSlot, HireWindow, ParameterValue, Reservation, Room
 from .joint_reservations import build_reservations
 from .resource_data import NamedRoom, ResourceDataError, ResourcePack, pack_basis, pack_directory, resolve_pack, write_snapshot
 
@@ -87,6 +87,36 @@ def apply_resource_pack(
         warnings.append(f"{len(proxies)} salar saknar kostnad i resursdatan och prissätts per plats enligt parametern: {', '.join(proxies)}.")
     return chosen, {"pack": pack_basis(pack) if pack else None, "rooms": trace, "excluded_rooms": sorted(excluded),
                     "warnings": warnings}
+
+
+def apply_hire_windows(
+    pack: ResourcePack | None, rooms: tuple[Room, ...], slots: tuple[CandidateSlot, ...],
+) -> tuple[tuple[Room, ...], tuple[HireWindow, ...]]:
+    """Whole-facility hires: a room that a hire window names costs nothing per session and is usable only inside its windows.
+
+    A window enters the problem when it overlaps the planning period and one of its rooms is in the model. The window's
+    cost is incurred once if any of its rooms is used in the window, whatever the number of rooms or sessions.
+    """
+    if pack is None or not pack.hire_windows:
+        return rooms, ()
+    present = {room.room_id for room in rooms}
+    first, last = (min(s.scheduled_date for s in slots), max(s.scheduled_date for s in slots)) if slots else (None, None)
+    windows = []
+    for item in pack.hire_windows:
+        start, end = date.fromisoformat(item.start), date.fromisoformat(item.end)
+        room_ids = tuple(room_id for room_id in item.room_ids if room_id in present)
+        if room_ids and first and last and start <= last and end >= first:
+            windows.append(HireWindow(item.window_id, item.name, room_ids, start, end, item.cost_ore, item.provenance.origin, item.provenance.source))
+    hired = {room_id for item in pack.hire_windows for room_id in item.room_ids}
+    result = []
+    for room in rooms:
+        if room.room_id not in hired:
+            result.append(room)
+            continue
+        inside = {s.slot_id for s in slots if any(room.room_id in w.room_ids and w.start <= s.scheduled_date <= w.end for w in windows)}
+        allowed = inside if room.available_slot_ids is None else inside & set(room.available_slot_ids)
+        result.append(replace(room, external_session_cost_ore=0, available_slot_ids=tuple(sorted(allowed))))
+    return tuple(result), tuple(windows)
 
 
 def _owners(pack: ResourcePack) -> dict[str, list[NamedRoom]]:
@@ -166,19 +196,23 @@ def _added_room(named: NamedRoom, pack: ResourcePack, plan_area: str, slots: tup
 def build_resource_layer(
     rooms: tuple[Room, ...], values: dict[str, Any], parameters: tuple[ParameterValue, ...], plan_area: str, slots: tuple[CandidateSlot, ...],
     catalog_path: Path, processed_dir: Path, population_event_ids: set[str],
-) -> tuple[tuple[Room, ...], dict[str, Any], tuple[Reservation, ...], dict[str, Any]]:
-    """Rooms with data, the staff values the engine uses, the blocking reservations and the basis record saved in the input."""
+) -> tuple[tuple[Room, ...], dict[str, Any], tuple[Reservation, ...], dict[str, Any], tuple[HireWindow, ...]]:
+    """Rooms with data, the staff values the engine uses, the blocking reservations, the basis record saved in the input
+    and the whole-facility hires that apply to the planning period."""
     pack_id = pack_id_of(values)
     pack = resolve_pack(pack_id, pack_directory(catalog_path)) if pack_id != NO_PACK else None
     chosen, trace = apply_resource_pack(rooms, pack, plan_area, slots, values)
+    chosen, hire_windows = apply_hire_windows(pack, chosen, slots)
     staff = effective_staff_values(values, parameters, pack)
     reservations, reservation_basis = build_reservations(
         processed_dir, population_event_ids, chosen, slots, str(values.get("reservations.policy", "block_identified")),
         {"no_participant_count": str(values.get("reservations.action_no_count", "keep_fixed")), "outside_selection": str(values.get("reservations.action_outside_selection", "keep_fixed")),
          "not_in_ladok": str(values.get("reservations.action_not_in_ladok", "keep_fixed"))})
     reserved = {item.room_id for item in reservations}
-    basis = {**trace, "staff": staff, "reservations": reservation_basis, "reserved_rooms": sorted(reserved)}
-    return chosen, staff, reservations, basis
+    basis = {**trace, "staff": staff, "reservations": reservation_basis, "reserved_rooms": sorted(reserved),
+             "hire_windows": [{"window_id": w.window_id, "name": w.name, "room_ids": list(w.room_ids), "start": w.start.isoformat(),
+                               "end": w.end.isoformat(), "cost_ore": w.cost_ore, "origin": w.origin} for w in hire_windows]}
+    return chosen, staff, reservations, basis, hire_windows
 
 
 SNAPSHOT_FILE = "resource_pack.json"

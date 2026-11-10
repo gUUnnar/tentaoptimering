@@ -89,7 +89,7 @@ def build_real_subset_problem(
         StaffingStep(int(item["max_participants"]), int(item["required_staff"]))
         for item in values["staffing.ladder"]
     )
-    rooms, staff, reservations, basis = build_resource_layer(
+    rooms, staff, reservations, basis, hire_windows = build_resource_layer(
         rooms, values, parameters, config["subset"]["plan_area"], slots, catalog_path, processed_dir,
         {item["event_id"] for item in events},
     )
@@ -126,6 +126,7 @@ def build_real_subset_problem(
         preference=str(values["wish.tiebreak"]),
         reservations=reservations,
         resource_basis=basis,
+        hire_windows=hire_windows,
     )
 
 

@@ -19,6 +19,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
+from .abc_hire import hire_window_rows
 from .abc_ledger import COST_KIND_ACTUAL, Ledger
 from .cost_realization import classify_room, summarize
 from .joint_pricing import COMPONENTS, PricedSession, price, pricing_signature, passes, reprice_staff
@@ -66,7 +67,7 @@ def explain(left: Ledger, right: Ledger, labels: dict[str, str] | None = None) -
         "available": available, "reasons": reasons, "notes": notes,
         "basis": _basis(left, right), "total": {"left_ore": left.total, "right_ore": right.total, "difference_ore": difference if available else None,
                                                "label": "Modellberäknad kostnad: lokaler som årskostnad, externhyra och personal för den valda perioden. Höger minus vänster."},
-        "split": split, "items": items, "rooms": rooms, "added_rooms": added, "sessions": sessions, "staffing": staff, "exams": exams,
+        "split": split, "items": items, "rooms": rooms, "hire_windows": hire_window_rows(left, right), "added_rooms": added, "sessions": sessions, "staffing": staff, "exams": exams,
         "realization": realization, "savings_kinds": _kinds(difference if available else None, realization),
         "summary": _summary(left, right, items, difference) if available else None, "data_quality": _quality(left, right),
     }
@@ -349,6 +350,9 @@ def _quality(left: Ledger, right: Ledger) -> dict[str, Any]:
             flags.append({"key": "address_only_assumed", "text": "Temporär regel: " + " ".join(ledger.assumptions) + " Kostnaden för A är därför en underkant."})
     if simulated:
         flags.append({"key": "simulated", "text": "Kostnader eller villkor kommer från simulerade testdata. Resultatet visar hur beräkningen fungerar och får inte tolkas som verklig eller verifierad besparing."})
+    if any(ledger.problem.hire_windows for ledger in (left, right)):
+        flags.append({"key": "hire_windows", "text": "Anläggningar som måste hyras i sin helhet (Fyrishov) kostar en fast summa per förhyrningsperiod, "
+                      "oavsett hur många hallar som används. Kostnaden ingår i posten externa bokningar; personalen vid anläggningen prissätts som bemanning och får inte räknas två gånger."})
     if proxies:
         flags.append({"key": "proxy_prices", "text": f"{len(proxies)} använda salar saknar kostnad i resursdatan och prissätts per plats enligt en parameter (proxy): {', '.join(proxies[:6])}."})
     if any(((ledger.problem.resource_basis or {}).get("reservations") or {}).get("blocking") for ledger in (left, right)):

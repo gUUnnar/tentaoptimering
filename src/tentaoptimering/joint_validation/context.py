@@ -56,6 +56,17 @@ class Demand:
 
 
 @dataclass(frozen=True)
+class HireWindow:
+    """A whole facility hired for a period: its cost is incurred once if any of its rooms has a session in the period."""
+
+    window_id: str
+    room_ids: frozenset[str]
+    start: date
+    end: date
+    cost: int
+
+
+@dataclass(frozen=True)
 class Room:
     room_id: str
     building: str
@@ -98,6 +109,7 @@ class Context:
     min_paid_minutes: int = 0
     reservations: tuple[Reservation, ...] = ()
     resource_basis: dict[str, Any] | None = None
+    hire_windows: tuple[HireWindow, ...] = ()
     schedule: dict[str, dict[str, Any]] = field(default_factory=dict)
     assignments: list[dict[str, Any]] = field(default_factory=list)
     sessions: list[dict[str, Any]] = field(default_factory=list)
@@ -203,6 +215,12 @@ def build_context(problem: dict[str, Any], result: dict[str, Any]) -> Context:
             for item in problem.get("reservations", ())
         ),
         problem.get("resource_basis"),
+        tuple(
+            HireWindow(str(_need(item, "window_id", "förhyrning")), frozenset(str(value) for value in _need(item, "room_ids", "förhyrning")),
+                       _day(_need(item, "start", "förhyrning"), "förhyrning"), _day(_need(item, "end", "förhyrning"), "förhyrning"),
+                       _int(_need(item, "cost_ore", "förhyrning"), "förhyrning"))
+            for item in problem.get("hire_windows", ())
+        ),
     )
     solver = _need(result, "solver", "resultat")
     outcome = _need(solver, "outcome", "solver")

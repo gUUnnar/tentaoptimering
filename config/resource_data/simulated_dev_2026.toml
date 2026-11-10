@@ -217,6 +217,31 @@ origin = "simulated"
 source = "Påhittad timkostnad 270 kr inklusive lönebikostnader. Verklig kostnad kommer från lön/Retendo."
 rules_basis = "Kortaste betalda pass 2 timmar följer lokalt kollektivavtal UFV-PA 2023/4939 §2.2 (verifierat i avtalet). Timkostnaden är simulerad."
 
+# ---- Förhyrning av hela Fyrishov (två tillfällen per år). Hela anläggningen måste hyras, så kostnaden är fast per tillfälle. ----
+# Perioderna är de veckor då bokningsunderlaget har tentor i Fyrishov. Beloppet är PÅHITTAT: uppgiften är cirka 1,2 mnkr per år i hyra och
+# kringkostnader (flytt av möbler, möblering) för två tillfällen, fördelat lika, men uppdelning per tillfälle saknas. Personalkostnaden vid
+# Fyrishov ingår inte här (den prissätts som bemanning); den får inte läggas till en gång till.
+
+[[hire_window]]
+id = "hw-fyrishov-2026-01"
+name = "Fyrishov, januariveckan"
+room_ids = ["uu-fyrishov-hall-d", "uu-fyrishov-hall-e", "uu-fyrishov-hall-f"]
+start = "2026-01-12"
+end = "2026-01-16"
+cost_ore = 60000000
+origin = "simulated"
+source = "Påhittad fördelning: 1,2 mnkr hyra och kringkostnader per år delat lika på två tillfällen. Uppgift från Fyrishovs kostnadsunderlag (fyrishov.txt), uppdelning saknas."
+
+[[hire_window]]
+id = "hw-fyrishov-2026-06"
+name = "Fyrishov, juniveckan"
+room_ids = ["uu-fyrishov-hall-d", "uu-fyrishov-hall-e", "uu-fyrishov-hall-f"]
+start = "2026-06-01"
+end = "2026-06-05"
+cost_ore = 60000000
+origin = "simulated"
+source = "Påhittad fördelning: 1,2 mnkr hyra och kringkostnader per år delat lika på två tillfällen. Uppgift från Fyrishovs kostnadsunderlag (fyrishov.txt), uppdelning saknas."
+
 # ---- Faktisk bemanning (valfri). Här bara simulerade rader som visar formatet; de är inte observationer. ------------
 
 [[actual_staffing]]
