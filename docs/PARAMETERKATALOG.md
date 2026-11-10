@@ -12,7 +12,7 @@ Varje definition innehåller id, verksamhetsgrupp, etikett, typ, enhet, standard
 
 ## Omfattning
 
-Katalogen har 66 poster, varav 44 har motorstöd. Varje implementerad post har ett effektfall i `tests/test_joint_parameter_effects.py` som ändrar värdet och kräver att modellen optimeraren får ändras; en parameter som ignoreras fångas.
+Katalogen har 68 poster, varav 46 har motorstöd. Varje implementerad post har ett effektfall i `tests/test_joint_parameter_effects.py` som ändrar värdet och kräver att modellen optimeraren får ändras; en parameter som ignoreras fångas.
 
 | Område | Parametrar med motorstöd | Definierade men utan motorstöd (`contract_only`) |
 |---|---|---|

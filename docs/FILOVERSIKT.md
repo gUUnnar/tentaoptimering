@@ -49,6 +49,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `docs/FRAGOR_TILL_DATAAGARE.md` | Frågor till dataägaren om bokningsuttaget (sal, status, icke-fysiska lokaler, salsregister, Ladok-täckning) och om tentavakter, med siffror ur datakvalitetsrapporten och hur svaren läggs in som verifierade regler. |
 | `docs/KOSTNADSMODELL.md` | Avgränsning mellan resursbehov, intern kostnadsfördelning och realiserbar besparing. |
 | `docs/PARAMETERKATALOG.md` | Utkast till den enda parameterkatalogen (endast parametrar som motorn läser) med grund och effektfall. |
+| `docs/NARVARO_OCH_PLANERINGSANDEL.md` | Historisk närvaro vt2026 som underlag för planeringsandelsparametrarna, med begränsningar. |
 | `docs/ANALYS_KOLLEKTIVAVTAL.md` | Analys av lokalt kollektivavtal för tentamenspersonal och vad som kan bli verifierat. |
 | `docs/LOKALT_GRANSSNITT.md` | Arkitektur, API-kontrakt, källkodsutveckling och offlineverifiering av Windowsdistributionen. |
 | `docs/historik/README.md` | Register över bevarade historiska rapporter; slår fast att de inte är aktuella krav- eller statuskällor. |

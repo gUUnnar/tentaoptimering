@@ -31,7 +31,8 @@ _GROUPS = {
                           "cost.external_room_session_ore", "cost.annualization_factor", "cost.avoidable_cost_definition",
                           "cost.staff_paid_minute_ore", "resources.pack")),
     "demand_basis_verified": (
-        "Efterfrågegrund", ("demand.measure", "demand.variation_pct", "demand.rounding", "demand.capacity_safety_margin_pct")),
+        "Efterfrågegrund", ("demand.measure", "demand.variation_pct", "demand.rounding", "demand.planning_share_ordinary_pct",
+         "demand.planning_share_retake_pct", "demand.capacity_safety_margin_pct")),
 }
 
 

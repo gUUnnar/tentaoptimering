@@ -48,7 +48,7 @@ LAYOUT: dict[str, tuple[str, ...]] = {
         "solver.deterministic", "solver.seed", "objective.weights",
     ),
     "ovrigt": (
-        "demand.variation_pct", "demand.rounding", "demand.measure", "demand.capacity_safety_margin_pct",
+        "demand.variation_pct", "demand.rounding", "demand.planning_share_ordinary_pct", "demand.planning_share_retake_pct", "demand.measure", "demand.capacity_safety_margin_pct",
         "exam.max_duration_hours", "special_support.rules",
     ),
 }
