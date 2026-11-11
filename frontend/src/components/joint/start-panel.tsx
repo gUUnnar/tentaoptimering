@@ -32,7 +32,7 @@ type Props = {
   onSaved: (scenario: JointScenario) => Promise<void>
   onOpenUnderlay: () => void
   /** Begäran från översikten att utgå från B eller en tidigare körning; `nonce` gör att samma val kan begäras igen. */
-  baseRequest: { id: string; nonce: number } | null
+  baseRequest: { id: string; nonce: number; parameters?: Record<string, unknown> } | null
 }
 
 export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpenUnderlay, baseRequest }: Props) {
@@ -53,6 +53,14 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
   }, [scenarios])
   useEffect(() => { setOptions(current => ({ ...current, specific: "" })); setStartError(""); setPeriod(null); setRunName("") }, [scenarioId])
   useEffect(() => { if (baseRequest && scenarios.some(item => item.id === baseRequest.id)) setScenarioId(baseRequest.id) }, [baseRequest, scenarios])
+  // Ett förslag från en körning utan lösning fylls i när scenariots parametrar har hämtats.
+  const [pending, setPending] = useState<{ nonce: number; parameters: Record<string, unknown> } | null>(null)
+  useEffect(() => { if (baseRequest?.parameters) setPending({ nonce: baseRequest.nonce, parameters: baseRequest.parameters }) }, [baseRequest])
+  useEffect(() => {
+    if (!pending || editor.load.status !== "ready" || scenarioId !== baseRequest?.id) return
+    editor.applyValues(pending.parameters)
+    setPending(null)
+  }, [pending, editor, scenarioId, baseRequest])
 
   const scenario = scenarios.find(item => item.id === scenarioId)
   const estimate = runtimeEstimate(scenario?.subset?.exam_count)
@@ -122,7 +130,7 @@ export function StartPanel({ scenarios, loadError, busy, onStart, onSaved, onOpe
           <input id="run-name" className="field w-full" type="text" maxLength={120} value={runName} onChange={event => setRunName(event.target.value)}
             placeholder={isBase ? "Lämna tomt för ”B – Grundoptimering” och klockslag" : "Lämna tomt för ett namn efter det du ändrat"}/></div>
         <ScenarioFacts scenario={scenario} choice={period} check={periodState.check} coverage={periodState.coverage} underlay={underlay}/>
-        <PrecheckResult state={precheck}/>
+        <PrecheckResult state={precheck} repair={{ body: toStartBody(scenarioId, options, editor.request, period), stateKey: JSON.stringify([scenarioId, editor.request, period]), onApply: editor.applyValues }}/>
       </CardContent>
     </Card>
     {problems.length > 0 && <div role="alert" className="rounded-md border border-red-700 bg-red-50 p-3 text-sm text-red-900">

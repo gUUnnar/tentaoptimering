@@ -78,6 +78,9 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `money.py` | Belopp i kronor: kontroll av högst två decimaler, omräkning till och från lösarens hela hundradelar (`to_units`/`from_units`) och exakta summor, differenser och produkter. |
 | `legacy_money.py` | Läser filer från före kronorna (`_ore`, öre) som kronor: körningar, scenariofiler och parametrar; ändrar aldrig filen. |
 | `joint_validation/money.py` | Valideraren egna exakta beloppsomräkning (hela hundradelar) och läsning av äldre öre-filer, utan import från motorn. |
+| `joint_repair.py` | Förslag på minsta ändring: söker bland kalender, datum och fasta bokningar den minsta mängd ändringar efter vilken en körning går att lösa (steg A utan lösning, steg B med solvern); bara en funnen lösning räknas som möjlig. |
+| `joint_repair_text.py` | Svenska etiketter för förslagets ändringar. |
+| `joint_repair_api.py` | `POST /api/joint-runs/suggest-fix` (jobb) och dess förlopp. |
 | `joint_hire.py` | Förhyrning av hel extern anläggning (Fyrishov): en fast kostnad per period som uppstår om någon av salarna används, i optimeringsmodellen och i prissättningen. |
 | `abc_hire.py` | Förhyrningsfönster per alternativ i den förklarade skillnaden (hyrd/ej hyrd, kostnad, skillnad). |
 | `joint_pricing.py` | Prissätter vilken plan som helst (en körning eller den faktiska bokningen) med en sparad körnings regler: hyra, externa debiteringar, betalda pass och minuter, pool. Underlag för jämförelsen. |
@@ -189,6 +192,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `tests/test_money.py` | Kronor: exakta belopp utan flyttalsbrus, högst två decimaler, parametervalidering och läsning av gamla öre-filer (motor och valideraren). |
 | `tests/test_legacy_run.py` | En körning sparad i öre läses och eftervalideras med samma utfall som i kronor, och filen skrivs aldrig om. |
 | `tests/test_attendance.py` | Närvaro: dubbletter, rader över platser, okända värden, sammanfattning med handräknade tal, valfri källfil och routens svar utan förberedd fil. |
+| `tests/test_joint_repair.py` | Förslaget med skriptad värld och en liten verklig sökning: rätt veckodag och inget mer, onödig ändring tas bort, minsta fasta bokningsgrupp, oavgjort är aldrig möjligt, bara tillåtna typer av ändring. |
 | `tests/test_joint_hire_windows.py` | Förhyrning av hel anläggning med handräknade svar: en gång per period oavsett antal hallar och pass, undviks när egen sal är billigare, fönster utanför tentadagarna, fallback från dekomponerad strategi, simulerat paket och den oberoende valideraren. |
 | `tests/test_resource_data.py` | Resurspaketets kontrakt (ursprung, felaktiga paket nekas), hur paketet prissätter salar och personal i en körning, bortvalda salar, frysning och reservationsbyggaren på syntetiska bokningar. |
 | `tests/test_abc_explain.py` | Förklarad skillnad med handräknade fall: poster som summerar till totalen, namngivna salar, undviken extern bokning, färre och fler betalda timmar, villkorad besparing, utnyttjande mot priser, spärrade jämförelser, A prissatt med körningens regler. |

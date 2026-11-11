@@ -31,6 +31,8 @@ export type ParameterEditor = {
   hasErrors: boolean
   draftFor(param: ParameterInfo): unknown
   setDraft(param: ParameterInfo, draft: unknown): void
+  /** Lägger in värden (till exempel ett förslag) som ändringar i formuläret; okända id:n hoppas över. */
+  applyValues(values: Record<string, unknown>): void
   reset(id: string): void
   resetAll(): void
   applyServerErrors(errors: FieldError[]): void
@@ -77,11 +79,19 @@ export function useParameterEditor(scenarioId: string, optionsRefreshKey?: unkno
     })
   }, [clearServerError])
 
+  const applyValues = useCallback((values: Record<string, unknown>) => {
+    for (const [id, value] of Object.entries(values)) {
+      const param = params.find(item => item.id === id)
+      if (param) setDraft(param, toDraft(param, value))
+    }
+  }, [params, setDraft])
+
   return {
     load, params, groupMeta, optionsLoad: optionsSource.load, options, reloadOptions: optionsSource.reload, edits, changes, errors, generalErrors, request,
     hasErrors: Object.keys(localErrors).length > 0,
     draftFor: param => param.id in edits ? edits[param.id] : toDraft(param),
     setDraft,
+    applyValues,
     reset: id => { clearServerError(id); setEdits(current => { const { [id]: _removed, ...rest } = current; return rest }) },
     resetAll: () => { setEdits({}); setServerErrors({}); setGeneralErrors([]) },
     applyServerErrors: list => { const split = splitServerErrors(list, params); setServerErrors(split.byId); setGeneralErrors(split.general) },
