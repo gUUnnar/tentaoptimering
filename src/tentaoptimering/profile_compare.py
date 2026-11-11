@@ -19,6 +19,7 @@ from __future__ import annotations
 from typing import Any
 
 from .joint_compare import assumption_changes, interpret
+from .money import kdiff
 
 CHANGE_LIST_LIMIT = 300
 METRIC_ROWS = (
@@ -46,8 +47,14 @@ def _metric(profile: dict[str, Any], key: str, source: str | None) -> Any:
     return profile["metrics"].get(source)
 
 
-def _delta(left: Any, right: Any) -> int | None:
-    return right - left if isinstance(left, int) and isinstance(right, int) else None
+def _is_number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _delta(left: Any, right: Any) -> float | int | None:
+    if not (_is_number(left) and _is_number(right)):
+        return None
+    return right - left if isinstance(left, int) and isinstance(right, int) else kdiff(right, left)
 
 
 def compare_profiles(left: dict[str, Any], right: dict[str, Any], parameter_changes: list[dict[str, Any]], now_stale_blocks: bool = True) -> dict[str, Any]:
@@ -129,10 +136,10 @@ def _cost(left: dict[str, Any], right: dict[str, Any], changes: list[dict[str, A
         block["interpretable"] = False
         block["savings_requirements"] = _savings_requirements(left, right)
         return block
-    delta = rc["total_ore"] - lc["total_ore"]
-    gaps = [item.get("gap_ore") for item in (lc, rc)]
-    uncertainty = max(gaps) if all(isinstance(gap, int) for gap in gaps) else None
-    block["model_difference"] = {"ore": delta, "uncertainty_ore": uncertainty, "label": "Teoretisk skillnad i modellkostnad (höger minus vänster), inte en verifierad besparing"}
+    delta = kdiff(rc["total_kr"], lc["total_kr"])
+    gaps = [item.get("gap_kr") for item in (lc, rc)]
+    uncertainty = max(gaps) if all(_is_number(gap) for gap in gaps) else None
+    block["model_difference"] = {"kr": delta, "uncertainty_kr": uncertainty, "label": "Teoretisk skillnad i modellkostnad (höger minus vänster), inte en verifierad besparing"}
     block["interpretable"], block["interpretation"] = interpret(delta, uncertainty)
     block["savings_requirements"] = _savings_requirements(left, right)
     return block

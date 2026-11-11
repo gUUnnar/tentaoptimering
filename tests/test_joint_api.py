@@ -130,9 +130,9 @@ class StartAndObserveTests(unittest.TestCase):
         summary = joint_api.run_summary(workspace.storage, run_id)
         result = json.loads((directory / "joint_result.json").read_text(encoding="utf-8"))
         validation = json.loads((directory / "joint_validation.json").read_text(encoding="utf-8"))["summary"]
-        self.assertEqual(summary["cost_ore"], result["solver"]["objective_value_ore"])
-        self.assertEqual(summary["lower_bound_ore"], result["solver"]["best_objective_bound_ore"])
-        self.assertEqual(summary["gap_ore"], summary["cost_ore"] - summary["lower_bound_ore"])
+        self.assertEqual(summary["cost_kr"], result["solver"]["objective_value_kr"])
+        self.assertEqual(summary["lower_bound_kr"], result["solver"]["best_objective_bound_kr"])
+        self.assertEqual(summary["gap_kr"], summary["cost_kr"] - summary["lower_bound_kr"])
         self.assertEqual(summary["changed_exams"], result["changed_exam_demands"])
         self.assertEqual(summary["solver_outcome"], "optimal")
         self.assertTrue(summary["cost_is_proven_optimum"])
@@ -181,7 +181,7 @@ class StartAndObserveTests(unittest.TestCase):
         self.assertIsInstance(end["error"], str)  # the client shows it as text
         self.assertTrue(end["error"].startswith("FileNotFoundError: "))
         self.assertEqual(end["events"][-1]["type"], "finished")
-        self.assertEqual((end["events"][-1]["outcome"], end["events"][-1]["cost_ore"]), ("failed", None))
+        self.assertEqual((end["events"][-1]["outcome"], end["events"][-1]["cost_kr"]), ("failed", None))
 
 
 class CancelTests(unittest.TestCase):
@@ -209,7 +209,7 @@ class CancelTests(unittest.TestCase):
                 else:
                     # nothing is better than a partial placement: no cost, no schedule, and never a pass
                     self.assertEqual(summary["solver_outcome"], "no_feasibility_conclusion")
-                    self.assertIsNone(summary["cost_ore"])
+                    self.assertIsNone(summary["cost_kr"])
                     self.assertFalse(summary["technical_placement_complete"])
                     self.assertFalse(summary["has_verified_solution"])  # "pass" of an empty result is not a solution
                     self.assertTrue(summary["cancelled"])

@@ -23,6 +23,7 @@ from collections import defaultdict
 from typing import Any
 
 from .joint_contract import JointOptimizationInput
+from .money import kdiff, kmul, ksum
 from .joint_pricing import PricedSession, passes, price, reserved_rooms, sessions_from_result
 
 SUMMARY_BASIS = ("Varje vaktposition i ett salstillfälle är ett eget betalt pass från förberedelse till avslut, lägst kortaste betalda pass, plus salens betalda restid. "
@@ -34,8 +35,8 @@ def priced_sessions(problem: JointOptimizationInput, rows: list[dict[str, Any]] 
     return sessions_from_result(problem, {"room_sessions": list(rows)})
 
 
-def paid_cost_ore(problem: JointOptimizationInput, rows: list[dict[str, Any]] | tuple[dict[str, Any], ...]) -> int:
-    return problem.staffing.paid_minute_cost_ore * sum(item["paid_minutes"] for item in passes(problem, priced_sessions(problem, rows)))
+def paid_cost_kr(problem: JointOptimizationInput, rows: list[dict[str, Any]] | tuple[dict[str, Any], ...]) -> int:
+    return kmul(problem.staffing.paid_minute_cost_kr, sum(item["paid_minutes"] for item in passes(problem, priced_sessions(problem, rows))))
 
 
 def staffing_summary(problem: JointOptimizationInput, rows: list[dict[str, Any]] | tuple[dict[str, Any], ...]) -> dict[str, Any]:
@@ -51,7 +52,7 @@ def staffing_summary(problem: JointOptimizationInput, rows: list[dict[str, Any]]
     return {
         "unit": "staff_position_pass", "passes": len(tasks), "paid_minutes": paid, "worked_minutes": sum(row["worked_minutes"] for row in tasks),
         "minimum_top_up_minutes": sum(row["minimum_top_up_minutes"] for row in tasks), "travel_minutes": sum(row["travel_minutes"] for row in tasks),
-        "paid_minute_cost_ore": problem.staffing.paid_minute_cost_ore, "paid_time_cost_ore": problem.staffing.paid_minute_cost_ore * paid,
+        "paid_minute_cost_kr": problem.staffing.paid_minute_cost_kr, "paid_time_cost_kr": kmul(problem.staffing.paid_minute_cost_kr, paid),
         "per_day": dict(sorted(per_day.items())), "per_room": dict(sorted(per_room.items())), "basis": SUMMARY_BASIS,
     }
 
@@ -65,6 +66,7 @@ def cost_of_sessions(problem: JointOptimizationInput, rows: list[dict[str, Any]]
     """The cost components of a plan given as room-session rows, by the rules of the problem. `pool` replaces the computed peak staff."""
     priced = price(problem, priced_sessions(problem, rows))
     if pool is not None:
-        pool_cost = problem.staffing.annual_cost_ore_per_staff * pool
-        priced = {**priced, "comparable_total_cost_ore": priced["comparable_total_cost_ore"] - priced["annual_staff_pool_cost_ore"] + pool_cost, "annual_staff_pool_cost_ore": pool_cost}
+        pool_cost = kmul(problem.staffing.annual_cost_kr_per_staff, pool)
+        total = ksum([kdiff(priced["comparable_total_cost_kr"], priced["annual_staff_pool_cost_kr"]), pool_cost])
+        priced = {**priced, "comparable_total_cost_kr": total, "annual_staff_pool_cost_kr": pool_cost}
     return priced

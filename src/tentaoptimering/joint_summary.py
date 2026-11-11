@@ -9,6 +9,9 @@ import re
 import tomllib
 from typing import Any
 
+from .legacy_money import loads as upgraded_loads
+from .money import kdiff
+
 from .app_storage import AppStorage
 from .joint_progress import EVENTS_FILE, read_events
 from .joint_period import planning_basis
@@ -30,11 +33,15 @@ def created_at(run_id: str) -> str | None:
         return None
 
 
+def _is_amount(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
 def read_json(path: Path) -> dict[str, Any] | None:
     if not path.is_file():
         return None
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = upgraded_loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
     return value if isinstance(value, dict) else None
@@ -72,7 +79,7 @@ def run_summary(storage: AppStorage, run_id: str, bundled_dir: Path | None = Non
         raise FileNotFoundError("Körningen har inget sparat gemensamt resultat.")
     solver = result.get("solver") if isinstance(result.get("solver"), dict) else {}
     coverage = result.get("coverage") if isinstance(result.get("coverage"), dict) else {}
-    cost, bound = solver.get("objective_value_ore"), solver.get("best_objective_bound_ore")
+    cost, bound = solver.get("objective_value_kr"), solver.get("best_objective_bound_kr")
     verdict = validated_now(directory)
     decision = read_json(directory / "joint_warm_start.json") or {}
     first, basis, source = _first_solution(decision, solver, directory)
@@ -101,9 +108,9 @@ def run_summary(storage: AppStorage, run_id: str, bundled_dir: Path | None = Non
         # validation does not accept must not look like a result.
         "unverified_reason": None if verified else _unverified_reason(solver, coverage, technical, verdict),
         "cost_is_proven_optimum": verified and solver.get("outcome") == "optimal",
-        "cost_ore": cost if verified else None,
-        "lower_bound_ore": bound if verified else None,
-        "gap_ore": cost - bound if verified and isinstance(cost, int) and isinstance(bound, int) else None,
+        "cost_kr": cost if verified else None,
+        "lower_bound_kr": bound if verified else None,
+        "gap_kr": kdiff(cost, bound) if verified and _is_amount(cost) and _is_amount(bound) else None,
         "gap_relative": solver.get("relative_gap") if verified else None,
         "changed_exams": result.get("changed_exam_demands") if verified else None,
         "exams_total": coverage.get("exam_demands_total"),

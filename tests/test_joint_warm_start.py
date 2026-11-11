@@ -57,7 +57,7 @@ class SolverWarmStartTests(unittest.TestCase):
     def setUp(self) -> None:
         self.problem = _two_day_problem("decomposed")
         self.earlier = solve_joint_optimization(self.problem)
-        self.assertEqual(self.earlier.costs.comparable_total_cost_ore, 1300)
+        self.assertEqual(self.earlier.costs.comparable_total_cost_kr, 13)
         self.saved = _saved(self.earlier)
 
     def _same_as_cold(self, problem, result) -> None:
@@ -68,7 +68,7 @@ class SolverWarmStartTests(unittest.TestCase):
     def test_a_compatible_placement_is_rechecked_and_becomes_the_first_verified_solution(self) -> None:
         result, report = _solve(self.problem, self.saved)
         self.assertEqual(report.status, "accepted")
-        self.assertEqual((report.first_solution_source, report.verified_cost_ore), ("warm start", 1300))
+        self.assertEqual((report.first_solution_source, report.verified_cost_kr), ("warm start", 13))
         self.assertEqual((report.exams_reused, report.exams_without_start, report.exams_not_allowed), (3, 0, 0))
         self.assertEqual(report.days_checked, 2)
         self._same_as_cold(self.problem, result)
@@ -77,11 +77,11 @@ class SolverWarmStartTests(unittest.TestCase):
 
     def test_the_old_placement_is_costed_with_the_new_prices(self) -> None:
         """Small rooms become dear: the old placement costs 900 + 1 000, the big room 800 + 1 000 is better."""
-        dearer = replace(self.problem, rooms=tuple(replace(room, annual_fixed_cost_ore=900) if room.room_id.startswith("small") else room
+        dearer = replace(self.problem, rooms=tuple(replace(room, annual_fixed_cost_kr=9) if room.room_id.startswith("small") else room
                                                    for room in self.problem.rooms))
         result, report = _solve(dearer, self.saved)
-        self.assertEqual((report.status, report.verified_cost_ore), ("accepted", 1900))
-        self.assertEqual(result.costs.comparable_total_cost_ore, 1800)
+        self.assertEqual((report.status, report.verified_cost_kr), ("accepted", 19))
+        self.assertEqual(result.costs.comparable_total_cost_kr, 18)
         self.assertNotEqual(report.final_source, "warm start")
         self._same_as_cold(dearer, result)
 
@@ -146,7 +146,7 @@ class SolverWarmStartTests(unittest.TestCase):
         problem = _two_day_problem("monolithic")
         result, report = _solve(problem, self.saved)
         self.assertEqual(report.status, "hint_only")
-        self.assertEqual(result.costs.comparable_total_cost_ore, 1300)
+        self.assertEqual(result.costs.comparable_total_cost_kr, 13)
 
 
 class RunLevelTests(unittest.TestCase):
@@ -185,11 +185,11 @@ class RunLevelTests(unittest.TestCase):
     def test_a_changed_parameter_is_listed_and_the_optimum_is_the_same_as_without_a_start(self) -> None:
         first = self._run()
         changed = self.dir / "scenario_changed.toml"
-        changed.write_text(PAIR_SCENARIO.replace('"cost.staff_annual_ore" = 1000', '"cost.staff_annual_ore" = 3000'), encoding="utf-8")
+        changed.write_text(PAIR_SCENARIO.replace('"cost.staff_annual_kr" = 10', '"cost.staff_annual_kr" = 30'), encoding="utf-8")
         warm = self._run(scenario=changed)
         cold = self._run("none", scenario=changed)
         self.assertEqual(warm["warm_start"]["decision"], "accepted")
-        self.assertIn("cost.staff_annual_ore", warm["warm_start"]["changed_parameters"])
+        self.assertIn("cost.staff_annual_kr", warm["warm_start"]["changed_parameters"])
         self.assertEqual(cold["warm_start"]["decision"], "not_used")
         self.assertEqual(warm["result"]["costs"], cold["result"]["costs"])
         self.assertNotEqual(warm["result"]["costs"], first["result"]["costs"])
@@ -216,7 +216,7 @@ class RunLevelTests(unittest.TestCase):
     def test_a_file_changed_after_the_run_is_not_a_candidate(self) -> None:
         first = self._run()
         path = self.runs / first["run_id"] / "joint_result.json"
-        path.write_text(path.read_text(encoding="utf-8").replace('"annual_room_cost_ore"', '"annual_room_cost_ore" ', 1), encoding="utf-8")
+        path.write_text(path.read_text(encoding="utf-8").replace('"annual_room_cost_kr"', '"annual_room_cost_kr" ', 1), encoding="utf-8")
         source, reasons = inspect_run(self.runs, first["run_id"])
         self.assertIsNone(source)
         self.assertIn("SHA-256", " ".join(reasons))
@@ -228,7 +228,7 @@ class RunLevelTests(unittest.TestCase):
         stored = json.loads((directory / "joint_validation.json").read_text(encoding="utf-8"))
         self.assertTrue(stored["summary"]["technically_validated"])
         result = json.loads((directory / "joint_result.json").read_text(encoding="utf-8"))
-        result["costs"]["annual_room_cost_ore"] += 1  # a wrong cost, with the manifest brought up to date
+        result["costs"]["annual_room_cost_kr"] += 1  # a wrong cost, with the manifest brought up to date
         (directory / "joint_result.json").write_text(json.dumps(result), encoding="utf-8")
         manifest = json.loads((directory / "joint_manifest.json").read_text(encoding="utf-8"))
         manifest["result_sha256"] = sha256_file(directory / "joint_result.json")
@@ -302,7 +302,7 @@ class CliTests(unittest.TestCase):
         self.assertFalse(third["run"]["warm_start"]["execution"]["parallel_day_checks"])
         code, named = self._main("--warm-start", first["run"]["run_id"])
         self.assertEqual(named["run"]["warm_start"]["source"]["run_id"], first["run"]["run_id"])
-        costs = {item["run"]["result"]["costs"]["comparable_total_cost_ore"] for item in (first, second, third, named)}
+        costs = {item["run"]["result"]["costs"]["comparable_total_cost_kr"] for item in (first, second, third, named)}
         self.assertEqual(len(costs), 1)
 
     def test_a_rejected_start_still_gives_a_validated_result_and_says_why(self) -> None:

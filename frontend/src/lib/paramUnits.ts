@@ -1,4 +1,4 @@
-// Enheter och belopp. API:et räknar i öre (heltal); vyn visar och tar emot kronor. All omvandling sker här.
+// Enheter och belopp. API:et och vyn räknar i kronor; ingen omräkning sker.
 
 export type UnitInfo = { money: boolean; label: string }
 
@@ -12,10 +12,10 @@ const PER_TEXT: Record<string, string> = {
   seat: "plats", plats: "plats", day: "dag", dag: "dag", minute: "minut", minut: "minut",
 }
 
-// "ore", "öre", "ore_per_year", "öre/timme", "öre per år" ...
-const MONEY = /^(?:ore|öre)(?:[\s_/]+(?:per[\s_]+)?(.+))?$/i
+// "kr", "kr_per_year", "kr/timme", "kr per år" ...
+const MONEY = /^kr(?:[\s_/]+(?:per[\s_]+)?(.+))?$/i
 
-/** Tolkar enhetstexten från API:et. Belopp i öre blir kronor; okända enheter visas som de är. */
+/** Tolkar enhetstexten från API:et. Belopp i kronor (enhet kr); okända enheter visas som de är. */
 export function unitInfo(unit: string | null | undefined): UnitInfo {
   const text = (unit ?? "").trim()
   if (!text) return { money: false, label: "" }
@@ -27,45 +27,38 @@ export function unitInfo(unit: string | null | undefined): UnitInfo {
   return { money: false, label: RAW_UNITS[text.toLowerCase()] ?? text }
 }
 
-export type KrParse = { ok: true; ore: number } | { ok: false; error: string }
+export type KrParse = { ok: true; kr: number } | { ok: false; error: string }
 
-const SPACES = /[\s  ]/g
+const SPACES = /[\s  ]/g
 
-/** Öre till kronor som redigerbar text: "12345" öre blir "123,45", "12300" blir "123". Inga tusentalsavgränsare. */
-export function oreToKrText(ore: number): string {
-  if (!Number.isFinite(ore)) return ""
-  if (!Number.isInteger(ore)) return String(ore / 100).replace(".", ",") // bör inte förekomma; bevarar värdet förlustfritt
-  const sign = ore < 0 ? "-" : ""
-  const abs = Math.abs(ore)
-  const kr = Math.floor(abs / 100)
-  const rest = abs % 100
-  return rest === 0 ? `${sign}${kr}` : `${sign}${kr},${String(rest).padStart(2, "0").replace(/0$/, "")}`
+/** Kronor som redigerbar text: 123.45 blir "123,45", 123 blir "123". Inga tusentalsavgränsare. */
+export function krToText(kr: number): string {
+  return Number.isFinite(kr) ? String(kr).replace(".", ",") : ""
 }
 
-/** Kronor (text med , eller .) till öre. Högst två decimaler. */
-export function parseKrToOre(text: string): KrParse {
+/** Kronor (text med , eller .) till tal. Högst två decimaler. */
+export function parseKr(text: string): KrParse {
   const clean = text.replace(SPACES, "").replace(",", ".")
   if (clean === "") return { ok: false, error: "Ange ett belopp i kronor." }
   if (!/^-?\d+(\.\d{1,2})?$/.test(clean)) return { ok: false, error: "Ange kronor med högst två decimaler, till exempel 1250 eller 1250,50." }
-  const [whole, decimals = ""] = clean.replace("-", "").split(".")
-  const ore = Number(whole) * 100 + Number(decimals.padEnd(2, "0"))
-  if (!Number.isSafeInteger(ore)) return { ok: false, error: "Beloppet är för stort." }
-  return { ok: true, ore: clean.startsWith("-") ? -ore : ore }
+  const kr = Number(clean)
+  if (!Number.isSafeInteger(Math.round(kr * 100))) return { ok: false, error: "Beloppet är för stort." }
+  return { ok: true, kr }
 }
 
 const krFormat = new Intl.NumberFormat("sv-SE", { minimumFractionDigits: 0, maximumFractionDigits: 2 })
 
-/** Öre som visningstext i kronor med eventuella ören, t.ex. "1 250,50 kr". */
-export function formatMoneyOre(ore: number): string {
-  return `${krFormat.format(ore / 100)} kr`
+/** Kronor som visningstext med eventuella decimaler, t.ex. "1 250,50 kr". */
+export function formatMoneyKr(kr: number): string {
+  return `${krFormat.format(kr)} kr`
 }
 
 const numberFormat = new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 6 })
 
-/** Ett tal med enhet för visning. Belopp i öre skrivs som kronor. */
+/** Ett tal med enhet för visning. Belopp skrivs i kronor. */
 export function formatWithUnit(value: number, unit: string | null | undefined): string {
   const info = unitInfo(unit)
-  if (info.money) return info.label === "kr" ? formatMoneyOre(value) : `${krFormat.format(value / 100)} ${info.label}`
+  if (info.money) return info.label === "kr" ? formatMoneyKr(value) : `${krFormat.format(value)} ${info.label}`
   const text = numberFormat.format(value)
   if (!info.label) return text
   return info.label === "%" ? `${text} %` : `${text} ${info.label}`

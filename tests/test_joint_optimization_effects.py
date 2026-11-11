@@ -41,7 +41,7 @@ BASE = {
     "rooms.max_rooms_per_exam": 8, "rooms.allow_split_across_buildings": False,
     "staffing.ladder": [{"max_participants": 60, "required_staff": 1}],
     "staffing.preparation_minutes": 0, "staffing.closing_minutes": 0,
-    "cost.room_annual_per_seat_ore": 100, "cost.staff_annual_ore": 1000, "cost.staff_session_ore": 0,
+    "cost.room_annual_per_seat_kr": 1, "cost.staff_annual_kr": 10, "cost.staff_session_kr": 0,
     "solver.time_limit_seconds": 10.0, "solver.seed": 3, "solver.workers": 1,
 }
 
@@ -106,58 +106,58 @@ def _solve(directory: Path, events: list[dict[str, object]], rooms: list[tuple],
 
 # (case id, parameters it proves, events, rooms, overrides, expected outcome, expected total cost in öre)
 CASES = [
-    ("base", (), PAIR, TWO_ROOMS, {}, "optimal", 7_000),
-    ("start_times_only_08", ("calendar.start_times",), PAIR, TWO_ROOMS, {"calendar.start_times": ["08:00"]}, "optimal", 14_000),
+    ("base", (), PAIR, TWO_ROOMS, {}, "optimal", 70),
+    ("start_times_only_08", ("calendar.start_times",), PAIR, TWO_ROOMS, {"calendar.start_times": ["08:00"]}, "optimal", 140),
     ("later_day_lets_Y_move", ("window.later_days",), PAIR, TWO_ROOMS,
-     {"calendar.start_times": ["08:00"], "window.later_days": 1}, "optimal", 7_000),
+     {"calendar.start_times": ["08:00"], "window.later_days": 1}, "optimal", 70),
     ("earlier_day_lets_Y_move", ("window.earlier_days",), [_event("X", "2026-01-13"), _event("Y", "2026-01-13")], TWO_ROOMS,
-     {"calendar.start_times": ["08:00"], "window.earlier_days": 1}, "optimal", 7_000),
+     {"calendar.start_times": ["08:00"], "window.earlier_days": 1}, "optimal", 70),
     ("weekday_policy_blocks_the_move", ("calendar.weekdays",), PAIR, TWO_ROOMS,
-     {"calendar.start_times": ["08:00"], "window.later_days": 1, "calendar.weekdays": [1]}, "optimal", 14_000),
+     {"calendar.start_times": ["08:00"], "window.later_days": 1, "calendar.weekdays": [1]}, "optimal", 140),
     ("blocked_range_blocks_the_move", ("calendar.blocked_ranges",), PAIR, TWO_ROOMS,
      {"calendar.start_times": ["08:00"], "window.later_days": 1,
-      "calendar.blocked_ranges": [{"start": "2026-01-13", "end": "2026-01-13"}]}, "optimal", 14_000),
+      "calendar.blocked_ranges": [{"start": "2026-01-13", "end": "2026-01-13"}]}, "optimal", 140),
     ("end_date_blocks_the_move", ("calendar.end_date",), PAIR, TWO_ROOMS,
-     {"calendar.start_times": ["08:00"], "window.later_days": 1, "calendar.end_date": "2026-01-12"}, "optimal", 14_000),
+     {"calendar.start_times": ["08:00"], "window.later_days": 1, "calendar.end_date": "2026-01-12"}, "optimal", 140),
     ("start_date_removes_monday", ("calendar.start_date",), PAIR, TWO_ROOMS,
-     {"calendar.start_times": ["08:00"], "window.later_days": 1, "calendar.start_date": "2026-01-13"}, "optimal", 14_000),
+     {"calendar.start_times": ["08:00"], "window.later_days": 1, "calendar.start_date": "2026-01-13"}, "optimal", 140),
     ("earliest_start_removes_08", ("calendar.earliest_start_time",), PAIR, TWO_ROOMS,
-     {"calendar.earliest_start_time": "09:00"}, "optimal", 14_000),
+     {"calendar.earliest_start_time": "09:00"}, "optimal", 140),
     ("latest_end_removes_14", ("calendar.latest_end_time",), PAIR, TWO_ROOMS,
-     {"calendar.latest_end_time": "17:00"}, "optimal", 14_000),
+     {"calendar.latest_end_time": "17:00"}, "optimal", 140),
     ("fixed_types_cannot_move", ("flex.movable_types",), PAIR_OMTENTA, TWO_ROOMS,
-     {"flex.movable_types": ["ordinarie"]}, "optimal", 14_000),
-    ("movable_types_can_move", ("flex.movable_types",), PAIR_OMTENTA, TWO_ROOMS, {}, "optimal", 7_000),
+     {"flex.movable_types": ["ordinarie"]}, "optimal", 140),
+    ("movable_types_can_move", ("flex.movable_types",), PAIR_OMTENTA, TWO_ROOMS, {}, "optimal", 70),
     ("turnaround_15_allows_shared_room", ("calendar.turnaround_minutes",), PAIR, TWO_ROOMS,
-     {"calendar.start_times": ["08:00", "12:15"], "calendar.turnaround_minutes": 15}, "optimal", 7_000),
+     {"calendar.start_times": ["08:00", "12:15"], "calendar.turnaround_minutes": 15}, "optimal", 70),
     ("turnaround_30_needs_second_room", ("calendar.turnaround_minutes",), PAIR, TWO_ROOMS,
-     {"calendar.start_times": ["08:00", "12:15"], "calendar.turnaround_minutes": 30}, "optimal", 13_000),
+     {"calendar.start_times": ["08:00", "12:15"], "calendar.turnaround_minutes": 30}, "optimal", 130),
     ("ladder_two_staff_above_25", ("staffing.ladder",), PAIR, TWO_ROOMS,
      {"staffing.ladder": [{"max_participants": 25, "required_staff": 1}, {"max_participants": 60, "required_staff": 2}]},
-     "optimal", 8_000),
+     "optimal", 80),
     ("prep_and_closing_overlap_needs_second_staff", ("staffing.preparation_minutes", "staffing.closing_minutes"), PAIR, TWO_ROOMS,
      {"calendar.start_times": ["08:00", "12:15"], "calendar.turnaround_minutes": 15,
-      "staffing.preparation_minutes": 30, "staffing.closing_minutes": 30}, "optimal", 8_000),
+      "staffing.preparation_minutes": 30, "staffing.closing_minutes": 30}, "optimal", 80),
     # Each of preparation and closing alone must decide the pool. X ends 12:00, Y starts 12:15, same room (turnaround 15).
     # A staff window overlaps when it reaches strictly past the other's start, so 15 minutes touch and 16 overlap.
     ("preparation_15_touches_without_overlap", ("staffing.preparation_minutes",), PAIR, TWO_ROOMS,
-     {"calendar.start_times": ["08:00", "12:15"], "calendar.turnaround_minutes": 15, "staffing.preparation_minutes": 15}, "optimal", 7_000),
+     {"calendar.start_times": ["08:00", "12:15"], "calendar.turnaround_minutes": 15, "staffing.preparation_minutes": 15}, "optimal", 70),
     ("preparation_16_overlaps_and_needs_second_staff", ("staffing.preparation_minutes",), PAIR, TWO_ROOMS,
-     {"calendar.start_times": ["08:00", "12:15"], "calendar.turnaround_minutes": 15, "staffing.preparation_minutes": 16}, "optimal", 8_000),
+     {"calendar.start_times": ["08:00", "12:15"], "calendar.turnaround_minutes": 15, "staffing.preparation_minutes": 16}, "optimal", 80),
     ("closing_15_touches_without_overlap", ("staffing.closing_minutes",), PAIR, TWO_ROOMS,
-     {"calendar.start_times": ["08:00", "12:15"], "calendar.turnaround_minutes": 15, "staffing.closing_minutes": 15}, "optimal", 7_000),
+     {"calendar.start_times": ["08:00", "12:15"], "calendar.turnaround_minutes": 15, "staffing.closing_minutes": 15}, "optimal", 70),
     ("closing_16_overlaps_and_needs_second_staff", ("staffing.closing_minutes",), PAIR, TWO_ROOMS,
-     {"calendar.start_times": ["08:00", "12:15"], "calendar.turnaround_minutes": 15, "staffing.closing_minutes": 16}, "optimal", 8_000),
-    ("room_cost_doubles", ("cost.room_annual_per_seat_ore",), PAIR, TWO_ROOMS, {"cost.room_annual_per_seat_ore": 200}, "optimal", 13_000),
-    ("free_staff_pool", ("cost.staff_annual_ore",), PAIR, TWO_ROOMS, {"cost.staff_annual_ore": 0}, "optimal", 6_000),
-    ("staff_session_cost", ("cost.staff_session_ore",), PAIR, TWO_ROOMS, {"cost.staff_session_ore": 500}, "optimal", 8_000),
+     {"calendar.start_times": ["08:00", "12:15"], "calendar.turnaround_minutes": 15, "staffing.closing_minutes": 16}, "optimal", 80),
+    ("room_cost_doubles", ("cost.room_annual_per_seat_kr",), PAIR, TWO_ROOMS, {"cost.room_annual_per_seat_kr": 2}, "optimal", 130),
+    ("free_staff_pool", ("cost.staff_annual_kr",), PAIR, TWO_ROOMS, {"cost.staff_annual_kr": 0}, "optimal", 60),
+    ("staff_session_cost", ("cost.staff_session_kr",), PAIR, TWO_ROOMS, {"cost.staff_session_kr": 5}, "optimal", 80),
     # Paid staff time: every staff position of a session is a paid pass (240 minutes of exam here), 10 öre per minute.
-    ("paid_minutes_are_priced", ("cost.staff_paid_minute_ore",), PAIR, TWO_ROOMS, {"cost.staff_paid_minute_ore": 10}, "optimal", 11_800),
+    ("paid_minutes_are_priced", ("cost.staff_paid_minute_kr",), PAIR, TWO_ROOMS, {"cost.staff_paid_minute_kr": 0.1}, "optimal", 118),
     # One-hour exams are paid as two hours: 120 minutes per pass instead of 60.
     ("shortest_paid_pass_tops_up_short_exams", ("staffing.min_paid_shift_minutes",), [_event("X", end="09:00"), _event("Y", end="09:00")], TWO_ROOMS,
-     {"cost.staff_paid_minute_ore": 10, "staffing.min_paid_shift_minutes": 120}, "optimal", 9_400),
+     {"cost.staff_paid_minute_kr": 0.1, "staffing.min_paid_shift_minutes": 120}, "optimal", 94),
     ("without_the_minimum_short_exams_are_paid_by_their_length", ("staffing.min_paid_shift_minutes",), [_event("X", end="09:00"), _event("Y", end="09:00")], TWO_ROOMS,
-     {"cost.staff_paid_minute_ore": 10, "staffing.min_paid_shift_minutes": 60}, "optimal", 8_200),
+     {"cost.staff_paid_minute_kr": 0.1, "staffing.min_paid_shift_minutes": 60}, "optimal", 82),
     ("excluded_room_makes_the_pair_infeasible", ("rooms.exclude",), PAIR, TWO_ROOMS,
      {"calendar.start_times": ["08:00"], "rooms.exclude": ["uu-r2"]}, "infeasible", None),
     ("room_selection_makes_infeasible", ("rooms.selection",), PAIR, TWO_ROOMS,
@@ -168,24 +168,24 @@ CASES = [
     ("planning_share_brings_the_pair_back_to_feasible", ("demand.planning_share_ordinary_pct", "demand.planning_share_retake_pct"), PAIR, TWO_ROOMS,
      {"demand.variation_pct": 30, "demand.planning_share_ordinary_pct": 70, "demand.planning_share_retake_pct": 70}, "optimal", None),
     ("variation_with_building_split_costs_two_rooms", ("demand.variation_pct", "rooms.allow_split_across_buildings"), PAIR, TWO_ROOMS,
-     {"demand.variation_pct": 30, "rooms.allow_split_across_buildings": True}, "optimal", 14_000),
+     {"demand.variation_pct": 30, "rooms.allow_split_across_buildings": True}, "optimal", 140),
     ("one_exam_needs_two_buildings_by_default", ("rooms.allow_split_across_buildings",), [_event("Z", count=100)], TWO_ROOMS,
      {}, "infeasible", None),
     ("one_exam_split_across_buildings", ("rooms.allow_split_across_buildings",), [_event("Z", count=100)], TWO_ROOMS,
-     {"rooms.allow_split_across_buildings": True}, "optimal", 14_000),
+     {"rooms.allow_split_across_buildings": True}, "optimal", 140),
     ("max_rooms_one_blocks_split", ("rooms.max_rooms_per_exam",), [_event("Z", count=100)], TWO_ROOMS,
      {"rooms.allow_split_across_buildings": True, "rooms.max_rooms_per_exam": 1}, "infeasible", None),
     ("allow_split_false_blocks_split", ("rooms.allow_split",), [_event("Z", count=100)], TWO_ROOMS,
      {"rooms.allow_split_across_buildings": True, "rooms.allow_split": False}, "infeasible", None),
     ("partial_digital_room_allowed", ("digital.partial_support_policy",), [_event("E", digital="Ja", count=40)],
-     [("paper", "Adress 1", 60, "not_stated"), ("partial", "Adress 2", 60, "supports_e_exam")], {}, "optimal", 7_000),
+     [("paper", "Adress 1", 60, "not_stated"), ("partial", "Adress 2", 60, "supports_e_exam")], {}, "optimal", 70),
     ("partial_digital_room_excluded", ("digital.partial_support_policy",), [_event("E", digital="Ja", count=40)],
      [("paper", "Adress 1", 60, "not_stated"), ("partial", "Adress 2", 60, "supports_e_exam")],
      {"digital.partial_support_policy": "exclude"}, "infeasible", None),
     ("unknown_digital_requires_digital_room", ("digital.unknown_demand_policy",), [_event("U", digital=None, count=40)],
      [("paper", "Adress 1", 60, "not_stated")], {}, "infeasible", None),
     ("unknown_digital_assumed_paper", ("digital.unknown_demand_policy",), [_event("U", digital=None, count=40)],
-     [("paper", "Adress 1", 60, "not_stated")], {"digital.unknown_demand_policy": "assume_paper"}, "optimal", 7_000),
+     [("paper", "Adress 1", 60, "not_stated")], {"digital.unknown_demand_policy": "assume_paper"}, "optimal", 70),
     ("merged_ja_nej_is_digital_even_when_unknown_is_paper", ("digital.unknown_demand_policy",),
      [_event("M", digital="Ja | Nej", count=40)], [("paper", "Adress 1", 60, "not_stated")],
      {"digital.unknown_demand_policy": "assume_paper"}, "infeasible", None),
@@ -199,7 +199,7 @@ class OptimizationEffectTests(unittest.TestCase):
                 _problem, result = _solve(Path(temp), events, rooms, overrides)
                 self.assertEqual(result.solver.outcome, outcome, case_id)
                 if cost is not None:
-                    self.assertEqual(result.costs.comparable_total_cost_ore, cost, case_id)
+                    self.assertEqual(result.costs.comparable_total_cost_kr, cost, case_id)
                 if outcome == "infeasible":
                     self.assertFalse(result.coverage.technical_placement_complete)
                     self.assertEqual(result.assignments, ())
@@ -224,18 +224,18 @@ class OptimizationEffectTests(unittest.TestCase):
                      "observed_placement_count": 3, "observed_booked_places_max": 60, "capacity_seats": None}]
         cases = [
             # (case, rooms, overrides, inventory, outcome, cost)
-            ("wishes_any_start_lets_one_exam_use_the_afternoon", TWO_ROOMS, {"wish.candidate_policy": "wishes"}, None, "optimal", 7_000),
-            ("wishes_booked_start_keeps_both_at_08_so_two_rooms", TWO_ROOMS, {"wish.candidate_policy": "wishes", "wish.time_policy": "booked_start"}, None, "optimal", 14_000),
+            ("wishes_any_start_lets_one_exam_use_the_afternoon", TWO_ROOMS, {"wish.candidate_policy": "wishes"}, None, "optimal", 70),
+            ("wishes_booked_start_keeps_both_at_08_so_two_rooms", TWO_ROOMS, {"wish.candidate_policy": "wishes", "wish.time_policy": "booked_start"}, None, "optimal", 140),
             ("one_register_room_cannot_hold_both_at_08", one_room, {"wish.candidate_policy": "wishes", "wish.time_policy": "booked_start"}, observed, "infeasible", None),
             ("the_observed_room_is_a_second_room_at_the_same_price", one_room, {"wish.candidate_policy": "wishes", "wish.time_policy": "booked_start",
-                                                                              "rooms.include_observed_unregistered": True}, observed, "optimal", 14_000),
+                                                                              "rooms.include_observed_unregistered": True}, observed, "optimal", 140),
         ]
         for case_id, rooms, overrides, inventory, outcome, cost in cases:
             with self.subTest(case=case_id), tempfile.TemporaryDirectory() as temp:
                 problem, result = _solve(Path(temp), PAIR, rooms, overrides, wishes=wished, inventory=inventory)
                 self.assertEqual(result.solver.outcome, outcome, case_id)
                 if cost is not None:
-                    self.assertEqual(result.costs.comparable_total_cost_ore, cost, case_id)
+                    self.assertEqual(result.costs.comparable_total_cost_kr, cost, case_id)
                 if overrides.get("rooms.include_observed_unregistered"):
                     self.assertEqual({room.room_id: room.capacity_basis for room in problem.rooms}["uu-fyrishov-d"], "observed_booked_places_max_lower_bound")
 

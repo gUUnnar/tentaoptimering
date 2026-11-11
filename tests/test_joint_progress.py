@@ -35,7 +35,7 @@ from tentaoptimering.joint_strategy.warm_start import StartReport  # noqa: E402
 def _signature(result) -> str:
     """What a run decides, in a stable text form (wall time and the raw status text are measurements)."""
     return json.dumps({"s": result.schedule, "a": result.assignments, "r": result.room_sessions, "c": result.costs,
-                       "p": result.staff_pool_size, "o": result.solver.outcome, "b": result.solver.best_objective_bound_ore,
+                       "p": result.staff_pool_size, "o": result.solver.outcome, "b": result.solver.best_objective_bound_kr,
                        "changed": result.changed_exam_demands}, sort_keys=True, default=lambda value: value.__dict__)
 
 
@@ -85,11 +85,11 @@ class SinkTests(unittest.TestCase):
     def test_events_after_a_sequence_number_are_copies(self) -> None:
         sink = ProgressSink()
         for index in range(5):
-            sink.emit("bound", lower_ore=index, round=1)
+            sink.emit("bound", lower_kr=index, round=1)
         self.assertEqual([event["seq"] for event in sink.events(after=3)], [4, 5])
         self.assertEqual(sink.events(after=5), [])
-        sink.events()[0]["lower_ore"] = 99
-        self.assertEqual(sink.events()[0]["lower_ore"], 0)
+        sink.events()[0]["lower_kr"] = 99
+        self.assertEqual(sink.events()[0]["lower_kr"], 0)
 
     def test_a_file_attached_late_gets_the_earlier_events_first_and_every_line_is_flushed(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -105,19 +105,19 @@ class SinkTests(unittest.TestCase):
     def test_recording_failures_never_reach_the_caller(self) -> None:
         sink = ProgressSink()
         with self.assertLogs(level="WARNING"), mock.patch.object(ProgressSink, "_write", side_effect=RuntimeError("disk")):
-            sink.emit("bound", lower_ore=1, round=1)  # does not raise
+            sink.emit("bound", lower_kr=0.01, round=1)  # does not raise
         self.assertEqual(sink.last_seq, 1)
         with tempfile.TemporaryDirectory() as temp, self.assertLogs(level="WARNING"):
             broken = ProgressSink(Path(temp))  # a directory cannot be opened as a file
-            broken.emit("bound", lower_ore=1, round=1)
+            broken.emit("bound", lower_kr=0.01, round=1)
             self.assertEqual(broken.last_seq, 1)
         with self.assertLogs(level="WARNING"), mock.patch.object(ProgressSink, "emit", side_effect=RuntimeError("sink")):
-            emit(ProgressSink(), "bound", lower_ore=1, round=1)  # even a sink that raises is held back
+            emit(ProgressSink(), "bound", lower_kr=0.01, round=1)  # even a sink that raises is held back
             with phase(ProgressSink(), "relaxation"):
                 pass
 
     def test_no_sink_costs_nothing_and_unserialisable_values_do_not_break_the_file(self) -> None:
-        emit(None, "bound", lower_ore=1, round=1)
+        emit(None, "bound", lower_kr=0.01, round=1)
         with phase(None, "relaxation"):
             pass
         with tempfile.TemporaryDirectory() as temp:
@@ -143,10 +143,10 @@ class SolverObservationTests(unittest.TestCase):
                 sink = ProgressSink()
                 observed = solve_joint_optimization(_single(strategy), progress=sink)
                 self.assertEqual(_signature(observed), _signature(plain))
-                self.assertEqual(observed.costs.comparable_total_cost_ore, 1300)
+                self.assertEqual(observed.costs.comparable_total_cost_kr, 13)
                 finished = sink.events()[-1]
-                self.assertEqual((finished["type"], finished["outcome"], finished["cost_ore"], finished["cancelled"]),
-                                 ("finished", "optimal", 1300, False))
+                self.assertEqual((finished["type"], finished["outcome"], finished["cost_kr"], finished["cancelled"]),
+                                 ("finished", "optimal", 13, False))
 
     def test_a_failing_sink_changes_nothing(self) -> None:
         plain = solve_joint_optimization(_single("decomposed"))
@@ -175,11 +175,11 @@ class SolverObservationTests(unittest.TestCase):
             states = [event["state"] for event in events if event["type"] == "phase" and event["name"] == name]
             self.assertEqual(states, ["started", "finished"] * (len(states) // 2))
         incumbents = [event for event in events if event["type"] == "incumbent"]
-        self.assertEqual(incumbents[-1]["cost_ore"], result.costs.comparable_total_cost_ore)
-        self.assertTrue(all(left["cost_ore"] >= right["cost_ore"] for left, right in zip(incumbents, incumbents[1:])))
-        bounds = [event["lower_ore"] for event in events if event["type"] == "bound"]
+        self.assertEqual(incumbents[-1]["cost_kr"], result.costs.comparable_total_cost_kr)
+        self.assertTrue(all(left["cost_kr"] >= right["cost_kr"] for left, right in zip(incumbents, incumbents[1:])))
+        bounds = [event["lower_kr"] for event in events if event["type"] == "bound"]
         self.assertEqual(bounds, sorted(bounds))
-        self.assertLessEqual(bounds[-1], result.costs.comparable_total_cost_ore)
+        self.assertLessEqual(bounds[-1], result.costs.comparable_total_cost_kr)
         days = [event for event in events if event["type"] == "day"]
         self.assertTrue(all(event["status"] in {"optimal", "feasible", "infeasible", "unknown"} for event in days))
         self.assertTrue(all(event["date"].startswith("2026-01-1") for event in days))
@@ -240,7 +240,7 @@ class SolverObservationTests(unittest.TestCase):
         result = solve_joint_optimization(_two_day_problem("decomposed"), cancel=token, progress=sink)
         self.assertFalse(result.schedule)
         finished = sink.events()[-1]
-        self.assertEqual((finished["type"], finished["cancelled"], finished["cost_ore"]), ("finished", True, None))
+        self.assertEqual((finished["type"], finished["cancelled"], finished["cost_kr"]), ("finished", True, None))
 
 
 class RunArtifactTests(unittest.TestCase):

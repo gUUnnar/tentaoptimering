@@ -131,13 +131,13 @@ def _mutations():
         result["staff_pool_size"] = 4
 
     def wrong_cost_component(problem, result):
-        result["costs"]["annual_room_cost_ore"] = 16001
+        result["costs"]["annual_room_cost_kr"] = 16001
 
     def wrong_total(problem, result):
-        result["costs"]["comparable_total_cost_ore"] = 19601
+        result["costs"]["comparable_total_cost_kr"] = 19601
 
     def objective_mismatch(problem, result):
-        result["solver"]["objective_value_ore"] = 19000
+        result["solver"]["objective_value_kr"] = 19000
 
     def wrong_changed(problem, result):
         result["changed_exam_demands"] = 2
@@ -284,7 +284,7 @@ class BoundaryTests(_Base):
 
     def test_cost_total_that_does_not_equal_its_components_is_called_out(self) -> None:
         problem, result = cases.copy_case()
-        result["costs"]["comparable_total_cost_ore"] = 19601
+        result["costs"]["comparable_total_cost_kr"] = 19601
         payload = self.validate(problem, result)
         self.assertTrue(any("summerar" in text for text in _rules(payload)["costs_recomputed"]["objects"]))
 
@@ -306,7 +306,7 @@ class BoundaryTests(_Base):
     def test_pool_one_larger_than_needed_fails_only_when_optimality_is_claimed(self) -> None:
         problem, result = cases.pair_case(15, 15, 2)
         self.assertIn("staff_pool_not_inflated", _failing(self.validate(problem, result, "claimed")))
-        result["solver"].update(outcome="feasible_not_proven", best_objective_bound_ore=10000, relative_gap=0.5)
+        result["solver"].update(outcome="feasible_not_proven", best_objective_bound_kr=100, relative_gap=0.5)
         self.assertNotIn("staff_pool_not_inflated", _failing(self.validate(problem, result, "unclaimed")))
 
     def test_peak_function_matches_hand_value_on_the_reference_case(self) -> None:
@@ -370,7 +370,7 @@ class EvidenceVersusBreachTests(_Base):
     def test_result_without_solution_has_nothing_to_validate_and_no_partial_placement(self) -> None:
         problem, result = cases.copy_case()
         result.update(schedule=[], assignments=[], room_sessions=[], costs=None, staff_pool_size=None, changed_exam_demands=None)
-        result["solver"].update(outcome="infeasible", objective_value_ore=None, best_objective_bound_ore=None, relative_gap=None)
+        result["solver"].update(outcome="infeasible", objective_value_kr=None, best_objective_bound_kr=None, relative_gap=None)
         result["coverage"].update(exam_demands_scheduled=0, participants_assigned_to_rooms=0, non_room_participants_scheduled=0, technical_placement_complete=False)
         payload = self.validate(problem, result)
         rules = _rules(payload)
@@ -384,7 +384,7 @@ class EvidenceVersusBreachTests(_Base):
 
     def test_solver_report_must_be_internally_consistent(self) -> None:
         problem, result = cases.copy_case()
-        result["solver"]["best_objective_bound_ore"] = 100
+        result["solver"]["best_objective_bound_kr"] = 100
         self.assertIn("solver_report_consistent", _failing(self.validate(problem, result)))
 
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
+from .money import units
 
 SOLUTION_OUTCOMES = ("optimal", "feasible_not_proven")
 
@@ -63,7 +64,7 @@ class HireWindow:
     room_ids: frozenset[str]
     start: date
     end: date
-    cost: int
+    cost: int  # whole hundredths of a krona
 
 
 @dataclass(frozen=True)
@@ -72,7 +73,7 @@ class Room:
     building: str
     area: str
     capacity: int
-    fixed_cost: int
+    fixed_cost: int  # whole hundredths of a krona
     external_cost: int
     digital_capabilities: frozenset[str]
     available_slots: frozenset[str] | None
@@ -133,6 +134,14 @@ def _day(value: Any, where: str) -> date:
         raise MalformedArtifact(f"{where}: ogiltigt datum {value!r}") from error
 
 
+def _money(value: Any, where: str) -> int:
+    """An amount in kronor as whole hundredths (the validator calculates in integers); see `joint_validation.money`."""
+    try:
+        return units(value, where)
+    except ValueError as error:
+        raise MalformedArtifact(str(error)) from error
+
+
 def _int(value: Any, where: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise MalformedArtifact(f"{where}: heltal förväntades, fick {value!r}")
@@ -188,7 +197,7 @@ def build_context(problem: dict[str, Any], result: dict[str, Any]) -> Context:
         rooms[room_id] = Room(
             room_id, str(_need(item, "building_id", room_id)), str(_need(item, "plan_area", room_id)),
             _int(_need(item, "capacity", room_id), room_id),
-            _int(item.get("annual_fixed_cost_ore", 0), room_id), _int(item.get("external_session_cost_ore", 0), room_id),
+            _money(item.get("annual_fixed_cost_kr", 0), room_id), _money(item.get("external_session_cost_kr", 0), room_id),
             frozenset(str(value) for value in item.get("digital_capabilities", ("paper",))),
             frozenset(str(value) for value in available) if available is not None else None,
             str(item.get("digital_support_basis", "not_stated")),
@@ -205,9 +214,9 @@ def build_context(problem: dict[str, Any], result: dict[str, Any]) -> Context:
         problem, result, slots, demands, rooms, parameters, meta, ladder,
         _int(staffing.get("preparation_minutes", 0), "bemanning"), _int(staffing.get("closing_minutes", 0), "bemanning"),
         _int(problem.get("turnaround_minutes", 0), "indata"),
-        _int(_need(staffing, "annual_cost_ore_per_staff", "bemanning"), "bemanning"),
-        _int(staffing.get("cost_ore_per_staff_session", 0), "bemanning"),
-        _int(staffing.get("paid_minute_cost_ore", 0), "bemanning"), _int(staffing.get("min_paid_minutes", 0), "bemanning"),
+        _money(_need(staffing, "annual_cost_kr_per_staff", "bemanning"), "bemanning"),
+        _money(staffing.get("cost_kr_per_staff_session", 0), "bemanning"),
+        _money(staffing.get("paid_minute_cost_kr", 0), "bemanning"), _int(staffing.get("min_paid_minutes", 0), "bemanning"),
         tuple(
             Reservation(str(_need(item, "reservation_id", "fast bokning")), str(_need(item, "room_id", "fast bokning")),
                         _day(_need(item, "scheduled_date", "fast bokning"), "fast bokning"),
@@ -218,7 +227,7 @@ def build_context(problem: dict[str, Any], result: dict[str, Any]) -> Context:
         tuple(
             HireWindow(str(_need(item, "window_id", "förhyrning")), frozenset(str(value) for value in _need(item, "room_ids", "förhyrning")),
                        _day(_need(item, "start", "förhyrning"), "förhyrning"), _day(_need(item, "end", "förhyrning"), "förhyrning"),
-                       _int(_need(item, "cost_ore", "förhyrning"), "förhyrning"))
+                       _money(_need(item, "cost_kr", "förhyrning"), "förhyrning"))
             for item in problem.get("hire_windows", ())
         ),
     )

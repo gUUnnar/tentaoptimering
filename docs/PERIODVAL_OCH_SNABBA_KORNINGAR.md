@@ -37,7 +37,7 @@ Hur ett resultat får läsas (`planning_basis`) **härleds** i stället för att
 
 ### Kostnadsbegreppet: modellerad årlig kapacitetskostnad för valt urval
 
-Kostnaden i resultatet är inte kostnaden för perioden. Den är summan av de salar som behövs (platser gånger årspris, `annual_room_cost_ore`) och vaktpoolen, som dimensioneras efter toppbelastningen (`staff_pool_size` gånger årskostnad per vakt, `annual_staff_pool_cost_ore`), plus eventuella pass- och externkostnader. Posterna är kontrollerade mot resultatet i `tests/test_joint_period_run.py`: totalen är summan av delposterna och vaktpoolskostnaden är poolstorleken gånger årskostnaden.
+Kostnaden i resultatet är inte kostnaden för perioden. Den är summan av de salar som behövs (platser gånger årspris, `annual_room_cost_kr`) och vaktpoolen, som dimensioneras efter toppbelastningen (`staff_pool_size` gånger årskostnad per vakt, `annual_staff_pool_cost_kr`), plus eventuella pass- och externkostnader. Posterna är kontrollerade mot resultatet i `tests/test_joint_period_run.py`: totalen är summan av delposterna och vaktpoolskostnaden är poolstorleken gånger årskostnaden.
 
 Namnet **"Modellerad årlig kapacitetskostnad för valt urval"** används därför konsekvent i sammanfattningen, kostnadsfältet, jämförelsetabellen, förklaringsrutan och i `planning_basis.cost_name`. En dag (508 tkr) kan kosta mer än en vecka (379 tkr) eftersom kapaciteten dimensioneras efter toppen och en endagsperiod har en kalender på en enda dag: tentorna kan inte flyttas till andra dagar för att jämna ut toppen. Det är en rimlig förklaring som inte är separat testad; det som är testat är att kostnaden följer av salarna och vaktpoolen. Kostnader för olika urval jämförs inte och skalas inte upp till en årlig besparing.
 

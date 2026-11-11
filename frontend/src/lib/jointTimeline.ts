@@ -26,7 +26,7 @@ export type TimelineSegment = {
   /** Datum som inte gick att genomföra (infeasible eller tidsgräns) i segmentets kontroller. */
   failedDates: string[]
   /** Undre gräns som bevisades i det här varvet (bara för grov plan). */
-  boundOre: number | null
+  boundKr: number | null
 }
 
 export type TimelineBlock = {
@@ -146,7 +146,7 @@ export function buildTimeline(events: JointEvent[], nowT: number): Timeline {
         }
         break
       }
-      case "bound": bounds.set(event.round, Math.max(bounds.get(event.round) ?? 0, event.lower_ore)); break
+      case "bound": bounds.set(event.round, Math.max(bounds.get(event.round) ?? 0, event.lower_kr)); break
       case "warm_start": warm = event; break
       case "finished": finishedEvent = event; break
       default: break
@@ -161,7 +161,7 @@ export function buildTimeline(events: JointEvent[], nowT: number): Timeline {
     return {
       id: `${index}-${draft.step}`, step: draft.step, round: draft.round, startedAt: draft.startedAt, endedAt, seconds: endedAt - draft.startedAt, status, share: 0,
       checks: statsOf(draft), failedDates: failedDatesOf(draft),
-      boundOre: draft.step === "relaxation" && draft.round !== null ? bounds.get(draft.round) ?? null : null,
+      boundKr: draft.step === "relaxation" && draft.round !== null ? bounds.get(draft.round) ?? null : null,
     }
   })
   return assemble(segments, warm as WarmStartEvent | null, finished, ended)

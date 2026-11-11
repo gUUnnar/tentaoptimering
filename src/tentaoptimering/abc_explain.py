@@ -20,30 +20,31 @@ from collections import defaultdict
 from typing import Any
 
 from .abc_hire import hire_window_rows
+from .money import kdiff, kmul, ksum
 from .abc_ledger import COST_KIND_ACTUAL, Ledger
 from .cost_realization import classify_room, summarize
 from .joint_pricing import COMPONENTS, PricedSession, price, pricing_signature, passes, reprice_staff
 
 LIST_LIMIT = 200
 ITEMS = (
-    ("rooms", "Hyrda lokaler", ("annual_room_cost_ore",)),
-    ("external", "Externa bokningar", ("external_room_session_cost_ore",)),
-    ("staff", "Personal (betald tid)", ("staff_paid_time_cost_ore", "annual_staff_pool_cost_ore", "staff_session_cost_ore")),
+    ("rooms", "Hyrda lokaler", ("annual_room_cost_kr",)),
+    ("external", "Externa bokningar", ("external_room_session_cost_kr",)),
+    ("staff", "Personal (betald tid)", ("staff_paid_time_cost_kr", "annual_staff_pool_cost_kr", "staff_session_cost_kr")),
 )
-PART_LABELS = {"staff_paid_time_cost_ore": "Betald personaltid", "annual_staff_pool_cost_ore": "Vaktpool", "staff_session_cost_ore": "Rörlig bemanning per salstillfälle"}
+PART_LABELS = {"staff_paid_time_cost_kr": "Betald personaltid", "annual_staff_pool_cost_kr": "Vaktpool", "staff_session_cost_kr": "Rörlig bemanning per salstillfälle"}
 KIND_TEXT = {"model_calculated": "Modellberäknad kostnad", COST_KIND_ACTUAL: "Modellberäknad kostnad för de historiska bokningarna (inte faktisk kostnad)"}
 
 
-def _kr(ore: int) -> str:
-    return f"{round(abs(ore) / 100):,}".replace(",", " ") + " kr"
+def _kr(amount: float) -> str:
+    return f"{round(abs(amount)):,}".replace(",", " ") + " kr"
 
 
 def _clock(minutes: int) -> str:
     return f"{minutes // 60 % 24:02d}:{minutes % 60:02d}"
 
 
-def _sum(components: dict[str, int], names: tuple[str, ...]) -> int:
-    return sum(components[name] for name in names)
+def _sum(components: dict[str, float], names: tuple[str, ...]) -> float:
+    return ksum(components[name] for name in names)
 
 
 def explain(left: Ledger, right: Ledger, labels: dict[str, str] | None = None) -> dict[str, Any]:
@@ -65,7 +66,7 @@ def explain(left: Ledger, right: Ledger, labels: dict[str, str] | None = None) -
         split = _withhold(items, split)
     return {
         "available": available, "reasons": reasons, "notes": notes,
-        "basis": _basis(left, right), "total": {"left_ore": left.total, "right_ore": right.total, "difference_ore": difference if available else None,
+        "basis": _basis(left, right), "total": {"left_kr": left.total, "right_kr": right.total, "difference_kr": difference if available else None,
                                                "label": "Modellberäknad kostnad: lokaler som årskostnad, externhyra och personal för den valda perioden. Höger minus vänster."},
         "split": split, "items": items, "rooms": rooms, "hire_windows": hire_window_rows(left, right), "added_rooms": added, "sessions": sessions, "staffing": staff, "exams": exams,
         "realization": realization, "savings_kinds": _kinds(difference if available else None, realization),
@@ -76,9 +77,9 @@ def explain(left: Ledger, right: Ledger, labels: dict[str, str] | None = None) -
 def _withhold(items: list[dict[str, Any]], split: dict[str, Any]) -> dict[str, Any]:
     """A blocked comparison reports no cost difference at all, not even per item: the sides are not comparable."""
     for item in items:
-        item.update(difference_ore=None, usage_ore=None, assumption_ore=None, drivers=[])
+        item.update(difference_kr=None, usage_kr=None, assumption_kr=None, drivers=[])
         for part in item.get("parts", ()):
-            part["difference_ore"] = None
+            part["difference_kr"] = None
     return {"available": False, "reason": "Ingen uppdelning görs: totalskillnaden spärras eftersom underlaget inte är jämförbart."}
 
 
@@ -103,7 +104,7 @@ def _blockers(left: Ledger, right: Ledger) -> tuple[list[str], list[str]]:
     for side in (left, right):
         priced = price(side.problem, side.sessions)
         # The pool is the solver's own figure and can exceed the peak of a solution that is not proven optimal; everything else must match.
-        mismatch = any(priced[name] != side.components[name] for name in COMPONENTS if name != "annual_staff_pool_cost_ore")
+        mismatch = any(priced[name] != side.components[name] for name in COMPONENTS if name != "annual_staff_pool_cost_kr")
         if mismatch and side.cost_kind != COST_KIND_ACTUAL:
             reasons.append(f"Kostnadsunderlaget för {side.name} stämmer inte med körningens redovisade kostnad; ingen förklaring kan göras.")
     return reasons, notes
@@ -112,13 +113,13 @@ def _blockers(left: Ledger, right: Ledger) -> tuple[list[str], list[str]]:
 def _split(left: Ledger, right: Ledger) -> dict[str, Any]:
     """Changed use of resources against changed prices or assumptions, by pricing the right plan with the left rules."""
     if pricing_signature(left.problem) == pricing_signature(right.problem):
-        return {"available": True, "usage_ore": right.total - left.total, "assumption_ore": 0, "same_prices": True,
+        return {"available": True, "usage_kr": kdiff(right.total, left.total), "assumption_kr": 0, "same_prices": True,
                 "note": "Alternativen har samma priser och regler; hela skillnaden är ändrat resursutnyttjande."}
     rooms = {room.room_id for room in left.problem.rooms}
     if any(session.room_id not in rooms for session in right.sessions):
         return {"available": False, "reason": "Det högra alternativet använder salar som saknar pris i det vänstra, så skillnaden kan inte delas upp i utnyttjande och priser."}
     priced = price(left.problem, reprice_staff(left.problem, right.sessions))
-    return {"available": True, "usage_ore": priced["comparable_total_cost_ore"] - left.total, "assumption_ore": right.total - priced["comparable_total_cost_ore"],
+    return {"available": True, "usage_kr": kdiff(priced["comparable_total_cost_kr"], left.total), "assumption_kr": kdiff(right.total, priced["comparable_total_cost_kr"]),
             "same_prices": False, "_right_at_left": priced,
             "note": "Utnyttjandet är det högra alternativets plan prissatt med det vänstra alternativets priser och regler minus det vänstras kostnad; resten är effekten av andra priser, regler eller antaganden."}
 
@@ -126,18 +127,18 @@ def _split(left: Ledger, right: Ledger) -> dict[str, Any]:
 def _items(left: Ledger, right: Ledger, right_at_left: dict[str, int] | None) -> list[dict[str, Any]]:
     rows = []
     for key, label, names in ITEMS:
-        row: dict[str, Any] = {"key": key, "label": label, "left_ore": _sum(left.components, names), "right_ore": _sum(right.components, names)}
-        row["difference_ore"] = row["right_ore"] - row["left_ore"]
+        row: dict[str, Any] = {"key": key, "label": label, "left_kr": _sum(left.components, names), "right_kr": _sum(right.components, names)}
+        row["difference_kr"] = kdiff(row["right_kr"], row["left_kr"])
         if right_at_left is not None:
-            row["usage_ore"] = _sum(right_at_left, names) - row["left_ore"]
-            row["assumption_ore"] = row["right_ore"] - _sum(right_at_left, names)
+            row["usage_kr"] = kdiff(_sum(right_at_left, names), row["left_kr"])
+            row["assumption_kr"] = kdiff(row["right_kr"], _sum(right_at_left, names))
         elif pricing_signature(left.problem) == pricing_signature(right.problem):
-            row["usage_ore"], row["assumption_ore"] = row["difference_ore"], 0
+            row["usage_kr"], row["assumption_kr"] = row["difference_kr"], 0
         else:
-            row["usage_ore"] = row["assumption_ore"] = None
+            row["usage_kr"] = row["assumption_kr"] = None
         if len(names) > 1:
-            row["parts"] = [{"key": name, "label": PART_LABELS[name], "left_ore": left.components[name], "right_ore": right.components[name],
-                             "difference_ore": right.components[name] - left.components[name]} for name in names]
+            row["parts"] = [{"key": name, "label": PART_LABELS[name], "left_kr": left.components[name], "right_kr": right.components[name],
+                             "difference_kr": kdiff(right.components[name], left.components[name])} for name in names]
         row["drivers"] = []
         rows.append(row)
     return rows
@@ -149,7 +150,7 @@ def _room_usage(ledger: Ledger, room_id: str) -> dict[str, Any]:
     reserved = room_id in {item.room_id for item in ledger.problem.reservations}
     used = bool(sessions) or reserved
     return {"used": used, "reserved_only": reserved and not sessions, "sessions": len(sessions), "booked_minutes": sum(s.end_minute - s.start_minute for s in sessions),
-            "fixed_ore": room.annual_fixed_cost_ore if room and used else 0, "external_ore": room.external_session_cost_ore * len(sessions) if room else 0,
+            "fixed_kr": room.annual_fixed_cost_kr if room and used else 0, "external_kr": kmul(room.external_session_cost_kr, len(sessions)) if room else 0,
             "peak_participants": max((s.participants for s in sessions), default=0)}
 
 
@@ -166,8 +167,8 @@ def _rooms(left: Ledger, right: Ledger, labels: dict[str, str]) -> tuple[list[di
         rows.append({
             "room_id": room_id, "name": (meta.name if meta and meta.name else labels.get(room_id) or room_id), "kind": meta.kind if meta else "internal",
             "capacity": meta.capacity if meta else None, "cost_origin": meta.cost_origin if meta else None, "cost_object_id": meta.cost_object_id if meta else None,
-            "status": status, "left": a, "right": b, "difference_ore": (b["fixed_ore"] + b["external_ore"]) - (a["fixed_ore"] + a["external_ore"]),
-            "fixed_difference_ore": b["fixed_ore"] - a["fixed_ore"], "external_difference_ore": b["external_ore"] - a["external_ore"],
+            "status": status, "left": a, "right": b, "difference_kr": kdiff(ksum([b["fixed_kr"], b["external_kr"]]), ksum([a["fixed_kr"], a["external_kr"]])),
+            "fixed_difference_kr": kdiff(b["fixed_kr"], a["fixed_kr"]), "external_difference_kr": kdiff(b["external_kr"], a["external_kr"]),
             "booked_minutes_difference": b["booked_minutes"] - a["booked_minutes"], "reserved_only": a["reserved_only"] or b["reserved_only"],
         })
     return sorted(rows, key=lambda row: ({"avoidable": 0, "added": 1, "kept": 2}[row["status"]], row["name"])), freed, added
@@ -178,7 +179,7 @@ def _session_row(ledger: Ledger, session: PricedSession, labels: dict[str, str])
     rows = passes(ledger.problem, [session])
     return {"room_id": session.room_id, "room": (room.name if room and room.name else labels.get(session.room_id) or session.room_id), "date": session.day.isoformat(),
             "start": _clock(session.start_minute), "end": _clock(session.end_minute), "participants": session.participants, "staff": session.staff,
-            "paid_minutes": sum(r["paid_minutes"] for r in rows), "external_ore": room.external_session_cost_ore if room else 0,
+            "paid_minutes": sum(r["paid_minutes"] for r in rows), "external_kr": room.external_session_cost_kr if room else 0,
             "external": bool(room and room.kind == "external"), "exams": list(session.exam_ids)}
 
 
@@ -197,7 +198,7 @@ def _sessions(left: Ledger, right: Ledger, labels: dict[str, str]) -> dict[str, 
         "counts": {"left": len(a), "right": len(b), "removed": len(removed), "added": len(added), "changed": len(changed)}, "truncated": max(len(removed), len(added), len(changed)) > LIST_LIMIT,
         "external": {"left": len([s for s in a.values() if _is_external(left, s)]), "right": len([s for s in b.values() if _is_external(right, s)]),
                      "avoided": external(removed)[:LIST_LIMIT], "added": external(added)[:LIST_LIMIT],
-                     "avoided_ore": sum(row["external_ore"] for row in external(removed)), "added_ore": sum(row["external_ore"] for row in external(added))},
+                     "avoided_kr": ksum(row["external_kr"] for row in external(removed)), "added_kr": ksum(row["external_kr"] for row in external(added))},
     }
 
 
@@ -271,19 +272,19 @@ def _drivers(items, rooms, sessions, staff, exams, labels) -> None:
             if room_id not in row["after"]["room_ids"]:
                 moved_from[room_id].append(row["course"] or row["exam_event_id"])
     for row in rooms:
-        if row["fixed_difference_ore"] == 0:
+        if row["fixed_difference_kr"] == 0:
             continue
         verb = {"avoidable": "används inte längre", "added": "tas i bruk", "kept": "ändrad användning"}[row["status"]]
         who = moved_from.get(row["room_id"], [])
-        text = f"{row['name']} {verb}: {'+' if row['fixed_difference_ore'] > 0 else '−'}{_kr(row['fixed_difference_ore'])}" + (f"; tentor som flyttar därifrån: {', '.join(who[:6])}{' …' if len(who) > 6 else ''}" if who else "")
-        by_key["rooms"]["drivers"].append({"kind": f"room_{row['status']}", "room_id": row["room_id"], "ore": row["fixed_difference_ore"], "text": text})
+        text = f"{row['name']} {verb}: {'+' if row['fixed_difference_kr'] > 0 else '−'}{_kr(row['fixed_difference_kr'])}" + (f"; tentor som flyttar därifrån: {', '.join(who[:6])}{' …' if len(who) > 6 else ''}" if who else "")
+        by_key["rooms"]["drivers"].append({"kind": f"room_{row['status']}", "room_id": row["room_id"], "kr": row["fixed_difference_kr"], "text": text})
     external = sessions["external"]
     if external["avoided"]:
-        by_key["external"]["drivers"].append({"kind": "external_avoided", "count": len(external["avoided"]), "ore": -external["avoided_ore"],
-                                              "text": f"{len(external['avoided'])} externa bokningar undviks: −{_kr(external['avoided_ore'])}"})
+        by_key["external"]["drivers"].append({"kind": "external_avoided", "count": len(external["avoided"]), "kr": -external["avoided_kr"],
+                                              "text": f"{len(external['avoided'])} externa bokningar undviks: −{_kr(external['avoided_kr'])}"})
     if external["added"]:
-        by_key["external"]["drivers"].append({"kind": "external_added", "count": len(external["added"]), "ore": external["added_ore"],
-                                              "text": f"{len(external['added'])} externa bokningar tillkommer: +{_kr(external['added_ore'])}"})
+        by_key["external"]["drivers"].append({"kind": "external_added", "count": len(external["added"]), "kr": external["added_kr"],
+                                              "text": f"{len(external['added'])} externa bokningar tillkommer: +{_kr(external['added_kr'])}"})
     diff = staff["difference"]
     if diff["paid_minutes"] or diff["passes"]:
         sign = "+" if diff["paid_minutes"] > 0 else "−"
@@ -301,12 +302,12 @@ def _realization(left: Ledger, right: Ledger, rooms: list[dict[str, Any]], sessi
     used_right = {row["room_id"] for row in rooms if row["right"]["used"]}
     items = []
     for row in rooms:
-        saving = -(row["fixed_difference_ore"]) if row["status"] == "avoidable" else 0
-        if row["kind"] == "external" and row["external_difference_ore"] < 0:
-            saving = -row["external_difference_ore"]
+        saving = -(row["fixed_difference_kr"]) if row["status"] == "avoidable" else 0
+        if row["kind"] == "external" and row["external_difference_kr"] < 0:
+            saving = -row["external_difference_kr"]
         if saving <= 0:
             continue
-        items.append({"room_id": row["room_id"], "name": row["name"], "kind": row["kind"], "modelled_saving_ore": saving,
+        items.append({"room_id": row["room_id"], "name": row["name"], "kind": row["kind"], "modelled_saving_kr": saving,
                       "realization": classify_room(snapshot, row["room_id"], row["kind"], used_right)})
     return {"items": items, "summary": summarize(items), "contract_basis": ({"pack_id": snapshot.get("pack_id"), "origin": snapshot.get("origin"), "sha256": snapshot.get("sha256")} if snapshot else None),
             "note": "Lokaler som inte längre används frigör bara sin hyra om avtalsobjektet kan avvecklas. Saknas avtalsuppgifter är besparingen villkorad."}
@@ -315,9 +316,9 @@ def _realization(left: Ledger, right: Ledger, rooms: list[dict[str, Any]], sessi
 def _kinds(difference: int | None, realization: dict[str, Any]) -> dict[str, Any]:
     return {
         "historical": {"available": False, "note": "Faktisk kostnad per tentamen, sal eller personalpass finns inte i underlaget (bara en preliminär intern hyra för hela verksamheten)."},
-        "model_calculated": {"available": difference is not None, "difference_ore": difference},
-        "theoretical_annual_potential": {"available": False, "ore": None, "note": "Kräver en årsomräkning (cost.annualization_factor) och en efterfrågeprofil för den ej simulerade tiden; den finns inte i modellen."},
-        "verified_realisable": {"available": realization["summary"]["verified_ore"] > 0, "ore": realization["summary"]["verified_ore"],
+        "model_calculated": {"available": difference is not None, "difference_kr": difference},
+        "theoretical_annual_potential": {"available": False, "kr": None, "note": "Kräver en årsomräkning (cost.annualization_factor) och en efterfrågeprofil för den ej simulerade tiden; den finns inte i modellen."},
+        "verified_realisable": {"available": realization["summary"]["verified_kr"] > 0, "kr": realization["summary"]["verified_kr"],
                                 "note": "Verifierad realiserbar besparing kräver observerade avtalsuppgifter. Simulerade, antagna och modellberäknade uppgifter ger aldrig verifierad besparing."},
     }
 
@@ -335,7 +336,7 @@ def _basis(left: Ledger, right: Ledger) -> dict[str, Any]:
         return {"kind": ledger.kind, "name": ledger.name, "cost_kind": ledger.cost_kind, "cost_kind_text": KIND_TEXT[ledger.cost_kind],
                 "resource_data": ({"pack_id": pack["pack_id"], "origin": pack["pack_origin"], "origins": pack["origins"]} if pack else None),
                 "staffing_origin": _staff_origin(ledger), "priced_by": "own" if ledger.cost_kind != COST_KIND_ACTUAL else "the_other_alternative",
-                "reservations": (basis.get("reservations") or {}).get("status"), "optimum": {"gap_ore": ledger.gap_ore, "proven": ledger.proven_optimum}}
+                "reservations": (basis.get("reservations") or {}).get("status"), "optimum": {"gap_kr": ledger.gap_kr, "proven": ledger.proven_optimum}}
     return {"left": side(left), "right": side(right)}
 
 
@@ -374,7 +375,7 @@ def _quality(left: Ledger, right: Ledger) -> dict[str, Any]:
 
 
 def _summary(left: Ledger, right: Ledger, items: list[dict[str, Any]], difference: int) -> str:
-    parts = ", ".join(f"{item['label'].lower()} {'+' if item['difference_ore'] > 0 else '−' if item['difference_ore'] < 0 else '±'}{_kr(item['difference_ore'])}" for item in items)
+    parts = ", ".join(f"{item['label'].lower()} {'+' if item['difference_kr'] > 0 else '−' if item['difference_kr'] < 0 else '±'}{_kr(item['difference_kr'])}" for item in items)
     direction = "lägre" if difference < 0 else "högre" if difference > 0 else "oförändrad"
     return (f"Modellkostnaden är {direction} med {_kr(difference)} för {right.name} jämfört med {left.name} ({_kr(left.total)} mot {_kr(right.total)}): {parts}. "
             "Beloppen är modellberäknade och inte en verifierad besparing.")

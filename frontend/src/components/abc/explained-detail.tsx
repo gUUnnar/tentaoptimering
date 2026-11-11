@@ -25,13 +25,13 @@ export function ItemDetail({ item, explained }: { item: ExplainedItem; explained
 
 function PartsTable({ item }: { item: ExplainedItem }) {
   return <table className="w-full text-sm"><thead><tr className="border-b"><th className={TH}>Del</th><th className={`${TH} text-right`}>Före</th><th className={`${TH} text-right`}>Efter</th><th className={`${TH} text-right`}>Skillnad</th></tr></thead>
-    <tbody>{item.parts?.map(part => <tr key={part.key} className="border-b last:border-0"><td className={TD}>{part.label}</td><td className={NUM}>{formatKr(part.left_ore)}</td>
-      <td className={NUM}>{formatKr(part.right_ore)}</td><td className={NUM}>{signedKr(part.difference_ore)}</td></tr>)}</tbody></table>
+    <tbody>{item.parts?.map(part => <tr key={part.key} className="border-b last:border-0"><td className={TD}>{part.label}</td><td className={NUM}>{formatKr(part.left_kr)}</td>
+      <td className={NUM}>{formatKr(part.right_kr)}</td><td className={NUM}>{signedKr(part.difference_kr)}</td></tr>)}</tbody></table>
 }
 
 function RoomsTable({ explained }: { explained: Explained }) {
   const realization = new Map(explained.realization.items.map(item => [item.room_id, item.realization]))
-  const rows = explained.rooms.filter(room => room.fixed_difference_ore !== 0 || room.status !== "kept" || room.booked_minutes_difference !== 0)
+  const rows = explained.rooms.filter(room => room.fixed_difference_kr !== 0 || room.status !== "kept" || room.booked_minutes_difference !== 0)
   return <div><p className="mb-1 text-xs font-semibold">Namngivna lokaler: före, efter och skillnad</p>
     {rows.length === 0 ? <p className="text-xs">Alla lokaler används som förut.</p> :
       <div className="max-h-96 overflow-auto"><table className="w-full text-xs"><thead><tr className="border-b"><th className={TH}>Lokal</th><th className={TH}>Läge</th>
@@ -48,8 +48,8 @@ function RoomRow({ room, realization, explained }: { room: ExplainedRoom; realiz
     <td className={TD}>{ROOM_STATUS_TEXT[room.status]}</td>
     <td className={NUM}>{room.left.sessions} → {room.right.sessions}</td>
     <td className={NUM}>{hours(room.left.booked_minutes)} → {hours(room.right.booked_minutes)}</td>
-    <td className={NUM}>{formatKr(room.left.fixed_ore + room.left.external_ore)}</td><td className={NUM}>{formatKr(room.right.fixed_ore + room.right.external_ore)}</td>
-    <td className={NUM}>{explained.available ? signedKr(room.difference_ore) : "–"}</td>
+    <td className={NUM}>{formatKr(room.left.fixed_kr + room.left.external_kr)}</td><td className={NUM}>{formatKr(room.right.fixed_kr + room.right.external_kr)}</td>
+    <td className={NUM}>{explained.available ? signedKr(room.difference_kr) : "–"}</td>
     <td className={TD}>{view && realization ? <span><span className={`rounded px-1.5 py-0.5 ${TONE[view.tone]}`}>{view.label}</span>
       <span className="mt-1 block text-slate-800">{realization.reason}</span>{realization.contract && <span className="block text-slate-700">Avtal: {realization.contract.name} ({realization.contract.origin})</span>}</span>
       : room.status === "added" ? "Ökad kostnad, ingen besparing" : "–"}</td></tr>
@@ -57,7 +57,7 @@ function RoomRow({ room, realization, explained }: { room: ExplainedRoom; realiz
 
 function bookingRow(session: ExplainedSession) {
   return <tr key={`${session.room_id}-${session.date}-${session.start}`} className="border-b last:border-0"><td className={TD}>{session.date}</td><td className={TD}>{session.start}–{session.end}</td>
-    <td className={TD}>{session.room}</td><td className={NUM}>{session.participants}</td><td className={TD}>{session.exams.join(", ")}</td><td className={NUM}>{formatKr(session.external_ore)}</td></tr>
+    <td className={TD}>{session.room}</td><td className={NUM}>{session.participants}</td><td className={TD}>{session.exams.join(", ")}</td><td className={NUM}>{formatKr(session.external_kr)}</td></tr>
 }
 
 function BookingList({ title, rows }: { title: string; rows: ExplainedSession[] }) {
@@ -70,7 +70,7 @@ function BookingList({ title, rows }: { title: string; rows: ExplainedSession[] 
 function ExternalBookings({ explained }: { explained: Explained }) {
   const { external } = explained.sessions
   return <div className="space-y-2"><p className="text-sm">Externa bokningar: <strong>{external.left}</strong> före, <strong>{external.right}</strong> efter.
-    {" "}Undvikta: {formatKr(external.avoided_ore)}. Tillkommande: {formatKr(external.added_ore)}.</p>
+    {" "}Undvikta: {formatKr(external.avoided_kr)}. Tillkommande: {formatKr(external.added_kr)}.</p>
     <BookingList title="Externa bokningar som undviks" rows={external.avoided}/><BookingList title="Externa bokningar som tillkommer" rows={external.added}/></div>
 }
 

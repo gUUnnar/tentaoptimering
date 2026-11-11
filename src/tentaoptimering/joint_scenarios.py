@@ -14,6 +14,8 @@ from pathlib import Path
 import re
 import tomllib
 from typing import Any
+
+from .legacy_money import upgrade_scenario
 from uuid import uuid4
 
 import pandas as pd
@@ -66,7 +68,7 @@ def read_scenario(path: Path) -> dict[str, Any] | None:
     scenario, subset = content.get("scenario"), content.get("subset")
     if content.get("schema_version") != JOINT_SCENARIO_SCHEMA or not isinstance(scenario, dict) or not isinstance(subset, dict):
         return None
-    return content if scenario.get("id") and isinstance(content.get("parameters", {}), dict) else None
+    return upgrade_scenario(content) if scenario.get("id") and isinstance(content.get("parameters", {}), dict) else None
 
 
 def scenario_files(storage: AppStorage | None, bundled_dir: Path | None = None) -> list[tuple[str, Path, str]]:

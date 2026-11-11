@@ -5,14 +5,14 @@ const decimal = new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 1, minim
 
 export const DASH = "–"
 
-/** Öre till hela kronor, t.ex. "1 823 000 kr". */
-export function formatKr(ore: number | null | undefined): string {
-  return ore === null || ore === undefined ? DASH : `${number.format(Math.round(ore / 100))} kr`
+/** Kronor avrundade till hela kronor, t.ex. "1 823 000 kr". */
+export function formatKr(kr: number | null | undefined): string {
+  return kr === null || kr === undefined ? DASH : `${number.format(Math.round(kr))} kr`
 }
 
 /** Kort kronform för diagramaxlar, t.ex. "1,82 Mkr". */
-export function formatMkr(ore: number): string {
-  return `${new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 2 }).format(ore / 100 / 1_000_000)} Mkr`
+export function formatMkr(kr: number): string {
+  return `${new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 2 }).format(kr / 1_000_000)} Mkr`
 }
 
 export function formatGap(fraction: number | null | undefined): string {
@@ -38,18 +38,18 @@ export const COST_NAME = "Modellerad årlig kapacitetskostnad"
 export const COST_SCOPE = "för valt urval"
 
 export type CostStatement = { proven: boolean; headline: string; note: string }
-export function costStatement(costOre: number | null, boundOre: number | null, provenOptimum: boolean): CostStatement {
-  if (costOre === null) return { proven: false, headline: DASH, note: "Ingen kontrollerad lösning finns ännu." }
-  const proven = provenOptimum || (boundOre !== null && boundOre >= costOre)
-  if (proven) return { proven: true, headline: formatKr(costOre), note: "Lägsta möjliga kostnad i modellen är bevisad. Det är ändå en modellkostnad och ingen kontrollerad besparing; jämförelse mot faktisk kostnad kräver separat underlag." }
-  if (boundOre === null) return { proven: false, headline: `högst ${formatKr(costOre)}`, note: "Ingen undre gräns är bevisad än. Kostnaden är bara den lägsta kontrollerade hittills och är inte ett bevisat optimum." }
+export function costStatement(costKr: number | null, boundKr: number | null, provenOptimum: boolean): CostStatement {
+  if (costKr === null) return { proven: false, headline: DASH, note: "Ingen kontrollerad lösning finns ännu." }
+  const proven = provenOptimum || (boundKr !== null && boundKr >= costKr)
+  if (proven) return { proven: true, headline: formatKr(costKr), note: "Lägsta möjliga kostnad i modellen är bevisad. Det är ändå en modellkostnad och ingen kontrollerad besparing; jämförelse mot faktisk kostnad kräver separat underlag." }
+  if (boundKr === null) return { proven: false, headline: `högst ${formatKr(costKr)}`, note: "Ingen undre gräns är bevisad än. Kostnaden är bara den lägsta kontrollerade hittills och är inte ett bevisat optimum." }
   return {
-    proven: false, headline: `${rangeKr(boundOre, costOre)}`,
+    proven: false, headline: `${rangeKr(boundKr, costKr)}`,
     note: "Det lägsta möjliga är inte bevisat. Den lägsta möjliga kostnaden i modellen ligger någonstans i intervallet. Intervallet är ingen besparing.",
   }
 }
 
-const rangeKr = (lowOre: number, highOre: number): string => `${number.format(Math.round(lowOre / 100))}–${number.format(Math.round(highOre / 100))} kr`
+const rangeKr = (lowKr: number, highKr: number): string => `${number.format(Math.round(lowKr))}–${number.format(Math.round(highKr))} kr`
 
 export const DAY_STATUS_TEXT: Record<DayStatus | "pending" | "running", string> = {
   pending: "Väntar", running: "Pågår", optimal: "Klar, bästa möjliga", feasible: "Klar, går att genomföra", infeasible: "Går inte", unknown: "Tidsgräns nådd",

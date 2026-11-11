@@ -72,7 +72,7 @@ Härlett (ingen verklighet förrän frågorna är besvarade): cirka 116 pass per
 | F6 | Kan **personers tillgänglighet** (när de kan arbeta) levereras anonymiserat, eller bara totalsiffrorna? | Modellen behöver tillgänglighet per tidsperiod, inte per person; personuppgifter ska inte in i Git. |
 | F7 | Vilka avtalsvillkor gäller för vilotid, obekväm arbetstid och raster utöver det som redan är angivet? | Se `docs/ANALYS_KOLLEKTIVAVTAL.md`. |
 
-Modellen har idag poolstorlek och årskostnad per vakt som parametrar (`cost.staff_annual_ore`, bemanningstrappan). Uppgifterna ändrar inget i modellen förrän frågorna är besvarade och beslutet är taget.
+Modellen har idag poolstorlek och årskostnad per vakt som parametrar (`cost.staff_annual_kr`, bemanningstrappan). Uppgifterna ändrar inget i modellen förrän frågorna är besvarade och beslutet är taget.
 
 ## G. Hur svaren används
 

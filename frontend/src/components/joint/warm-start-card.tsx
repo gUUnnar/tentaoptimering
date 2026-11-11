@@ -30,7 +30,7 @@ export function WarmStartCard({ record }: { record: WarmStartRecord | null }) {
 
       {record.source && <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-2" aria-label="Förra körningen">
         <Item label="Förra körningen" value={<span className="font-mono text-xs">{record.source.run_id}</span>}/>
-        <Item label="Verifierad kostnad i förra körningen" value={formatKr(record.source.cost_ore)}/>
+        <Item label="Verifierad kostnad i förra körningen" value={formatKr(record.source.cost_kr)}/>
         <Item label="Teknisk eftervalidering nu (kontrollerad på nytt)" value={<VerdictChip status={record.source.technical_validation_now}/>}/>
         <Item label="Resultatets SHA-256" value={<span className="font-mono text-[11px] break-all" title={record.source.result_sha256}>{record.source.result_sha256.slice(0, 16)}…</span>}/>
       </dl>}
@@ -51,10 +51,10 @@ export function WarmStartCard({ record }: { record: WarmStartRecord | null }) {
           <Item label="Tentor vars pass inte längre är tillåtet" value={formatCount(re.exams_not_allowed)}/>
           <Item label="Dagar kontrollerade / underkända" value={`${formatCount(re.days_checked)} / ${formatCount(re.days_failed)}`}/>
           <Item label="Tid för kontrollen" value={formatDuration(re.check_seconds)}/>
-          <Item label="Verifierad kostnad efter den nya kontrollen" value={formatKr(re.verified_cost_ore)}/>
+          <Item label="Verifierad kostnad efter den nya kontrollen" value={formatKr(re.verified_cost_kr)}/>
           <Item label="Tentor som ledtråd till modellen" value={formatCount(re.hint_exams)}/>
           <Item label="Första lösning" value={`${formatDuration(re.first_solution_seconds)}${re.first_solution_source ? ` (${sourceLabel(re.first_solution_source)})` : ""}`}/>
-          <Item label="Slutlig kostnad" value={`${formatKr(re.final_cost_ore)}${re.final_source ? ` (${sourceLabel(re.final_source)})` : ""}`}/>
+          <Item label="Slutlig kostnad" value={`${formatKr(re.final_cost_kr)}${re.final_source ? ` (${sourceLabel(re.final_source)})` : ""}`}/>
         </dl>
         {re.reasons.length > 0 && <div><h5 className="text-xs font-semibold">Skäl</h5><ul className="mt-1 list-disc pl-5 text-xs">{re.reasons.map(reason => <li key={reason}>{reason}</li>)}</ul></div>}
         {re.notes.length > 0 && <div><h5 className="text-xs font-semibold">Anteckningar</h5><ul className="mt-1 list-disc pl-5 text-xs text-slate-800">{re.notes.map(note => <li key={note}>{note}</li>)}</ul></div>}

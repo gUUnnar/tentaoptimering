@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from .joint_contract import CandidateSlot, HireWindow, ParameterValue, Reservation, Room
+from .money import from_units, to_units
 from .joint_reservations import build_reservations
 from .resource_data import NamedRoom, ResourceDataError, ResourcePack, pack_basis, pack_directory, resolve_pack, write_snapshot
 
@@ -37,15 +38,15 @@ def effective_staff_values(values: dict[str, Any], parameters: tuple[ParameterVa
     rules = pack.staff if pack else None
     result: dict[str, Any] = {}
     for key, parameter_id, packed in (
-        ("paid_minute_cost_ore", "cost.staff_paid_minute_ore", rules.paid_minute_cost_ore if rules else None),
+        ("paid_minute_cost_kr", "cost.staff_paid_minute_kr", rules.paid_minute_cost_kr if rules else None),
         ("min_paid_minutes", "staffing.min_paid_shift_minutes", rules.min_paid_shift_minutes if rules else None),
-        ("annual_cost_ore_per_staff", "cost.staff_annual_ore", rules.pool_annual_cost_ore if rules else None),
+        ("annual_cost_kr_per_staff", "cost.staff_annual_kr", rules.pool_annual_cost_kr if rules else None),
     ):
         if parameter_id in changed or packed is None:
-            result[key] = {"value": int(values[parameter_id]), "source": "parameter" if parameter_id in changed else "default",
+            result[key] = {"value": values[parameter_id], "source": "parameter" if parameter_id in changed else "default",
                            "origin": "experiment" if parameter_id in changed else "assumption"}
         else:
-            result[key] = {"value": int(packed), "source": "resource_data", "origin": rules.provenance.origin if rules else "assumption"}
+            result[key] = {"value": packed, "source": "resource_data", "origin": rules.provenance.origin if rules else "assumption"}
     return result
 
 
@@ -80,7 +81,7 @@ def apply_resource_pack(
     chosen = tuple(room for room_id, room in result.items() if room_id not in excluded)
     for room in chosen:
         trace.append({"room_id": room.room_id, "name": room.name, "kind": room.kind, "cost_origin": room.cost_origin, "cost_object_id": room.cost_object_id,
-                      "annual_fixed_cost_ore": room.annual_fixed_cost_ore, "session_cost_ore": room.external_session_cost_ore,
+                      "annual_fixed_cost_kr": room.annual_fixed_cost_kr, "session_cost_kr": room.external_session_cost_kr,
                       "travel_paid_minutes": room.travel_paid_minutes})
     proxies = sorted(room.room_id for room in chosen if room.kind == "internal" and room.cost_origin == "parameter_proxy")
     if pack is not None and proxies:
@@ -106,7 +107,7 @@ def apply_hire_windows(
         start, end = date.fromisoformat(item.start), date.fromisoformat(item.end)
         room_ids = tuple(room_id for room_id in item.room_ids if room_id in present)
         if room_ids and first and last and start <= last and end >= first:
-            windows.append(HireWindow(item.window_id, item.name, room_ids, start, end, item.cost_ore, item.provenance.origin, item.provenance.source))
+            windows.append(HireWindow(item.window_id, item.name, room_ids, start, end, item.cost_kr, item.provenance.origin, item.provenance.source))
     hired = {room_id for item in pack.hire_windows for room_id in item.room_ids}
     result = []
     for room in rooms:
@@ -115,7 +116,7 @@ def apply_hire_windows(
             continue
         inside = {s.slot_id for s in slots if any(room.room_id in w.room_ids and w.start <= s.scheduled_date <= w.end for w in windows)}
         allowed = inside if room.available_slot_ids is None else inside & set(room.available_slot_ids)
-        result.append(replace(room, external_session_cost_ore=0, available_slot_ids=tuple(sorted(allowed))))
+        result.append(replace(room, external_session_cost_kr=0, available_slot_ids=tuple(sorted(allowed))))
     return tuple(result), tuple(windows)
 
 
@@ -129,11 +130,11 @@ def _owners(pack: ResourcePack) -> dict[str, list[NamedRoom]]:
 
 def _annual(named: NamedRoom, pack: ResourcePack, owners: dict[str, list[NamedRoom]]) -> tuple[int, str] | None:
     """The room's annual cost: its own figure, otherwise an even share of its cost object (model calculated)."""
-    if named.annual_cost_ore is not None:
-        return named.annual_cost_ore, named.provenance.origin
+    if named.annual_cost_kr is not None:
+        return named.annual_cost_kr, named.provenance.origin
     cost_object = pack.cost_object(named.cost_object_id)
-    if cost_object is not None and cost_object.annual_cost_ore is not None:
-        return cost_object.annual_cost_ore // len(owners[named.cost_object_id]), "model_calculated"
+    if cost_object is not None and cost_object.annual_cost_kr is not None:
+        return from_units(to_units(cost_object.annual_cost_kr) // len(owners[named.cost_object_id])), "model_calculated"
     return None
 
 
@@ -153,7 +154,7 @@ def _priced(room: Room, named: NamedRoom, pack: ResourcePack, owners: dict[str, 
     annual = _annual(named, pack, owners)
     return replace(
         room, name=named.name, cost_object_id=named.cost_object_id, kind="internal", travel_paid_minutes=named.travel_paid_minutes,
-        annual_fixed_cost_ore=annual[0] if annual else room.annual_fixed_cost_ore, cost_origin=annual[1] if annual else room.cost_origin,
+        annual_fixed_cost_kr=annual[0] if annual else room.annual_fixed_cost_kr, cost_origin=annual[1] if annual else room.cost_origin,
         available_slot_ids=_available(named, room.available_slot_ids, slots),
     )
 
@@ -164,8 +165,8 @@ def _external(
 ) -> Room:
     assert named.charge is not None
     return Room(
-        room_id=named.room_id, building_id=building, plan_area=area, capacity=capacity, annual_fixed_cost_ore=0,
-        external_session_cost_ore=named.charge.session_cost_ore, digital_capabilities=capabilities,
+        room_id=named.room_id, building_id=building, plan_area=area, capacity=capacity, annual_fixed_cost_kr=0,
+        external_session_cost_kr=named.charge.session_cost_kr, digital_capabilities=capabilities,
         available_slot_ids=_available(named, available, slots), digital_support_basis=digital_basis, capacity_basis=EXTERNAL_BASIS,
         name=named.name, cost_object_id=named.cost_object_id, cost_origin=named.provenance.origin, kind="external",
         travel_paid_minutes=named.travel_paid_minutes,
@@ -186,7 +187,7 @@ def _added_room(named: NamedRoom, pack: ResourcePack, plan_area: str, slots: tup
     if annual is None:
         return None
     return Room(
-        room_id=named.room_id, building_id=named.building_id, plan_area=plan_area, capacity=named.capacity, annual_fixed_cost_ore=annual[0],
+        room_id=named.room_id, building_id=named.building_id, plan_area=plan_area, capacity=named.capacity, annual_fixed_cost_kr=annual[0],
         digital_capabilities=capabilities, available_slot_ids=_available(named, tuple(slot.slot_id for slot in slots), slots),
         digital_support_basis="not_stated", capacity_basis="resource_data", name=named.name, cost_object_id=named.cost_object_id,
         cost_origin=annual[1], kind="internal", travel_paid_minutes=named.travel_paid_minutes,
@@ -211,7 +212,7 @@ def build_resource_layer(
     reserved = {item.room_id for item in reservations}
     basis = {**trace, "staff": staff, "reservations": reservation_basis, "reserved_rooms": sorted(reserved),
              "hire_windows": [{"window_id": w.window_id, "name": w.name, "room_ids": list(w.room_ids), "start": w.start.isoformat(),
-                               "end": w.end.isoformat(), "cost_ore": w.cost_ore, "origin": w.origin} for w in hire_windows]}
+                               "end": w.end.isoformat(), "cost_kr": w.cost_kr, "origin": w.origin} for w in hire_windows]}
     return chosen, staff, reservations, basis, hire_windows
 
 

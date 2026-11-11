@@ -179,8 +179,8 @@ class EconomicEquivalenceTests(unittest.TestCase):
                 problem, _ = fx._solve(Path(temp), events, rooms, {**overrides, "solver.time_limit_seconds": 1.0})
                 rng = random.Random(seed)
                 problem = replace(problem, rooms=tuple(
-                    replace(room, external_session_cost_ore=rng.choice((0, 300, 2000)),
-                            annual_fixed_cost_ore=rng.choice((0, room.annual_fixed_cost_ore))) for room in problem.rooms))
+                    replace(room, external_session_cost_kr=rng.choice((0, 3, 20)),
+                            annual_fixed_cost_kr=rng.choice((0, room.annual_fixed_cost_kr))) for room in problem.rooms))
                 exact = solve_joint_optimization(_with(problem, "monolithic"))
                 if exact.solver.outcome != "optimal":
                     continue
@@ -188,9 +188,9 @@ class EconomicEquivalenceTests(unittest.TestCase):
                 runs = {}
                 for label, budget in (("sequential", ExecutionBudget(4, None, False)), ("parallel", ExecutionBudget(4, None, True))):
                     runs[label] = solve_joint_optimization(_with(problem, "decomposed"), None, budget)
-                    self.assertGreaterEqual(runs[label].solver.objective_value_ore, exact.solver.objective_value_ore)
+                    self.assertGreaterEqual(runs[label].solver.objective_value_kr, exact.solver.objective_value_kr)
                     if runs[label].solver.outcome == "optimal":
-                        self.assertEqual(runs[label].solver.objective_value_ore, exact.solver.objective_value_ore)
+                        self.assertEqual(runs[label].solver.objective_value_kr, exact.solver.objective_value_kr)
                     self.assertEqual(_failing_rules(_validate(Path(temp), problem, runs[label])), [])
                 if all(run.solver.outcome == "optimal" for run in runs.values()):
                     self.assertEqual(runs["sequential"].costs, runs["parallel"].costs)
@@ -207,12 +207,12 @@ class EconomicEquivalenceTests(unittest.TestCase):
                     result = solve_joint_optimization(replace(problem, solver=SolverSettings(60, 5, 2, False, "decomposed", 0.0)),
                                                       None, ExecutionBudget(2, None, parallel))
                     self.assertEqual(result.solver.outcome, "optimal")
-                    self.assertEqual(result.solver.objective_value_ore, exact.solver.objective_value_ore)
+                    self.assertEqual(result.solver.objective_value_kr, exact.solver.objective_value_kr)
                     self.assertEqual(_failing_rules(_validate(Path(temp), problem, result)), [])
 
     def test_the_hand_calculated_optimum_holds_in_parallel(self) -> None:
         result = solve_joint_optimization(_two_day_problem("decomposed"), None, ExecutionBudget(4, None, True))
-        self.assertEqual((result.solver.outcome, result.costs.comparable_total_cost_ore, result.staff_pool_size), ("optimal", 1300, 1))
+        self.assertEqual((result.solver.outcome, result.costs.comparable_total_cost_kr, result.staff_pool_size), ("optimal", 13, 1))
 
 
 class OrderIndependenceTests(unittest.TestCase):
@@ -332,7 +332,7 @@ class InterruptTests(unittest.TestCase):
             self.assertEqual(report.status, "accepted")
             self.assertEqual(result.solver.outcome, "feasible_not_proven")  # complete, verified, but not proven optimal
             self.assertTrue(result.solver.raw_status.endswith("_cancelled"))
-            self.assertEqual(result.costs.comparable_total_cost_ore, first.costs.comparable_total_cost_ore)
+            self.assertEqual(result.costs.comparable_total_cost_kr, first.costs.comparable_total_cost_kr)
             self.assertEqual(_failing_rules(_validate(Path(temp), problem, result)), [])
 
     def test_a_failing_check_stops_the_run_with_its_error(self) -> None:

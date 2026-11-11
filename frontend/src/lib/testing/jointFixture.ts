@@ -62,7 +62,7 @@ export function buildFixtureEvents(warm: FixtureWarm): JointEvent[] {
     t += 0.4
     if (warm === "accepted") {
       out.push({ t, type: "warm_start", decision: "accepted", explanation: "Alla 73 dagar klarade omkontrollen mot de nya reglerna.", source_run_id: REJECTED_RUN_ID })
-      out.push({ t: t + 0.1, type: "incumbent", cost_ore: 182_300_000, source: "warm start", changed_exams: 0 })
+      out.push({ t: t + 0.1, type: "incumbent", cost_kr: 1_823_000, source: "warm start", changed_exams: 0 })
     } else {
       out.push({ t, type: "warm_start", decision: "rejected", explanation: "5 av 73 dagar klarade inte omkontrollen; placeringen användes inte som lösning.", source_run_id: REJECTED_RUN_ID })
     }
@@ -73,8 +73,8 @@ export function buildFixtureEvents(warm: FixtureWarm): JointEvent[] {
   }
 
   out.push({ t, type: "phase", name: "relaxation", state: "started" })
-  out.push({ t: t + 22, type: "bound", lower_ore: 168_700_000, round: 1 })
-  out.push({ t: t + 53, type: "bound", lower_ore: 173_900_000, round: 2 })
+  out.push({ t: t + 22, type: "bound", lower_kr: 1_687_000, round: 1 })
+  out.push({ t: t + 53, type: "bound", lower_kr: 1_739_000, round: 2 })
   const relaxEnd = t + 55
   out.push({ t: relaxEnd, type: "phase", name: "relaxation", state: "finished" })
 
@@ -86,19 +86,19 @@ export function buildFixtureEvents(warm: FixtureWarm): JointEvent[] {
   out.push({ t: repairStart, type: "phase", name: "repair", state: "started" })
   const repairEnd = batch(out, repairStart, "repair", [DAYS[17], DAYS[44]], 2, 2, i => i === 1 ? "optimal" : "feasible", 5, { blocks: { 0: [DAYS[17], DAYS[18]] } })
   out.push({ t: repairEnd + 0.1, type: "phase", name: "repair", state: "finished" })
-  out.push({ t: repairEnd + 0.2, type: "incumbent", cost_ore: 180_500_000, source: "round 1", changed_exams: 412 })
+  out.push({ t: repairEnd + 0.2, type: "incumbent", cost_kr: 1_805_000, source: "round 1", changed_exams: 412 })
 
   const historyStart = repairEnd + 0.3
   out.push({ t: historyStart, type: "phase", name: "history", state: "started" })
   const groups = [DAYS[3], DAYS[9], DAYS[22], DAYS[31], DAYS[50], DAYS[63]]
   const historyEnd = batch(out, historyStart, "history", groups, 3, 2, i => i === 4 ? "infeasible" : "optimal", 4)
-  out.push({ t: historyEnd - 8, type: "incumbent", cost_ore: 180_200_000, source: "round 1 history", changed_exams: 351 })
-  out.push({ t: historyEnd - 1, type: "incumbent", cost_ore: 180_050_000, source: "round 2 history", changed_exams: 300 })
+  out.push({ t: historyEnd - 8, type: "incumbent", cost_kr: 1_802_000, source: "round 1 history", changed_exams: 351 })
+  out.push({ t: historyEnd - 1, type: "incumbent", cost_kr: 1_800_500, source: "round 2 history", changed_exams: 300 })
   out.push({ t: historyEnd + 0.1, type: "phase", name: "history", state: "finished" })
 
   out.push({ t: historyEnd + 0.2, type: "phase", name: "finalize", state: "started" })
   out.push({ t: historyEnd + 2.5, type: "phase", name: "finalize", state: "finished" })
-  out.push({ t: historyEnd + 2.6, type: "finished", outcome: "feasible_not_proven", cost_ore: 180_050_000, bound_ore: 173_900_000, cancelled: false })
+  out.push({ t: historyEnd + 2.6, type: "finished", outcome: "feasible_not_proven", cost_kr: 1_800_500, bound_kr: 1_739_000, cancelled: false })
 
   return out.sort((a, b) => a.t - b.t).map((draft, index) => ({ ...draft, seq: index + 1 }) as unknown as JointEvent)
 }
@@ -116,17 +116,17 @@ export function fixtureWarmStart(warm: FixtureWarm, requested: string, events: J
       ? "Den tidigare placeringen klarade inte omkontrollen mot de nya reglerna för 5 av 73 dagar och användes därför inte som lösning."
       : "Den tidigare placeringen klarade omkontrollen dag för dag mot de nya reglerna och blev första verifierade lösning.",
     requested,
-    source: { run_id: REJECTED_RUN_ID, cost_ore: 182_300_000, technical_validation_now: rejected ? "fail" : "pass", result_sha256: "9f2c41ab07d3e5c8b16a0f4e2d7c93b5a8e1f60d4c2b7a9e3f1d85c60b2a7e41" },
-    changed_parameters: ["calendar.exam_periods.extra_week", "cost.external_session_ore"],
+    source: { run_id: REJECTED_RUN_ID, cost_kr: 1_823_000, technical_validation_now: rejected ? "fail" : "pass", result_sha256: "9f2c41ab07d3e5c8b16a0f4e2d7c93b5a8e1f60d4c2b7a9e3f1d85c60b2a7e41" },
+    changed_parameters: ["calendar.exam_periods.extra_week", "cost.external_session_kr"],
     recheck: {
       status: rejected ? "rejected_days_failed" : "accepted",
       reasons: rejected ? ["5 dagar saknar genomförbar bemanning med den ändrade raster-regeln", "2 tentor saknar tillåtet pass efter ändrad tentamensperiod"] : [],
       notes: ["Omkontrollen gjordes med exakt dagmodell, inte mot sparad status."],
       exams_reused: rejected ? 1_212 : 1_268, exams_without_start: 0, exams_not_allowed: rejected ? 56 : 0,
       days_checked: 73, days_failed: rejected ? 5 : 0, check_seconds: 22.4,
-      verified_cost_ore: rejected ? null : 182_300_000, hint_exams: rejected ? 1_212 : 0,
+      verified_cost_kr: rejected ? null : 182_300_000, hint_exams: rejected ? 1_212 : 0,
       first_solution_seconds: firstSolution, first_solution_source: rejected ? "round 1" : "warm start",
-      final_cost_ore: 180_050_000, final_source: "round 2 history", interrupted: false,
+      final_cost_kr: 1_800_500, final_source: "round 2 history", interrupted: false,
     },
     execution,
   }
@@ -136,13 +136,13 @@ export function fixtureSummary(events: JointEvent[], warm: FixtureWarm): JointSu
   const finished = events.find(event => event.type === "finished")
   const firstIncumbent = events.find(event => event.type === "incumbent")
   const last = events.at(-1)
-  const cost = finished?.type === "finished" ? finished.cost_ore : null
-  const bound = finished?.type === "finished" ? finished.bound_ore : null
+  const cost = finished?.type === "finished" ? finished.cost_kr : null
+  const bound = finished?.type === "finished" ? finished.bound_kr : null
   const lastIncumbent = [...events].reverse().find(event => event.type === "incumbent")
   const outcome = finished?.type === "finished" && finished.cancelled ? "cancelled" : finished?.type === "finished" ? finished.outcome : "unknown"
   return {
     run_id: DEMO_RUN_ID, problem_id: "term-vt-2027", scenario_id: "joint_test", created_at: "2026-10-11T09:12:00",
-    cost_ore: cost, bound_ore: bound, gap_ore: cost !== null && bound !== null ? cost - bound : null,
+    cost_kr: cost, bound_kr: bound, gap_kr: cost !== null && bound !== null ? cost - bound : null,
     gap: cost && bound !== null ? Math.max(0, (cost - bound) / cost) : null,
     changed_exams: lastIncumbent?.type === "incumbent" ? lastIncumbent.changed_exams : null, exams_total: 1172, staff_pool_size: 41,
     first_solution_seconds: firstIncumbent?.t ?? null, first_solution_basis: "solver_start", first_solution_source: "warm start",

@@ -35,7 +35,7 @@ export function countsText(stats: KindStats): string {
 export function segmentDetail(segment: TimelineSegment, block: TimelineBlock, previousFailed: number | null): SegmentDetail {
   const info = STEP_INFO[segment.step]
   const notes: string[] = []
-  if (segment.boundOre !== null) notes.push(`Undre gräns som bevisades i det här varvet: ${formatKr(segment.boundOre)}.`)
+  if (segment.boundKr !== null) notes.push(`Undre gräns som bevisades i det här varvet: ${formatKr(segment.boundKr)}.`)
   if (segment.step === "relaxation" && previousFailed !== null && previousFailed > 0) {
     notes.push(`Förra varvet hade ${previousFailed} ${previousFailed === 1 ? "dag" : "dagar"} som inte gick att genomföra; den grova planen räknades om.`)
   }

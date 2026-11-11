@@ -1,55 +1,55 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
 import { byId, PARAMETERS } from "./testing/paramFixture.ts"
-import { formatMoneyOre, formatWithUnit, oreToKrText, parseKrToOre, unitInfo } from "./paramUnits.ts"
+import { formatMoneyKr, formatWithUnit, krToText, parseKr, unitInfo } from "./paramUnits.ts"
 import {
   baselineValue, hasEditor, isValidDate, isValidTime, isWeekdayParam, parseDraft, parseInteger, parseNumber, sameValue, toDraft, validateLadder,
 } from "./paramValues.ts"
 import { formatParamValue } from "./paramFormat.ts"
 
-describe("enheter och kronor/öre", () => {
-  it("känner igen belopp i öre och visar dem som kronor", () => {
-    assert.deepEqual(unitInfo("ore_per_session"), { money: true, label: "kr per tillfälle" })
-    assert.deepEqual(unitInfo("ore_per_year"), { money: true, label: "kr per år" })
-    assert.deepEqual(unitInfo("öre"), { money: true, label: "kr" })
-    assert.deepEqual(unitInfo("öre/timme"), { money: true, label: "kr per timme" })
+describe("enheter och kronor", () => {
+  it("känner igen belopp i kronor", () => {
+    assert.deepEqual(unitInfo("kr_per_session"), { money: true, label: "kr per tillfälle" })
+    assert.deepEqual(unitInfo("kr_per_year"), { money: true, label: "kr per år" })
+    assert.deepEqual(unitInfo("kr"), { money: true, label: "kr" })
+    assert.deepEqual(unitInfo("kr/timme"), { money: true, label: "kr per timme" })
     assert.deepEqual(unitInfo("minutes"), { money: false, label: "minuter" })
     assert.deepEqual(unitInfo("percent"), { money: false, label: "%" })
     assert.deepEqual(unitInfo(null), { money: false, label: "" })
     assert.deepEqual(unitInfo("okänd enhet"), { money: false, label: "okänd enhet" })
   })
 
-  it("öre till kronor som redigerbar text", () => {
-    assert.equal(oreToKrText(125000), "1250")
-    assert.equal(oreToKrText(125050), "1250,5")
-    assert.equal(oreToKrText(125005), "1250,05")
-    assert.equal(oreToKrText(5), "0,05")
-    assert.equal(oreToKrText(0), "0")
-    assert.equal(oreToKrText(-250), "-2,5")
+  it("kronor som redigerbar text", () => {
+    assert.equal(krToText(1250), "1250")
+    assert.equal(krToText(1250.5), "1250,5")
+    assert.equal(krToText(1250.05), "1250,05")
+    assert.equal(krToText(0.05), "0,05")
+    assert.equal(krToText(0), "0")
+    assert.equal(krToText(-2.5), "-2,5")
   })
 
-  it("kronor till öre utan flyttalsfel", () => {
-    const ore = (text: string) => { const r = parseKrToOre(text); return r.ok ? r.ore : r.error }
-    assert.equal(ore("1250"), 125000)
-    assert.equal(ore("1250,50"), 125050)
-    assert.equal(ore("1 250.5"), 125050)
-    assert.equal(ore("1.15"), 115)
-    assert.equal(ore("0,07"), 7)
-    assert.equal(ore("-3"), -300)
-    assert.match(String(ore("12,345")), /högst två decimaler/)
-    assert.match(String(ore("")), /belopp/)
-    assert.match(String(ore("abc")), /högst två decimaler/)
+  it("text till kronor utan flyttalsfel", () => {
+    const kr = (text: string) => { const r = parseKr(text); return r.ok ? r.kr : r.error }
+    assert.equal(kr("1250"), 1250)
+    assert.equal(kr("1250,50"), 1250.5)
+    assert.equal(kr("1 250.5"), 1250.5)
+    assert.equal(kr("1.15"), 1.15)
+    assert.equal(kr("0,07"), 0.07)
+    assert.equal(kr("-3"), -3)
+    assert.match(String(kr("12,345")), /högst två decimaler/)
+    assert.match(String(kr("")), /belopp/)
+    assert.match(String(kr("abc")), /högst två decimaler/)
   })
 
-  it("omvandlingen är symmetrisk för heltalsöre", () => {
-    for (const value of [0, 1, 9, 10, 99, 100, 101, 12345, 125000, 99999999]) {
-      assert.deepEqual(parseKrToOre(oreToKrText(value)), { ok: true, ore: value })
+  it("omvandlingen är symmetrisk", () => {
+    for (const value of [0, 0.01, 0.09, 0.1, 0.99, 1, 1.01, 123.45, 1250, 999999.99]) {
+      assert.deepEqual(parseKr(krToText(value)), { ok: true, kr: value })
     }
   })
 
   it("visar belopp och enheter på svenska", () => {
-    assert.match(formatMoneyOre(125050), /^1\s250,5\skr$/)
-    assert.match(formatWithUnit(125000, "ore_per_session"), /^1\s250\skr per tillfälle$/)
+    assert.match(formatMoneyKr(1250.5), /^1\s250,5\skr$/)
+    assert.match(formatWithUnit(1250, "kr_per_session"), /^1\s250\skr per tillfälle$/)
     assert.equal(formatWithUnit(30, "minutes"), "30 minuter")
     assert.match(formatWithUnit(10, "percent"), /^10\s%$/)
     assert.equal(formatWithUnit(0.01, "fraction"), "0,01 andel (0–1)")
@@ -79,12 +79,12 @@ describe("tolkning av tal, datum och tid", () => {
 describe("parseDraft per värdetyp", () => {
   const parse = (id: string, draft: unknown) => parseDraft(byId(id), draft)
 
-  it("heltal med enhet och belopp i kronor ger öre", () => {
+  it("heltal med enhet och belopp i kronor ger kronor", () => {
     assert.deepEqual(parse("window.later_days", "3"), { ok: true, value: 3 })
     assert.equal(parse("window.later_days", "3,5").ok, false)
-    assert.deepEqual(parse("cost.staff_session_ore", "1300"), { ok: true, value: 130000 })
-    assert.deepEqual(parse("cost.staff_session_ore", "1300,25"), { ok: true, value: 130025 })
-    assert.equal(parse("cost.staff_session_ore", "1300,255").ok, false)
+    assert.deepEqual(parse("cost.staff_session_kr", "1300"), { ok: true, value: 1300 })
+    assert.deepEqual(parse("cost.staff_session_kr", "1300,25"), { ok: true, value: 1300.25 })
+    assert.equal(parse("cost.staff_session_kr", "1300,255").ok, false)
     assert.deepEqual(parse("cost.annualization_factor", "1,25"), { ok: true, value: 1.25 })
   })
 
@@ -191,7 +191,7 @@ describe("visning av värden", () => {
     assert.equal(formatParamValue(byId("calendar.weekdays"), [1, 3, 5]), "mån, ons, fre")
     assert.equal(formatParamValue(byId("calendar.start_times"), ["08:00", "14:00"]), "08:00, 14:00")
     assert.equal(formatParamValue(byId("calendar.start_date"), ""), "(tomt)")
-    assert.match(formatParamValue(byId("cost.staff_session_ore"), 125000), /^1\s250\skr per tillfälle$/)
+    assert.match(formatParamValue(byId("cost.staff_session_kr"), 1250), /^1\s250\skr per tillfälle$/)
     assert.equal(formatParamValue(byId("staffing.ladder"), byId("staffing.ladder").value), "upp till 50 deltagare: 1 vakt; upp till 150 deltagare: 2 vakter; upp till 300 deltagare: 3 vakter")
     assert.equal(formatParamValue(byId("calendar.blocked_ranges"), []), "(inga perioder)")
   })

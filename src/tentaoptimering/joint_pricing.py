@@ -18,8 +18,9 @@ from typing import Any
 
 from .joint_contract import JointOptimizationInput
 from .joint_hire import hire_cost
+from .money import kmul, ksum
 
-COMPONENTS = ("annual_room_cost_ore", "external_room_session_cost_ore", "staff_paid_time_cost_ore", "annual_staff_pool_cost_ore", "staff_session_cost_ore")
+COMPONENTS = ("annual_room_cost_kr", "external_room_session_cost_kr", "staff_paid_time_cost_kr", "annual_staff_pool_cost_kr", "staff_session_cost_kr")
 
 
 @dataclass(frozen=True)
@@ -101,17 +102,17 @@ def price(problem: JointOptimizationInput, sessions: list[PricedSession]) -> dic
     """The cost components of a placement by the problem's rules, in öre, and their total."""
     rooms = {room.room_id: room for room in problem.rooms}
     used = {s.room_id for s in sessions} | reserved_rooms(problem)
-    paid = problem.staffing.paid_minute_cost_ore * sum(row["paid_minutes"] for row in passes(problem, sessions))
+    paid = kmul(problem.staffing.paid_minute_cost_kr, sum(row["paid_minutes"] for row in passes(problem, sessions)))
     parts = {
-        "annual_room_cost_ore": sum(rooms[room_id].annual_fixed_cost_ore for room_id in used),
+        "annual_room_cost_kr": ksum(rooms[room_id].annual_fixed_cost_kr for room_id in used),
         # Per-session charges plus whole-facility hires: a window is paid once if any of its rooms is used in it.
-        "external_room_session_cost_ore": sum(rooms[s.room_id].external_session_cost_ore for s in sessions)
-        + hire_cost(problem.hire_windows, ((s.room_id, s.day) for s in sessions)),
-        "staff_paid_time_cost_ore": paid,
-        "annual_staff_pool_cost_ore": problem.staffing.annual_cost_ore_per_staff * peak_staff(problem, sessions),
-        "staff_session_cost_ore": problem.staffing.cost_ore_per_staff_session * sum(s.staff for s in sessions),
+        "external_room_session_cost_kr": ksum([ksum(rooms[s.room_id].external_session_cost_kr for s in sessions),
+                                              hire_cost(problem.hire_windows, ((s.room_id, s.day) for s in sessions))]),
+        "staff_paid_time_cost_kr": paid,
+        "annual_staff_pool_cost_kr": kmul(problem.staffing.annual_cost_kr_per_staff, peak_staff(problem, sessions)),
+        "staff_session_cost_kr": kmul(problem.staffing.cost_kr_per_staff_session, sum(s.staff for s in sessions)),
     }
-    return {**parts, "comparable_total_cost_ore": sum(parts.values())}
+    return {**parts, "comparable_total_cost_kr": ksum(parts.values())}
 
 
 def staffing_totals(problem: JointOptimizationInput, sessions: list[PricedSession]) -> dict[str, Any]:
@@ -128,10 +129,10 @@ def staffing_totals(problem: JointOptimizationInput, sessions: list[PricedSessio
 def pricing_signature(problem: JointOptimizationInput) -> dict[str, Any]:
     """Everything that sets a price or a staffing rule; two problems with the same signature price a plan identically."""
     return {
-        "rooms": {room.room_id: (room.annual_fixed_cost_ore, room.external_session_cost_ore, room.travel_paid_minutes) for room in problem.rooms},
-        "staff": (problem.staffing.paid_minute_cost_ore, problem.staffing.min_paid_minutes, problem.staffing.annual_cost_ore_per_staff,
-                  problem.staffing.cost_ore_per_staff_session, problem.staffing.preparation_minutes, problem.staffing.closing_minutes,
+        "rooms": {room.room_id: (room.annual_fixed_cost_kr, room.external_session_cost_kr, room.travel_paid_minutes) for room in problem.rooms},
+        "staff": (problem.staffing.paid_minute_cost_kr, problem.staffing.min_paid_minutes, problem.staffing.annual_cost_kr_per_staff,
+                  problem.staffing.cost_kr_per_staff_session, problem.staffing.preparation_minutes, problem.staffing.closing_minutes,
                   tuple((step.max_participants, step.required_staff) for step in problem.staffing.ladder)),
         "reservations": tuple(sorted(reserved_rooms(problem))),
-        "hire_windows": tuple((w.window_id, w.room_ids, w.start.isoformat(), w.end.isoformat(), w.cost_ore) for w in problem.hire_windows),
+        "hire_windows": tuple((w.window_id, w.room_ids, w.start.isoformat(), w.end.isoformat(), w.cost_kr) for w in problem.hire_windows),
     }

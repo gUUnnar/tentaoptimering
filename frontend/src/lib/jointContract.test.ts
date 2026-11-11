@@ -21,16 +21,16 @@ const SUMMARY_FIELDS: Record<string, [(out: JointSummary) => unknown, (raw: Raw)
   cancelled: [out => out.cancelled, raw => raw.cancelled],
   changed_exams: [out => out.changed_exams, raw => raw.changed_exams],
   cost_is_proven_optimum: [out => out.proven_optimum, raw => raw.cost_is_proven_optimum],
-  cost_ore: [out => out.cost_ore, raw => raw.cost_ore],
+  cost_kr: [out => out.cost_kr, raw => raw.cost_kr],
   created_at: [out => out.created_at, raw => raw.created_at],
   exams_total: [out => out.exams_total, raw => raw.exams_total],
   first_solution_basis: [out => out.first_solution_basis, raw => raw.first_solution_basis],
   first_solution_seconds: [out => out.first_solution_seconds, raw => raw.first_solution_seconds],
   first_solution_source: [out => out.first_solution_source, raw => raw.first_solution_source],
-  gap_ore: [out => out.gap_ore, raw => raw.gap_ore],
+  gap_kr: [out => out.gap_kr, raw => raw.gap_kr],
   gap_relative: [out => out.gap, raw => raw.gap_relative],
   has_verified_solution: [out => out.has_verified_solution, raw => raw.has_verified_solution],
-  lower_bound_ore: [out => out.bound_ore, raw => raw.lower_bound_ore],
+  lower_bound_kr: [out => out.bound_kr, raw => raw.lower_bound_kr],
   parameters_changed_count: [out => out.parameters_changed_count, raw => raw.parameters_changed_count],
   parameters_changed_from_default: [out => ids(out), raw => raw.parameters_changed_from_default],
   problem_id: [out => out.problem_id, raw => raw.problem_id],
@@ -65,15 +65,15 @@ describe("sammanfattning: riktiga svar genom adaptern", () => {
 
   it("parametrar som avviker från standard blir en lista med id och ett antal", () => {
     const out = toJointSummary(load("summary_verified") as BackendSummary)
-    assert.deepEqual(ids(out), ["cost.room_annual_per_seat_ore", "cost.staff_annual_ore", "solver.time_limit_seconds", "solver.workers", "staffing.ladder", "window.later_days"])
+    assert.deepEqual(ids(out), ["cost.room_annual_per_seat_kr", "cost.staff_annual_kr", "solver.time_limit_seconds", "solver.workers", "staffing.ladder", "window.later_days"])
     assert.equal(out.parameters_changed_count, 6)
     assert.equal(changedParametersHeading(out), "6 parametrar avviker från standardvärdet i den här körningen:")
   })
 
   it("etiketten slås upp i parameterlistan, annars visas id", () => {
     const out = toJointSummary(load("summary_verified") as BackendSummary)
-    const shown = changedParameters(out, { "cost.staff_annual_ore": "Årskostnad per vaktresurs" })
-    assert.deepEqual(shown.find(item => item.id === "cost.staff_annual_ore"), { id: "cost.staff_annual_ore", label: "Årskostnad per vaktresurs" })
+    const shown = changedParameters(out, { "cost.staff_annual_kr": "Årskostnad per vaktresurs" })
+    assert.deepEqual(shown.find(item => item.id === "cost.staff_annual_kr"), { id: "cost.staff_annual_kr", label: "Årskostnad per vaktresurs" })
     assert.deepEqual(shown.find(item => item.id === "window.later_days"), { id: "window.later_days", label: null })
   })
 
@@ -82,26 +82,26 @@ describe("sammanfattning: riktiga svar genom adaptern", () => {
     assert.equal(view.verified, true)
     if (!view.verified) return
     assert.equal(view.statement.proven, true)
-    assert.equal(view.statement.headline, formatKr(9000))
+    assert.equal(view.statement.headline, formatKr(90))
     // Bevisat lägsta: rubriken räcker, verifierad kostnad, undre gräns och gap visas inte en gång till.
     for (const label of ["Verifierad kostnad", "Undre gräns", "Gap"]) assert.equal(view.stats.some(item => item.label === label), false)
     assert.equal(view.stats.find(item => item.label === "Vaktpool")?.value, "1")
   })
 
   it("kostnad som inte är bevisat lägsta visar verifierad kostnad, undre gräns och gap", () => {
-    const view = summaryView(toJointSummary({ ...load("summary_verified"), cost_is_proven_optimum: false, solver_outcome: "feasible_not_proven", lower_bound_ore: 8000, gap_relative: 0.1, gap_ore: 1000 } as BackendSummary))
+    const view = summaryView(toJointSummary({ ...load("summary_verified"), cost_is_proven_optimum: false, solver_outcome: "feasible_not_proven", lower_bound_kr: 80, gap_relative: 0.1, gap_kr: 10 } as BackendSummary))
     assert.equal(view.verified, true)
     if (!view.verified) return
     assert.equal(view.statement.proven, false)
-    assert.equal(view.stats.find(item => item.label === "Verifierad kostnad")?.value, formatKr(9000))
+    assert.equal(view.stats.find(item => item.label === "Verifierad kostnad")?.value, formatKr(90))
     assert.equal(view.stats.some(item => item.label === "Undre gräns"), true)
   })
 
   it("körning utan verifierad lösning visar bara skälet, aldrig en kostnad eller ett intervall", () => {
     const raw = load("summary_unverified")
     const out = toJointSummary(raw as BackendSummary)
-    assert.equal(out.cost_ore, null)
-    assert.equal(out.bound_ore, null)
+    assert.equal(out.cost_kr, null)
+    assert.equal(out.bound_kr, null)
     assert.equal(out.gap, null)
     assert.equal(out.changed_exams, null)
     assert.equal(out.staff_pool_size, null)
@@ -115,8 +115,8 @@ describe("sammanfattning: riktiga svar genom adaptern", () => {
   })
 
   it("även om servern skulle skicka kostnadsmått utan verifierad lösning visas de inte", () => {
-    const out = toJointSummary({ ...load("summary_unverified"), cost_ore: 9000, lower_bound_ore: 8000, gap_ore: 1000, gap_relative: 0.1, changed_exams: 3, staff_pool_size: 4 } as BackendSummary)
-    assert.deepEqual([out.cost_ore, out.bound_ore, out.gap_ore, out.gap, out.changed_exams, out.staff_pool_size, out.proven_optimum], [null, null, null, null, null, null, false])
+    const out = toJointSummary({ ...load("summary_unverified"), cost_kr: 90, lower_bound_kr: 80, gap_kr: 10, gap_relative: 0.1, changed_exams: 3, staff_pool_size: 4 } as BackendSummary)
+    assert.deepEqual([out.cost_kr, out.bound_kr, out.gap_kr, out.gap, out.changed_exams, out.staff_pool_size, out.proven_optimum], [null, null, null, null, null, null, false])
   })
 
   it("en körning utan skäl från servern får ändå ett besked", () => {
@@ -130,9 +130,9 @@ describe("sammanfattning: riktiga svar genom adaptern", () => {
 
 const EVENT_FIELDS: Record<string, string[]> = {
   phase: ["name", "state"], batch: ["kind", "total", "done", "parallel", "workers_per_check", "statuses"], day_started: ["date", "kind", "block"],
-  day: ["date", "kind", "status", "seconds", "block"], incumbent: ["cost_ore", "source", "changed_exams"], bound: ["lower_ore", "round"],
+  day: ["date", "kind", "status", "seconds", "block"], incumbent: ["cost_kr", "source", "changed_exams"], bound: ["lower_kr", "round"],
   warm_start: ["decision", "explanation", "source_run_id"], resources: ["threads", "memory_mb", "parallel_checks", "workers_per_check"],
-  finished: ["outcome", "cost_ore", "bound_ore", "cancelled", "error"],
+  finished: ["outcome", "cost_kr", "bound_kr", "cancelled", "error"],
 }
 
 describe("händelser: riktiga svar genom adaptern", () => {
@@ -191,8 +191,8 @@ describe("händelser: riktiga svar genom adaptern", () => {
 
 // ---- Jämförelse ----------------------------------------------------------------------------------------------------
 
-const COMPARE_FIELDS = ["assumption_changes", "base", "comparable", "interpretable", "interpretation", "metrics", "parameter_changes", "reason", "run", "uncertainty_ore"]
-const METRICS = ["changed_exams", "cost_ore", "first_solution_seconds", "gap_ore", "lower_bound_ore", "rooms_used", "staff_pool_size", "wall_time_seconds"]
+const COMPARE_FIELDS = ["assumption_changes", "base", "comparable", "interpretable", "interpretation", "metrics", "parameter_changes", "reason", "run", "uncertainty_kr"]
+const METRICS = ["changed_exams", "cost_kr", "first_solution_seconds", "gap_kr", "lower_bound_kr", "rooms_used", "staff_pool_size", "wall_time_seconds"]
 
 describe("jämförelse: riktiga svar genom adaptern", () => {
   for (const name of ["compare_assumption_changed", "compare_no_previous", "compare_unverified_base"]) {
@@ -204,7 +204,7 @@ describe("jämförelse: riktiga svar genom adaptern", () => {
       assert.equal(out.interpretable, raw.interpretable)
       assert.equal(out.interpretation, raw.interpretation)
       assert.equal(out.reason, raw.reason)
-      assert.equal(out.uncertainty_ore, raw.uncertainty_ore)
+      assert.equal(out.uncertainty_kr, raw.uncertainty_kr)
       assert.deepEqual(out.assumption_changes, raw.assumption_changes)
       assert.equal(out.run.run_id, raw.run.run_id)
       assert.equal(out.run.has_verified_solution, raw.run.has_verified_solution)
@@ -234,13 +234,13 @@ describe("jämförelse: riktiga svar genom adaptern", () => {
 
     const rows = metricRows(result)
     const byKey = Object.fromEntries(rows.map(row => [row.key, row]))
-    for (const key of ["cost_ore", "lower_bound_ore", "gap_ore"]) {
+    for (const key of ["cost_kr", "lower_bound_kr", "gap_kr"]) {
       assert.equal(byKey[key].notCompared, true, key)
       assert.equal(byKey[key].delta, NOT_COMPARED_TEXT, key)
       assert.equal(byKey[key].direction, "unknown")
     }
-    assert.equal(byKey.cost_ore.old, formatKr(7000))
-    assert.equal(byKey.cost_ore.new, formatKr(9000))
+    assert.equal(byKey.cost_kr.old, formatKr(70))
+    assert.equal(byKey.cost_kr.new, formatKr(90))
     for (const key of ["rooms_used", "staff_pool_size", "changed_exams"]) {
       assert.equal(byKey[key].physical, true, key)
       assert.equal(byKey[key].notCompared, false, key)
@@ -252,11 +252,11 @@ describe("jämförelse: riktiga svar genom adaptern", () => {
 
   it("ändrade antaganden: ingen kostnadsskillnad räknas fram, inte ens när servern skickar en", () => {
     const raw = load("compare_assumption_changed")
-    raw.metrics.cost_ore.delta = 2000
-    raw.metrics.lower_bound_ore.delta = null
+    raw.metrics.cost_kr.delta = 20
+    raw.metrics.lower_bound_kr.delta = null
     const rows = metricRows(toCompareResult(raw))
-    assert.equal(rows.find(row => row.key === "cost_ore")?.delta, NOT_COMPARED_TEXT)
-    assert.equal(rows.find(row => row.key === "lower_bound_ore")?.delta, NOT_COMPARED_TEXT)
+    assert.equal(rows.find(row => row.key === "cost_kr")?.delta, NOT_COMPARED_TEXT)
+    assert.equal(rows.find(row => row.key === "lower_bound_kr")?.delta, NOT_COMPARED_TEXT)
   })
 
   it("ändrad efterfrågan räknas också som ändrade antaganden", () => {
@@ -269,10 +269,10 @@ describe("jämförelse: riktiga svar genom adaptern", () => {
   it("utan ändrade antaganden finns ingen ruta och kostnadsskillnaden visas", () => {
     const raw = load("compare_assumption_changed")
     raw.assumption_changes = { cost: [], demand: [] }
-    raw.metrics.cost_ore.delta = 2000
+    raw.metrics.cost_kr.delta = 20
     const result = toCompareResult(raw)
     assert.equal(assumptionView(result), null)
-    assert.notEqual(metricRows(result).find(row => row.key === "cost_ore")?.delta, NOT_COMPARED_TEXT)
+    assert.notEqual(metricRows(result).find(row => row.key === "cost_kr")?.delta, NOT_COMPARED_TEXT)
   })
 
   it("jämförelse mot körning utan verifierad lösning visas utan fel och utan kostnadsskillnad", () => {
@@ -283,7 +283,7 @@ describe("jämförelse: riktiga svar genom adaptern", () => {
     assert.equal(interpretationView(result).text, load("compare_unverified_base").interpretation)
     const rows = metricRows(result)
     assert.equal(rows.length, 8)
-    const cost = rows.find(row => row.key === "cost_ore")!
+    const cost = rows.find(row => row.key === "cost_kr")!
     assert.equal(cost.old, "–")
     assert.equal(cost.delta, "–", "körningarna är inte jämförbara alls, så ingen skillnad och ingen påstådd orsak på raden")
     assert.ok(rows.every(row => !row.physical), "inget fysiskt mått framhävs som jämförbart när jämförelsen saknas")
@@ -295,7 +295,7 @@ describe("jämförelse: riktiga svar genom adaptern", () => {
     const raw = load("compare_assumption_changed")
     raw.run.has_verified_solution = false
     const rows = metricRows(toCompareResult(raw))
-    assert.equal(rows.find(row => row.key === "cost_ore")?.new, "–")
+    assert.equal(rows.find(row => row.key === "cost_kr")?.new, "–")
     assert.equal(rows.find(row => row.key === "staff_pool_size")?.new, "–")
     assert.notEqual(rows.find(row => row.key === "wall_time_seconds")?.new, "–")
   })

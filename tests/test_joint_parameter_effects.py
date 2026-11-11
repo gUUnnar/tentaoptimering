@@ -51,9 +51,9 @@ _BASE_PARAMETERS = """
 "staffing.ladder" = [{max_participants = 50, required_staff = 1}, {max_participants = 150, required_staff = 2}]
 "staffing.preparation_minutes" = 30
 "staffing.closing_minutes" = 30
-"cost.room_annual_per_seat_ore" = 100000
-"cost.staff_annual_ore" = 5000000
-"cost.staff_session_ore" = 1000
+"cost.room_annual_per_seat_kr" = 1000
+"cost.staff_annual_kr" = 50000
+"cost.staff_session_kr" = 10
 "solver.time_limit_seconds" = 5.0
 "solver.seed" = 7
 "solver.workers" = 1
@@ -171,9 +171,9 @@ EFFECT_CASES: dict[str, object] = {
     "staffing.ladder": [{"max_participants": 60, "required_staff": 1}, {"max_participants": 150, "required_staff": 3}],
     "staffing.preparation_minutes": 0,
     "staffing.closing_minutes": 0,
-    "cost.room_annual_per_seat_ore": 0,
-    "cost.staff_annual_ore": 0,
-    "cost.staff_session_ore": 5000,
+    "cost.room_annual_per_seat_kr": 0,
+    "cost.staff_annual_kr": 0,
+    "cost.staff_session_kr": 50,
     "solver.time_limit_seconds": 9.0,
     "solver.seed": 8,
     "solver.workers": 2,
@@ -185,7 +185,7 @@ EFFECT_CASES: dict[str, object] = {
     "wish.tiebreak": "wish_priority",
     "rooms.include_observed_unregistered": True,
     "staffing.min_paid_shift_minutes": 60,
-    "cost.staff_paid_minute_ore": 450,
+    "cost.staff_paid_minute_kr": 4.5,
     "resources.pack": "simulated_dev_2026",
     "rooms.exclude": ["uu-r3"],
     "reservations.policy": "none",
@@ -231,13 +231,13 @@ class ParameterEffectTests(unittest.TestCase):
     def test_contract_only_parameters_never_change_the_model_but_are_reported_when_edited(self) -> None:
         catalog = load_parameter_catalog(CATALOG)
         contract_only = [item for item in catalog.parameters if item.engine_support == "contract_only"]
-        self.assertIn("cost.external_room_session_ore", {item.parameter_id for item in contract_only})
+        self.assertIn("cost.external_room_session_kr", {item.parameter_id for item in contract_only})
         base = _build(self.dir)
-        altered = _build(self.dir, {"cost.external_room_session_ore": 5_000_000})
+        altered = _build(self.dir, {"cost.external_room_session_kr": 50000})
         self.assertEqual(_fingerprint(base), _fingerprint(altered))
-        self.assertTrue(all(room.external_session_cost_ore == 0 for room in altered.rooms))
+        self.assertTrue(all(room.external_session_cost_kr == 0 for room in altered.rooms))
         result = solve_joint_optimization(altered)
-        self.assertTrue(any("ignoreras" in text and "cost.external_room_session_ore" in text for text in result.limitations))
+        self.assertTrue(any("ignoreras" in text and "cost.external_room_session_kr" in text for text in result.limitations))
 
     def test_catalog_keeps_every_legacy_parameter_or_a_declared_counterpart(self) -> None:
         covered = {legacy for item in load_parameter_catalog(CATALOG).parameters for legacy in item.legacy_ids}

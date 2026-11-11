@@ -7,6 +7,7 @@ one paid pass per staff position of a session, at least the shortest paid pass, 
 from __future__ import annotations
 
 from .context import Context
+from .money import reported_units, text
 from .derive import build_sessions, paid_passes, staff_by_session
 from .report import BUSINESS, FAIL, NOT_APPLICABLE, NOT_EVALUATED, PASS, TECHNICAL, RuleResult, rule
 
@@ -44,7 +45,7 @@ def _paid_time(ctx: Context) -> RuleResult:
     expected = {"passes": len(passes), "paid_minutes": sum(item["paid"] for item in passes), "worked_minutes": sum(item["worked"] for item in passes),
                 "minimum_top_up_minutes": sum(item["top_up"] for item in passes), "travel_minutes": sum(item["travel"] for item in passes)}
     summary = ctx.result.get("staffing_summary")
-    if not isinstance(summary, dict) and not ctx.paid_minute_cost and not (ctx.result.get("costs") or {}).get("staff_paid_time_cost_ore"):
+    if not isinstance(summary, dict) and not ctx.paid_minute_cost and not (ctx.result.get("costs") or {}).get("staff_paid_time_cost_kr"):
         return rule("paid_time_recomputed", TECHNICAL, NOT_APPLICABLE,
                     "Ingen betald personaltid är prissatt i körningen (kostnad per betald minut är 0) och ingen redovisas.", reference="krav: kostnad härleds ur betald tid")
     if not isinstance(summary, dict):
@@ -52,9 +53,9 @@ def _paid_time(ctx: Context) -> RuleResult:
                     "Resultatet redovisar ingen betald personaltid (äldre körning); den kan inte jämföras med omräkningen.", reference="krav: kostnad härleds ur betald tid")
     broken = [f"{name}: rapporterat {summary.get(name)}, beräknat {value}" for name, value in expected.items() if summary.get(name) != value]
     costs = ctx.result.get("costs") or {}
-    cost = ctx.paid_minute_cost * expected["paid_minutes"]
-    if costs.get("staff_paid_time_cost_ore", 0) != cost:
-        broken.append(f"kostnaden för betald tid: rapporterat {costs.get('staff_paid_time_cost_ore', 0)}, beräknat {cost}")
+    cost = ctx.paid_minute_cost * expected["paid_minutes"]  # whole hundredths of a krona
+    if reported_units(costs.get("staff_paid_time_cost_kr", 0)) != cost:
+        broken.append(f"kostnaden för betald tid: rapporterat {costs.get('staff_paid_time_cost_kr', 0)} kr, beräknat {text(cost)}")
     per_day: dict[str, int] = {}
     for item in passes:
         per_day[item["day"]] = per_day.get(item["day"], 0) + item["paid"]
@@ -64,7 +65,7 @@ def _paid_time(ctx: Context) -> RuleResult:
     return rule("paid_time_recomputed", TECHNICAL, FAIL if broken else PASS,
                 "Redovisad betald personaltid eller dess kostnad avviker från omräkningen ur placeringen." if broken
                 else f"{expected['passes']} betalda pass och {expected['paid_minutes']} betalda minuter ({expected['paid_minutes'] / 60:.1f} timmar) räknas om ur placeringen "
-                     f"(arbetad tid, kortaste pass, restid) och kostar {cost} öre.", broken, "krav: kostnad härleds ur betald tid")
+                     f"(arbetad tid, kortaste pass, restid) och kostar {text(cost)}.", broken, "krav: kostnad härleds ur betald tid")
 
 
 def _reservation_coverage(ctx: Context) -> RuleResult:

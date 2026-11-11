@@ -79,18 +79,18 @@ class CatalogChoiceTests(unittest.TestCase):
                 load_parameter_catalog(path)
 
     def test_the_catalog_version_and_counts_are_the_documented_ones(self) -> None:
-        self.assertEqual(CATALOG_DATA.version, "2.7.0")
+        self.assertEqual(CATALOG_DATA.version, "3.0.0")
         self.assertEqual(len(CATALOG_DATA.parameters), 68)
         self.assertEqual(sum(item.engine_support == "implemented" for item in CATALOG_DATA.parameters), 46)
 
 
 class ValidationTests(unittest.TestCase):
     def test_unknown_and_unsupported_parameters_are_refused(self) -> None:
-        errors = _errors(no__such__thing=1, rules__student_conflicts=True, cost__external_room_session_ore=5)
-        self.assertEqual(set(errors), {"no.such.thing", "rules.student_conflicts", "cost.external_room_session_ore"})
+        errors = _errors(no__such__thing=1, rules__student_conflicts=True, cost__external_room_session_kr=0.05)
+        self.assertEqual(set(errors), {"no.such.thing", "rules.student_conflicts", "cost.external_room_session_kr"})
         self.assertEqual(errors["no.such.thing"], "Okänd parameter.")
         self.assertIn("Stöds inte av motorn än", errors["rules.student_conflicts"])
-        self.assertIn("Stöds inte av motorn än", errors["cost.external_room_session_ore"])
+        self.assertIn("Stöds inte av motorn än", errors["cost.external_room_session_kr"])
 
     def test_every_error_is_reported_as_id_and_swedish_message(self) -> None:
         result = validate_overrides(CATALOG_DATA, {"window.earlier_days": -1, "x": 1})
@@ -132,7 +132,7 @@ class ValidationTests(unittest.TestCase):
             "calendar.blocked_ranges": [{"start": "2026-02-01", "end": "2026-02-01"}],
             "staffing.ladder": [{"max_participants": 40, "required_staff": 1}, {"max_participants": 120, "required_staff": 1},
                                 {"max_participants": 300, "required_staff": 4}],
-            "cost.room_annual_per_seat_ore": 150000, "digital.partial_support_policy": "exclude", "solver.strategy": "monolithic",
+            "cost.room_annual_per_seat_kr": 1500, "digital.partial_support_policy": "exclude", "solver.strategy": "monolithic",
             "solver.workers": 4, "solver.seed": 1,
         }
         self.assertEqual(validate_overrides(CATALOG_DATA, good), [])
@@ -142,8 +142,8 @@ class ValidationTests(unittest.TestCase):
         self.assertIn("solver.workers", _errors(solver__workers=0))
         self.assertIn("solver.relative_gap_limit", _errors(solver__relative_gap_limit=1.5))
         self.assertIn("demand.variation_pct", _errors(demand__variation_pct=-100))
-        self.assertIn("cost.staff_annual_ore", _errors(cost__staff_annual_ore=-5))
-        self.assertIn("cost.staff_annual_ore", _errors(cost__staff_annual_ore=10 ** 15))
+        self.assertIn("cost.staff_annual_kr", _errors(cost__staff_annual_kr=-5))
+        self.assertIn("cost.staff_annual_kr", _errors(cost__staff_annual_kr=0.1 ** 15))
         self.assertIn("window.later_days", _errors(window__later_days=False))
 
     def test_dates_and_times_must_agree_with_each_other(self) -> None:
@@ -185,7 +185,7 @@ class ListingTests(unittest.TestCase):
     def test_the_payload_separates_default_scenario_value_and_effective_value(self) -> None:
         content = tomllib.loads(FULL_TERM.read_text(encoding="utf-8"))
         payload = describe_parameters(CATALOG_DATA, "joint_underlay_period", dict(content["parameters"]))
-        self.assertEqual((payload["catalog_version"], payload["scenario_id"]), ("2.7.0", "joint_underlay_period"))
+        self.assertEqual((payload["catalog_version"], payload["scenario_id"]), ("3.0.0", "joint_underlay_period"))
         self.assertEqual(len(payload["parameters"]), 68)
         self.assertEqual(set(payload["group_labels"]), {group for group, _ in GROUPS})
         rows = {row["id"]: row for row in payload["parameters"]}
@@ -308,7 +308,7 @@ class FullTermScenarioTests(unittest.TestCase):
         values = {item.parameter_id: item.value for item in problem.parameters}
         self.assertEqual((values["window.earlier_days"], values["window.later_days"], values["calendar.start_times"]),
                          (1, 1, ["08:00", "14:00"]))
-        self.assertEqual((values["cost.room_annual_per_seat_ore"], values["cost.staff_annual_ore"]), (100000, 5000000))
+        self.assertEqual((values["cost.room_annual_per_seat_kr"], values["cost.staff_annual_kr"]), (1000, 50000))
 
 
 if __name__ == "__main__":

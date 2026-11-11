@@ -30,7 +30,7 @@ def _problem(
     demands: tuple[ExamDemand, ...],
     rooms: tuple[Room, ...],
     slots: tuple[CandidateSlot, ...],
-    staff_cost: int = 1000,
+    staff_cost: int = 10,
     turnaround: int = 0,
 ) -> JointOptimizationInput:
     return JointOptimizationInput(
@@ -56,9 +56,9 @@ class JointOptimizerTests(unittest.TestCase):
             ExamDemand("e2", (_group("g2", 40, "a2"),), 120, "Uppsala", ("s",), "s"),
         )
         rooms = (
-            Room("large", "large-building", "Uppsala", 80, 600),
-            Room("small-a", "small-building", "Uppsala", 40, 100),
-            Room("small-b", "small-building", "Uppsala", 40, 100),
+            Room("large", "large-building", "Uppsala", 80, 6),
+            Room("small-a", "small-building", "Uppsala", 40, 1),
+            Room("small-b", "small-building", "Uppsala", 40, 1),
         )
 
         result = solve_joint_optimization(_problem(demands, rooms, (slot,)))
@@ -67,9 +67,9 @@ class JointOptimizerTests(unittest.TestCase):
         self.assertTrue(result.coverage.technical_placement_complete)
         self.assertEqual(result.coverage.participants_assigned_to_rooms, 80)
         self.assertEqual({row["room_id"] for row in result.assignments}, {"large"})
-        self.assertEqual(result.costs.annual_room_cost_ore, 600)
-        self.assertEqual(result.costs.annual_staff_pool_cost_ore, 1000)
-        self.assertEqual(result.costs.comparable_total_cost_ore, 1600)
+        self.assertEqual(result.costs.annual_room_cost_kr, 6)
+        self.assertEqual(result.costs.annual_staff_pool_cost_kr, 10)
+        self.assertEqual(result.costs.comparable_total_cost_kr, 16)
 
     def test_subgroups_are_counted_once_and_sources_cannot_be_reused(self) -> None:
         slot = CandidateSlot("s", date(2026, 1, 12), "am", 480, 720)
@@ -82,7 +82,7 @@ class JointOptimizerTests(unittest.TestCase):
             "s",
         )
         result = solve_joint_optimization(
-            _problem((demand,), (Room("room", "building", "Uppsala", 25, 1),), (slot,), 1)
+            _problem((demand,), (Room("room", "building", "Uppsala", 25, 0.01),), (slot,), 1)
         )
         self.assertEqual(demand.participant_count, 25)
         self.assertEqual(result.coverage.participants_total, 25)
@@ -98,7 +98,7 @@ class JointOptimizerTests(unittest.TestCase):
             ("original", "alternative"), "original",
         )
         result = solve_joint_optimization(
-            _problem((demand,), (Room("room", "building", "Uppsala", 10, 1),), slots, 1)
+            _problem((demand,), (Room("room", "building", "Uppsala", 10, 0.01),), slots, 1)
         )
         self.assertEqual(result.schedule[0]["slot_id"], "original")
         self.assertEqual(result.changed_exam_demands, 0)
@@ -108,14 +108,14 @@ class JointOptimizerTests(unittest.TestCase):
         slot = CandidateSlot("s", date(2026, 1, 12), "am", 480, 720)
         demand = ExamDemand("e1", (_group("g1", 10, "a1"),), 60, "Uppsala", ("s",), "s")
         rooms = (
-            Room("fixed", "fixed", "Uppsala", 10, 1000),
-            Room("external", "external", "Uppsala", 10, 0, external_session_cost_ore=100),
+            Room("fixed", "fixed", "Uppsala", 10, 10),
+            Room("external", "external", "Uppsala", 10, 0, external_session_cost_kr=1),
         )
         result = solve_joint_optimization(_problem((demand,), rooms, (slot,), staff_cost=0))
         self.assertEqual({row["room_id"] for row in result.assignments}, {"external"})
-        self.assertEqual(result.costs.annual_room_cost_ore, 0)
-        self.assertEqual(result.costs.external_room_session_cost_ore, 100)
-        self.assertEqual(result.costs.comparable_total_cost_ore, 100)
+        self.assertEqual(result.costs.annual_room_cost_kr, 0)
+        self.assertEqual(result.costs.external_room_session_cost_kr, 1)
+        self.assertEqual(result.costs.comparable_total_cost_kr, 1)
 
     def test_infeasible_demand_is_never_returned_as_partial_placement(self) -> None:
         slot = CandidateSlot("s", date(2026, 1, 12), "am", 480, 720)
@@ -123,7 +123,7 @@ class JointOptimizerTests(unittest.TestCase):
             "e1", (_group("g1", 60, "a1"),), 60, "Uppsala", ("s",), "s", max_rooms=1
         )
         result = solve_joint_optimization(
-            _problem((demand,), (Room("room", "building", "Uppsala", 50, 1),), (slot,))
+            _problem((demand,), (Room("room", "building", "Uppsala", 50, 0.01),), (slot,))
         )
         self.assertEqual(result.solver.outcome, "infeasible")
         self.assertFalse(result.coverage.technical_placement_complete)
@@ -146,7 +146,7 @@ class JointOptimizerTests(unittest.TestCase):
         )
         rooms = (
             Room("paper", "building", "Uppsala", 20, 0, digital_capabilities=("paper",)),
-            Room("digital", "building", "Uppsala", 20, 1, digital_capabilities=("paper", "e_exam")),
+            Room("digital", "building", "Uppsala", 20, 0.01, digital_capabilities=("paper", "e_exam")),
         )
         result = solve_joint_optimization(_problem(demands, rooms, slots, 0))
         self.assertEqual(result.solver.outcome, "optimal")
@@ -156,7 +156,7 @@ class JointOptimizerTests(unittest.TestCase):
     def test_turnaround_boundary_is_enforced_per_actual_session_end(self) -> None:
         first = ExamDemand("e1", (_group("g1", 10, "a1"),), 60, "Uppsala", ("first",), "first")
         second = ExamDemand("e2", (_group("g2", 10, "a2"),), 60, "Uppsala", ("second",), "second")
-        room = (Room("room", "building", "Uppsala", 20, 1),)
+        room = (Room("room", "building", "Uppsala", 20, 0.01),)
         for second_start, expected in ((570, "optimal"), (569, "infeasible")):
             with self.subTest(second_start=second_start):
                 slots = (
@@ -171,7 +171,7 @@ class JointOptimizerTests(unittest.TestCase):
     def test_contract_round_trip_preserves_version_and_dates(self) -> None:
         slot = CandidateSlot("s", date(2026, 1, 12), "am", 480, 720)
         demand = ExamDemand("e1", (_group("g1", 10, "a1"),), 60, "Uppsala", ("s",), "s")
-        problem = _problem((demand,), (Room("room", "building", "Uppsala", 10, 1),), (slot,))
+        problem = _problem((demand,), (Room("room", "building", "Uppsala", 10, 0.01),), (slot,))
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "problem.json"
             write_problem(problem, path)
@@ -199,16 +199,16 @@ class StaffingCutTests(unittest.TestCase):
         demands = tuple(
             ExamDemand(f"e{i}", (_group(f"g{i}", 60, f"a{i}"),), 120, "Uppsala", ("s",), "s") for i in (1, 2)
         )
-        rooms = (Room("big", "b1", "Uppsala", 120, 100), Room("small", "b2", "Uppsala", 60, 10))
+        rooms = (Room("big", "b1", "Uppsala", 120, 1), Room("small", "b2", "Uppsala", 60, 0.1))
         problem = JointOptimizationInput(
             INPUT_SCHEMA_VERSION, "ladder", "h", (slot,), demands, rooms,
-            StaffingCostPolicy((StaffingStep(60, 1), StaffingStep(120, 3)), 1000), SolverSettings(5, 1, 1), (),
+            StaffingCostPolicy((StaffingStep(60, 1), StaffingStep(120, 3)), 10), SolverSettings(5, 1, 1), (),
             ScopeSummary(2, 2, 0, 0, 2, 120), 0,
         )
         result = solve_joint_optimization(problem)
         # Two rooms with 60 each need 2 staff (room cost 110 + pool 2000 = 2110); one 120-room needs 3 (100 + 3000).
         self.assertEqual(result.solver.outcome, "optimal")
-        self.assertEqual(result.costs.comparable_total_cost_ore, 2110)
+        self.assertEqual(result.costs.comparable_total_cost_kr, 21.1)
         self.assertEqual(result.staff_pool_size, 2)
 
 

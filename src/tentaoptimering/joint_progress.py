@@ -39,11 +39,11 @@ EVENT_TYPES: dict[str, tuple[str, ...]] = {
     "batch": ("kind", "total", "done", "parallel", "workers_per_check", "statuses"),
     "day_started": ("date", "kind"),
     "day": ("date", "kind", "status", "seconds"),
-    "incumbent": ("cost_ore", "source", "changed_exams"),
-    "bound": ("lower_ore", "round"),
+    "incumbent": ("cost_kr", "source", "changed_exams"),
+    "bound": ("lower_kr", "round"),
     "warm_start": ("decision", "explanation", "source_run_id"),
     "resources": ("threads", "memory_mb", "parallel_checks", "workers_per_check"),
-    "finished": ("outcome", "cost_ore", "bound_ore", "cancelled"),
+    "finished": ("outcome", "cost_kr", "bound_kr", "cancelled"),
 }
 
 
@@ -185,8 +185,8 @@ def finished_event(progress: ProgressSink | None, result: Any, cancelled: bool =
         try:
             if not progress.has("finished"):
                 solver = result.solver
-                progress.emit("finished", outcome=solver.outcome, cost_ore=solver.objective_value_ore,
-                              bound_ore=solver.best_objective_bound_ore, cancelled=bool(cancelled))
+                progress.emit("finished", outcome=solver.outcome, cost_kr=solver.objective_value_kr,
+                              bound_kr=solver.best_objective_bound_kr, cancelled=bool(cancelled))
         except Exception:
             LOG.warning("the finished event could not be built", exc_info=True)
     return result

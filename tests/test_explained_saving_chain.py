@@ -38,34 +38,34 @@ valid_to = "2026-12-31"
 id = "ko-r1"
 name = "Avtal sal 1"
 kind = "internal_rent"
-annual_cost_ore = 100000
+annual_cost_kr = 1000
 avoidable = "yes"
 notice_months = 6
 earliest_release_date = "2027-07-01"
-one_off_cost_ore = 5000
+one_off_cost_kr = 50
 origin = "simulated"
 [[cost_object]]
 id = "ko-r2"
 name = "Avtal sal 2"
 kind = "internal_rent"
-annual_cost_ore = 120000
+annual_cost_kr = 1200
 avoidable = "yes"
 notice_months = 6
 earliest_release_date = "2027-07-01"
-one_off_cost_ore = 5000
+one_off_cost_kr = 50
 origin = "simulated"
 [[cost_object]]
 id = "ko-big"
 name = "Avtal stora salen"
 kind = "internal_rent"
-annual_cost_ore = 150000
+annual_cost_kr = 1500
 avoidable = "unknown"
 origin = "simulated"
 [[cost_object]]
 id = "ko-ext"
 name = "Externhyra Fyrishov"
 kind = "external_hire"
-annual_cost_ore = 0
+annual_cost_kr = 0
 avoidable = "yes"
 origin = "simulated"
 
@@ -73,21 +73,21 @@ origin = "simulated"
 id = "uu-r1"
 name = "Sal 1 (liten)"
 kind = "internal"
-annual_cost_ore = 100000
+annual_cost_kr = 1000
 cost_object_id = "ko-r1"
 origin = "simulated"
 [[room]]
 id = "uu-r2"
 name = "Sal 2 (liten)"
 kind = "internal"
-annual_cost_ore = 120000
+annual_cost_kr = 1200
 cost_object_id = "ko-r2"
 origin = "simulated"
 [[room]]
 id = "uu-big"
 name = "Stora salen"
 kind = "internal"
-annual_cost_ore = 150000
+annual_cost_kr = 1500
 cost_object_id = "ko-big"
 origin = "simulated"
 [[room]]
@@ -102,19 +102,19 @@ travel_paid_minutes = 30
 origin = "simulated"
 [room.charge]
 basis = "per_session"
-price_ore = 500000
+price_kr = 5000
 terms = "5 000 kr per tillfälle"
 
 [staff]
-paid_minute_cost_ore = 10
+paid_minute_cost_kr = 0.1
 min_paid_shift_minutes = 120
-pool_annual_cost_ore = 0
+pool_annual_cost_kr = 0
 origin = "simulated"
 """
 
 PARAMETERS = {
     **fx.BASE, "staffing.ladder": [{"max_participants": 150, "required_staff": 1}, {"max_participants": 300, "required_staff": 2}],
-    "staffing.preparation_minutes": 30, "staffing.closing_minutes": 30, "cost.room_annual_per_seat_ore": 0, "cost.staff_annual_ore": 0,
+    "staffing.preparation_minutes": 30, "staffing.closing_minutes": 30, "cost.room_annual_per_seat_kr": 0, "cost.staff_annual_kr": 0,
     "resources.pack": "chain_pack", "solver.strategy": "monolithic", "solver.time_limit_seconds": 30.0,
 }
 BOOKING_COLUMNS = ["placement_id", "exam_order_id", "course_codes", "course_name", "exam_type", "digital_exam", "scheduled_date", "scheduled_time",
@@ -205,31 +205,31 @@ class ChainTests(unittest.TestCase):
         self.assertTrue(explained["available"], explained["reasons"])
         # A priced by the rules of the run: rooms 1 and 2 (220 000), the external hall once (500 000), paid time (300 + 300 + 2 x 270) x 10
         # The run: room 1 and the big room (250 000), no external hall, paid time (300 + 300 + 2 x 240) x 10
-        self.assertEqual((explained["total"]["left_ore"], explained["total"]["right_ore"]), (731_400, 260_800))
-        self.assertEqual(explained["total"]["difference_ore"], -470_600)
-        items = {item["key"]: item["difference_ore"] for item in explained["items"]}
-        self.assertEqual(items, {"rooms": 30_000, "external": -500_000, "staff": -600})
-        self.assertEqual(sum(items.values()), explained["total"]["difference_ore"])
+        self.assertEqual((explained["total"]["left_kr"], explained["total"]["right_kr"]), (7314, 2608))
+        self.assertEqual(explained["total"]["difference_kr"], -4706)
+        items = {item["key"]: item["difference_kr"] for item in explained["items"]}
+        self.assertEqual(items, {"rooms": 300, "external": -5000, "staff": -6})
+        self.assertEqual(sum(items.values()), explained["total"]["difference_kr"])
         self.assertEqual(explained["basis"]["left"]["cost_kind"], "model_calculated_for_historical_bookings")
         self.assertEqual(explained["basis"]["left"]["staffing_origin"], "model_calculated_from_booked_places")
         rooms = {row["room_id"]: row for row in explained["rooms"]}
         self.assertEqual((rooms["uu-r2"]["status"], rooms["uu-big"]["status"], rooms["uu-r1"]["status"]), ("avoidable", "added", "kept"))
-        self.assertEqual((rooms["uu-r2"]["name"], rooms["uu-r2"]["fixed_difference_ore"]), ("Sal 2 (liten)", -120_000))
-        self.assertEqual(explained["sessions"]["external"]["avoided_ore"], 500_000)
+        self.assertEqual((rooms["uu-r2"]["name"], rooms["uu-r2"]["fixed_difference_kr"]), ("Sal 2 (liten)", -1200))
+        self.assertEqual(explained["sessions"]["external"]["avoided_kr"], 5000)
         self.assertEqual(explained["sessions"]["external"]["avoided"][0]["exams"], ["Z"])
         self.assertEqual((explained["staffing"]["left"]["paid_minutes"], explained["staffing"]["right"]["paid_minutes"]), (1140, 1080))
         changed = {row["exam_event_id"]: row for row in explained["exams"]["changed"]}
         self.assertIn("external_avoided", changed["Z"]["tags"])
         self.assertIn("room_freed:uu-r2", changed["Y"]["tags"])
-        self.assertEqual(explained["split"]["assumption_ore"], 0)
+        self.assertEqual(explained["split"]["assumption_kr"], 0)
 
     def test_a_freed_room_is_a_conditional_saving_and_nothing_is_verified_from_simulated_terms(self) -> None:
         explained = abc_compare.compare(self.storage, "actual", self.free)["explained"]
         by_room = {item["room_id"]: item for item in explained["realization"]["items"]}
         self.assertEqual(by_room["uu-r2"]["realization"]["status"], "possible_unverified")
         self.assertEqual(by_room["uu-fyrishov-hall-d"]["realization"]["status"], "possible_unverified")
-        self.assertEqual(explained["realization"]["summary"]["verified_ore"], 0)
-        self.assertEqual(explained["realization"]["summary"]["modelled_saving_ore"], 620_000)
+        self.assertEqual(explained["realization"]["summary"]["verified_kr"], 0)
+        self.assertEqual(explained["realization"]["summary"]["modelled_saving_kr"], 6200)
         self.assertFalse(explained["savings_kinds"]["verified_realisable"]["available"])
         self.assertTrue(explained["data_quality"]["simulated"])
 
@@ -240,27 +240,27 @@ class ChainTests(unittest.TestCase):
         # on the morning, so the second exam of room 1 has nowhere to go but room 2 (120 000 more).
         self.assertEqual({row["room_id"] for row in free["room_sessions"]}, {"uu-r1", "uu-big"})
         self.assertEqual({row["room_id"] for row in blocked["room_sessions"]}, {"uu-r1", "uu-big", "uu-r2"})
-        self.assertEqual((free["costs"]["comparable_total_cost_ore"], blocked["costs"]["comparable_total_cost_ore"]), (260_800, 380_800))
+        self.assertEqual((free["costs"]["comparable_total_cost_kr"], blocked["costs"]["comparable_total_cost_kr"]), (2608, 3808))
         for row in blocked["room_sessions"]:
             if row["room_id"] == "uu-big":
                 self.assertEqual(row["slot_id"], "2026-01-12T14:00")  # only the afternoon is free
         explained = abc_compare.compare(self.storage, self.free, self.blocked)["explained"]
         self.assertTrue(explained["available"], explained["reasons"])
-        self.assertEqual(explained["total"]["difference_ore"], 120_000)
+        self.assertEqual(explained["total"]["difference_kr"], 1200)
         self.assertEqual(explained["added_rooms"], ["uu-r2"])
-        self.assertEqual(sum(item["difference_ore"] for item in explained["items"]), explained["total"]["difference_ore"])
+        self.assertEqual(sum(item["difference_kr"] for item in explained["items"]), explained["total"]["difference_kr"])
         self.assertTrue(any("fasta bokningar" in flag["text"].lower() or "ignorerades" in flag["text"] for flag in explained["data_quality"]["flags"]))
 
     def test_excluding_a_room_shows_the_consequence_in_money_and_bookings(self) -> None:
         explained = abc_compare.compare(self.storage, self.free, self.no_room)["explained"]
         self.assertTrue(explained["available"], explained["reasons"])
         # without the big room the 200 participants must go to the external hall: rent 150 000 is replaced by 500 000 per session
-        items = {item["key"]: item["difference_ore"] for item in explained["items"]}
-        self.assertEqual((items["rooms"], items["external"], items["staff"]), (-150_000, 500_000, 600))
+        items = {item["key"]: item["difference_kr"] for item in explained["items"]}
+        self.assertEqual((items["rooms"], items["external"], items["staff"]), (-1500, 5000, 6))
         rooms = {row["room_id"]: row for row in explained["rooms"]}
         self.assertEqual(rooms["uu-big"]["status"], "avoidable")
-        self.assertEqual(explained["sessions"]["external"]["added_ore"], 500_000)
-        self.assertGreater(explained["total"]["difference_ore"], 0)
+        self.assertEqual(explained["sessions"]["external"]["added_kr"], 5000)
+        self.assertGreater(explained["total"]["difference_kr"], 0)
 
     def test_prices_changed_between_two_runs_are_separated_from_changed_use(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -269,17 +269,17 @@ class ChainTests(unittest.TestCase):
             pack = root / "config" / "resource_data" / "chain_pack.toml"
             ids = []
             for name, minute_cost in (("price_before", 10), ("price_after", 20)):
-                pack.write_text(PACK.replace("paid_minute_cost_ore = 10", f"paid_minute_cost_ore = {minute_cost}"), encoding="utf-8")
+                pack.write_text(PACK.replace("paid_minute_cost_kr = 0.1", f"paid_minute_cost_kr = {minute_cost}"), encoding="utf-8")
                 path = write_scenario(scenario, {"reservations.policy": "none"}, name)
                 ids.append(run_real_subset(path, storage.processed_dir, catalog, storage.runs_dir, warm_start="none")["run_id"])
             explained = abc_compare.compare(storage, ids[0], ids[1])["explained"]
             self.assertTrue(explained["available"], explained["reasons"])
             self.assertFalse(explained["split"]["same_prices"])
-            self.assertEqual(explained["split"]["usage_ore"] + explained["split"]["assumption_ore"], explained["total"]["difference_ore"])
+            self.assertEqual(explained["split"]["usage_kr"] + explained["split"]["assumption_kr"], explained["total"]["difference_kr"])
             # the same plan (1 080 paid minutes) costs 10 öre more per minute: 10 800 more, and nothing changed in how the resources are used
-            self.assertEqual((explained["split"]["usage_ore"], explained["split"]["assumption_ore"]), (0, 10_800))
+            self.assertEqual((explained["split"]["usage_kr"], explained["split"]["assumption_kr"]), (0, 10_800))
             staff = next(item for item in explained["items"] if item["key"] == "staff")
-            self.assertEqual((staff["usage_ore"], staff["assumption_ore"]), (0, 10_800))
+            self.assertEqual((staff["usage_kr"], staff["assumption_kr"]), (0, 10_800))
 
     def test_a_run_without_a_verified_solution_blocks_the_explanation(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

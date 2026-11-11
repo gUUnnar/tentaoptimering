@@ -6,19 +6,19 @@ import { subsetText, runtimeEstimate } from "./jointScenarioInfo.ts"
 const backend: BackendSummary = {
   run_id: "run-2", problem_id: "term-vt-2027", scenario_id: "joint_real_subset", created_at: "2026-10-12T10:00:00",
   solver_outcome: "feasible_not_proven", has_verified_solution: true, cost_is_proven_optimum: false,
-  cost_ore: 182300000, lower_bound_ore: 177300000, gap_ore: 5000000, gap_relative: 0.027,
+  cost_kr: 1823000, lower_bound_kr: 1773000, gap_kr: 50000, gap_relative: 0.027,
   changed_exams: 242, exams_total: 1172, staff_pool_size: 41, wall_time_seconds: 299.2,
   first_solution_seconds: 109.6, first_solution_basis: "solver_start", first_solution_source: "round 1", cancelled: false,
-  warm_start_decision: "accepted", parameters_changed_from_default: ["cost.staff_session_ore"],
+  warm_start_decision: "accepted", parameters_changed_from_default: ["cost.staff_session_kr"],
   verdicts: { technical_validation: "pass", business_verification: "not_evaluated", provenance: "not_evaluated", technically_validated: true, source: "joint_validation.json" },
 }
 
 describe("översättning av backendens sammanfattning", () => {
   it("byter fältnamn och håller de tre domarna isär", () => {
     const summary = toJointSummary(backend)
-    assert.equal(summary.bound_ore, 177300000)
+    assert.equal(summary.bound_kr, 1773000)
     assert.equal(summary.gap, 0.027)
-    assert.equal(summary.gap_ore, 5000000)
+    assert.equal(summary.gap_kr, 50000)
     assert.equal(summary.wall_seconds, 299.2)
     assert.equal(summary.staff_pool_size, 41)
     assert.equal(summary.exams_total, 1172)
@@ -26,7 +26,7 @@ describe("översättning av backendens sammanfattning", () => {
     assert.equal(summary.warm_start_decision, "accepted")
     assert.equal(summary.proven_optimum, false)
     assert.deepEqual([summary.technical_validation, summary.business_verification, summary.provenance], ["pass", "not_evaluated", "not_evaluated"])
-    assert.deepEqual(summary.parameters_changed_from_default, [{ id: "cost.staff_session_ore", label: null }])
+    assert.deepEqual(summary.parameters_changed_from_default, [{ id: "cost.staff_session_kr", label: null }])
   })
   it("bevisat optimum kommer från cost_is_proven_optimum eller utfallet optimal", () => {
     assert.equal(toJointSummary({ ...backend, cost_is_proven_optimum: true }).proven_optimum, true)

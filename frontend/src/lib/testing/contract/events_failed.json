@@ -27,7 +27,7 @@
       "type": "phase"
     },
     {
-      "lower_ore": 7000,
+      "lower_kr": 70,
       "round": 1,
       "seq": 5,
       "t": 0.051,
@@ -62,16 +62,16 @@
     },
     {
       "changed_exams": 1,
-      "cost_ore": 7000,
+      "cost_kr": 70,
       "seq": 13,
       "source": "round 1",
       "t": 0.055,
       "type": "incumbent"
     },
     {
-      "bound_ore": null,
+      "bound_kr": null,
       "cancelled": false,
-      "cost_ore": null,
+      "cost_kr": null,
       "error": "OSError: disk full",
       "outcome": "failed",
       "seq": 16,

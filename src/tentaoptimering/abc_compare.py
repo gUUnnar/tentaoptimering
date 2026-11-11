@@ -67,7 +67,7 @@ def list_runs(storage: AppStorage) -> list[dict[str, Any]]:
         rows.append({
             "run_id": path.name, "name": run_name(storage, path.name, meta), "named": bool(meta and meta.get("name")), "kind": (meta or {}).get("kind", "C"),
             "base_run_id": (meta or {}).get("base_run_id"), "problem_id": problem.get("problem_id"), "created_at": (meta or {}).get("created_at") or created_at(path.name),
-            "solver_outcome": solver.get("outcome"), "has_placement": bool(result.get("schedule")), "cost_ore": solver.get("objective_value_ore"),
+            "solver_outcome": solver.get("outcome"), "has_placement": bool(result.get("schedule")), "cost_kr": solver.get("objective_value_kr"),
             "exam_count": len(problem.get("demands", [])), "changes_from_base": (meta or {}).get("changes_from_base"),
             "current_underlay": None if current is None or not problem.get("dataset_hash") else problem["dataset_hash"] == current,
         })
@@ -120,7 +120,7 @@ def explained_comparison(storage: AppStorage, left: str, right: str, first: dict
     stale = [f"{side.get('name')}: {side['stale']['reason']}" for side in (first, second) if side.get("stale") and not side["stale"]["current"]]
     if stale:  # a run on an older underlay is never costed against the current bookings
         result.update(reasons=stale + result["reasons"], available=False, summary=None)
-        result["total"] = {**result["total"], "difference_ore": None}
+        result["total"] = {**result["total"], "difference_kr": None}
     return result
 
 

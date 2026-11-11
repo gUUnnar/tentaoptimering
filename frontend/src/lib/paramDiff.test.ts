@@ -10,14 +10,14 @@ describe("ändringar jämfört med scenariot", () => {
     assert.deepEqual(computeChanges(PARAMETERS, {}), [])
     assert.deepEqual(computeChanges(PARAMETERS, { "window.later_days": "0" }), [])
     assert.deepEqual(computeChanges(PARAMETERS, { "calendar.start_times": ["14:00", "08:00"] }), [])
-    assert.deepEqual(computeChanges(PARAMETERS, { "cost.staff_session_ore": "1250" }), [])
+    assert.deepEqual(computeChanges(PARAMETERS, { "cost.staff_session_kr": "1250" }), [])
   })
 
   it("en ändring visar gammalt och nytt värde i klartext", () => {
-    const [change] = computeChanges(PARAMETERS, { "cost.staff_session_ore": "1300" })
-    assert.equal(change.id, "cost.staff_session_ore")
-    assert.equal(change.newValue, 130000)
-    assert.equal(change.oldValue, 125000)
+    const [change] = computeChanges(PARAMETERS, { "cost.staff_session_kr": "1300" })
+    assert.equal(change.id, "cost.staff_session_kr")
+    assert.equal(change.newValue, 1300)
+    assert.equal(change.oldValue, 1250)
     assert.match(change.oldText, /^1\s250\skr per tillfälle$/)
     assert.match(change.newText, /^1\s300\skr per tillfälle$/)
     assert.equal(change.error, null)
@@ -103,7 +103,7 @@ describe("grupper och filter", () => {
 
   it("sökning på namn, id, hjälptext och grupp", () => {
     const find = (query: string) => filterParameters(PARAMETERS, { query, showAdvanced: true, keep: new Set() }).map(p => p.id)
-    assert.deepEqual(find("vaktkostnad"), ["cost.staff_session_ore"])
+    assert.deepEqual(find("vaktkostnad"), ["cost.staff_session_kr"])
     assert.ok(find("STAFFING").includes("staffing.ladder"))
     assert.ok(find("bemanning").length >= 2)
     assert.equal(byId("solver.seed").advanced, true)

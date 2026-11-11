@@ -44,10 +44,10 @@ exam_event_ids = [
 ]
 "staffing.preparation_minutes" = 30
 "staffing.closing_minutes" = 30
-"cost.room_annual_per_seat_ore" = 100000
-"cost.external_room_session_ore" = 0
-"cost.staff_annual_ore" = 5000000
-"cost.staff_session_ore" = 0
+"cost.room_annual_per_seat_kr" = 1000
+"cost.external_room_session_kr" = 0
+"cost.staff_annual_kr" = 50000
+"cost.staff_session_kr" = 0
 "solver.time_limit_seconds" = 20.0
 "solver.seed" = 20261009
 
@@ -55,6 +55,6 @@ exam_event_ids = [
 "reservations.policy" = "Reproducerbart regressionsfall för motorn: tolv namngivna tentor utan hänsyn till övriga bokningar i salarna, så att kostnaden på 379 000 kr kan upprepas. Ett fall som ska ge verkliga planer låter fasta bokningar spärra (katalogens standard)."
 "window.earlier_days" = "Tre dagars avgränsat testfönster för att mäta gemensam modellering."
 "window.later_days" = "Tre dagars avgränsat testfönster för att mäta gemensam modellering."
-"cost.room_annual_per_seat_ore" = "Explorativ proxy 1 000 kr per plats och år; inte avtalskostnad."
-"cost.staff_annual_ore" = "Explorativ proxy 50 000 kr per dimensionerande anonym resurs och år."
+"cost.room_annual_per_seat_kr" = "Explorativ proxy 1 000 kr per plats och år; inte avtalskostnad."
+"cost.staff_annual_kr" = "Explorativ proxy 50 000 kr per dimensionerande anonym resurs och år."
 "staffing.ladder" = "Provisorisk regel som kan ersättas utan solverändring."

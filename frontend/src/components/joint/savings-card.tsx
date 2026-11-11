@@ -46,8 +46,8 @@ function Ready({ state }: { state: SavingsReady }) {
         <thead><tr className="border-b text-left text-xs text-slate-900"><th className="p-1.5">Kostnad per år</th><th className="p-1.5 text-right">Låsta datum</th><th className="p-1.5 text-right">Denna körning</th><th className="p-1.5 text-right">Skillnad</th></tr></thead>
         <tbody>{state.components.map(row => <tr key={row.key} className="border-b">
           <th scope="row" className="p-1.5 text-left font-medium">{row.label}</th>
-          <td className="p-1.5 text-right tabular-nums">{formatKr(row.baseline_ore)}</td><td className="p-1.5 text-right tabular-nums">{formatKr(row.run_ore)}</td>
-          <td className="p-1.5 text-right font-semibold tabular-nums">{formatKr((row.baseline_ore ?? 0) - (row.run_ore ?? 0))}</td></tr>)}</tbody>
+          <td className="p-1.5 text-right tabular-nums">{formatKr(row.baseline_kr)}</td><td className="p-1.5 text-right tabular-nums">{formatKr(row.run_kr)}</td>
+          <td className="p-1.5 text-right font-semibold tabular-nums">{formatKr((row.baseline_kr ?? 0) - (row.run_kr ?? 0))}</td></tr>)}</tbody>
       </table>
       <p className="mt-1.5 text-xs text-slate-800">Flyttade tentor: {state.run.changed_exams ?? "okänt"} av {state.run.exams_total ?? "okänt"}. Vaktpool: {state.baseline.staff_pool_size ?? "okänt"} med låsta datum, {state.run.staff_pool_size ?? "okänt"} i den här körningen.</p>
     </details>}

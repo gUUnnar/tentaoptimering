@@ -190,7 +190,7 @@ def start_joint_run(
                                   budget=budget, cancel=cancel, progress=progress, meta=meta)
         except Exception as error:
             if not progress.has("finished"):
-                progress.emit("finished", outcome="failed", cost_ore=None, bound_ore=None, cancelled=cancel.cancelled,
+                progress.emit("finished", outcome="failed", cost_kr=None, bound_kr=None, cancelled=cancel.cancelled,
                               error=f"{type(error).__name__}: {error}")
             raise
         finally:

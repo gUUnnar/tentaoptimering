@@ -57,10 +57,10 @@ export function CompareView({ result }: { result: AbcCompare }) {
       <div className="grid gap-3 md:grid-cols-2">{[result.cost.left, result.cost.right].map((side, index) => {
         const text = costSideText(side)
         return <div key={index} className="rounded-md border p-3"><p className="text-xs font-semibold">{text.kindLabel}</p><p className="text-lg font-bold">{text.value}</p>
-          {side.kind === "model" && side.available && side.components.length > 0 && <ul className="mt-1 text-xs">{side.components.map(item => <li key={item.key}>{item.label}: {formatKr(item.ore)}</li>)}</ul>}
+          {side.kind === "model" && side.available && side.components.length > 0 && <ul className="mt-1 text-xs">{side.components.map(item => <li key={item.key}>{item.label}: {formatKr(item.kr)}</li>)}</ul>}
           {text.note && <p className="mt-1 text-xs text-slate-800">{text.note}</p>}</div>
       })}</div>
-      {result.cost.model_difference && <p className="mt-2 text-sm"><strong>{formatKr(result.cost.model_difference.ore)}</strong> – {result.cost.model_difference.label}.</p>}
+      {result.cost.model_difference && <p className="mt-2 text-sm"><strong>{formatKr(result.cost.model_difference.kr)}</strong> – {result.cost.model_difference.label}.</p>}
       {result.cost.interpretation && <p className="mt-2 text-sm">{result.cost.interpretation}</p>}
       {result.cost.savings_requirements.length > 0 && <div className="mt-2 rounded-md bg-slate-50 p-3 text-sm"><p className="font-semibold">Vad skulle behöva förändras för att kostnaden ska kunna minska?</p>
         <ul className="list-disc pl-5">{result.cost.savings_requirements.map(item => <li key={item}>{item}</li>)}</ul></div>}

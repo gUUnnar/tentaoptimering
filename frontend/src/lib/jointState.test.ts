@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { describe, it } from "node:test"
 import { DEMO_RUN_ID, buildFixtureEvents, fixtureSummary } from "./testing/jointFixture.ts"
 import {
-  activeBatch, applyEvent, costSeries, currentBoundOre, currentCostOre, dayCounts, dayGrid, emptyJointState, firstIncumbent, foldEvents,
+  activeBatch, applyEvent, costSeries, currentBoundKr, currentCostKr, dayCounts, dayGrid, emptyJointState, firstIncumbent, foldEvents,
   gapFraction, hasRealStarts, mergeEvents,
 } from "./jointState.ts"
 import type { JointEvent } from "./jointTypes.ts"
@@ -27,7 +27,7 @@ describe("testdata följer API-kontraktet", () => {
   it("sammanfattningen har samma form som adaptern ger", () => {
     const summary = fixtureSummary(accepted, "accepted")
     assert.equal(summary.run_id, DEMO_RUN_ID)
-    assert.equal(summary.cost_ore, 180_050_000)
+    assert.equal(summary.cost_kr, 1_800_500)
     assert.equal(summary.business_verification, "not_evaluated")
   })
 })
@@ -35,9 +35,9 @@ describe("testdata följer API-kontraktet", () => {
 describe("reducerare: kostnad och faser", () => {
   it("slutar med ett bevisat gap utan bevisat optimum", () => {
     const state = foldEvents(accepted)
-    assert.equal(currentCostOre(state), 180_050_000)
-    assert.equal(currentBoundOre(state), 173_900_000)
-    const gap = gapFraction(currentCostOre(state), currentBoundOre(state))!
+    assert.equal(currentCostKr(state), 1_800_500)
+    assert.equal(currentBoundKr(state), 1_739_000)
+    const gap = gapFraction(currentCostKr(state), currentBoundKr(state))!
     assert.ok(gap > 0.03 && gap < 0.04)
     assert.equal(state.finished?.cancelled, false)
   })
@@ -50,7 +50,7 @@ describe("reducerare: kostnad och faser", () => {
 
   it("visar inte en obekräftad placering som lösning före första incumbent", () => {
     const early = foldEvents(accepted.filter(event => event.t < 10))
-    assert.equal(currentCostOre(early), null)
+    assert.equal(currentCostKr(early), null)
     assert.equal(firstIncumbent(early), null)
   })
 
@@ -91,7 +91,7 @@ describe("reducerare: händelsen day_started och dagrutnätet", () => {
     assert.deepEqual(dayGrid(started, "k").map(cell => cell.kind), ["running", "pending"])
     const done = applyEvent(started, { seq: 3, t: 5, type: "day", date: "2027-01-11", kind: "k", status: "optimal", seconds: 4 })
     assert.deepEqual(dayGrid(done, "k").map(cell => cell.kind), ["known", "pending"])
-    const ended = applyEvent(started, { seq: 4, t: 9, type: "finished", outcome: "failed", cost_ore: null, bound_ore: null, cancelled: false, error: "fel" })
+    const ended = applyEvent(started, { seq: 4, t: 9, type: "finished", outcome: "failed", cost_kr: null, bound_kr: null, cancelled: false, error: "fel" })
     assert.equal(dayCounts(dayGrid(ended, "k")).running, 0)
   })
 

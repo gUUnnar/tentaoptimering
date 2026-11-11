@@ -11,6 +11,7 @@ from typing import Any
 
 from .abc_ledger import Ledger
 from .joint_hire import active_windows
+from .money import kdiff
 
 
 def hire_window_rows(left: Ledger, right: Ledger) -> list[dict[str, Any]]:
@@ -22,12 +23,12 @@ def hire_window_rows(left: Ledger, right: Ledger) -> list[dict[str, Any]]:
             window = next((w for w in ledger.problem.hire_windows if w.window_id == window_id), None)
             used = [(s.room_id, s.day) for s in ledger.sessions]
             hired = bool(window and active_windows([window], used))
-            sides[key] = {"hired": hired, "cost_ore": window.cost_ore if hired and window else 0, "known": window is not None}
+            sides[key] = {"hired": hired, "cost_kr": window.cost_kr if hired and window else 0, "known": window is not None}
         meta = next(w for ledger in (right, left) for w in ledger.problem.hire_windows if w.window_id == window_id)
         status = "kept" if sides["left"]["hired"] and sides["right"]["hired"] else "avoidable" if sides["left"]["hired"] else "added" if sides["right"]["hired"] else "unused"
         rows.append({
             "window_id": window_id, "name": meta.name, "start": meta.start.isoformat(), "end": meta.end.isoformat(), "origin": meta.origin,
             "room_ids": list(meta.room_ids), "status": status, "left": sides["left"], "right": sides["right"],
-            "difference_ore": sides["right"]["cost_ore"] - sides["left"]["cost_ore"],
+            "difference_kr": kdiff(sides["right"]["cost_kr"], sides["left"]["cost_kr"]),
         })
     return rows

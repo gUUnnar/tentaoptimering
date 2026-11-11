@@ -105,6 +105,7 @@ def paid_passes(ctx: Context, sessions: dict[tuple[str, str], Session], staff: d
 def recompute_costs(
     ctx: Context, sessions: dict[tuple[str, str], Session], staff: dict[tuple[str, str], int | None], pool: int
 ) -> dict[str, int]:
+    """The cost components recomputed from the placement, each in whole hundredths of a krona."""
     used_rooms = {room_id for room_id, _slot in sessions} | {item.room_id for item in ctx.reservations if item.room_id in ctx.rooms}
     per_room_sessions: dict[str, int] = defaultdict(int)
     for room_id, _slot in sessions:
@@ -122,10 +123,10 @@ def recompute_costs(
     session_cost = ctx.staff_session_cost * sum(value or 0 for value in staff.values())
     paid_cost = ctx.paid_minute_cost * sum(item["paid"] for item in paid_passes(ctx, sessions, staff))
     return {
-        "annual_room_cost_ore": room_cost,
-        "external_room_session_cost_ore": external,
-        "annual_staff_pool_cost_ore": pool_cost,
-        "staff_session_cost_ore": session_cost,
-        "staff_paid_time_cost_ore": paid_cost,
-        "comparable_total_cost_ore": room_cost + external + pool_cost + session_cost + paid_cost,
+        "annual_room_cost_kr": room_cost,
+        "external_room_session_cost_kr": external,
+        "annual_staff_pool_cost_kr": pool_cost,
+        "staff_session_cost_kr": session_cost,
+        "staff_paid_time_cost_kr": paid_cost,
+        "comparable_total_cost_kr": room_cost + external + pool_cost + session_cost + paid_cost,
     }

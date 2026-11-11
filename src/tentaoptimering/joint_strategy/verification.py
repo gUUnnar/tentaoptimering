@@ -18,7 +18,8 @@ from typing import Iterator, NamedTuple
 
 from ..joint_blocking import reserved_rooms
 from ..joint_contract import JointOptimizationInput
-from ..joint_costing import paid_cost_ore
+from ..joint_costing import paid_cost_kr
+from ..money import to_units
 from ..joint_progress import ProgressSink, phase
 from .aggregate import Cut, Plan
 from .batch_progress import BatchReporter
@@ -181,7 +182,7 @@ def verify(checker: Checker, plan: Plan) -> tuple[Parts | None, list[Cut]]:
     days = sorted({slot.scheduled_date for slot in problem.slots})
     exams_on = by_day(problem, plan.choice)
     portfolio = tuple(room for room in problem.rooms if room.room_id in plan.owned)
-    cap = plan.pool if problem.staffing.annual_cost_ore_per_staff > 0 else None
+    cap = plan.pool if problem.staffing.annual_cost_kr_per_staff > 0 else None
     parts: Parts = {}
     failed: list[date] = []
     ordered = sorted(exams_on)
@@ -250,7 +251,7 @@ def prefer_history(checker: Checker, parts: Parts, economic: Plan, history: Plan
     new_day = {exam: day for day, exams in new.items() for exam in exams}
     groups = _linked_days([(old_day[exam], new_day[exam]) for exam in old_day if old_day[exam] != new_day[exam]])
     portfolio = tuple(room for room in problem.rooms if room.room_id in economic.owned)
-    cap = economic.pool if problem.staffing.annual_cost_ore_per_staff > 0 else None
+    cap = economic.pool if problem.staffing.annual_cost_kr_per_staff > 0 else None
     swapped = 0
     open_groups = [group for group in groups if not any(key & group and len(key) > 1 for key in parts)]  # repaired blocks stay
     checker.check_many([Request("history", frozenset({day}), new[day], cap, portfolio)
@@ -322,14 +323,15 @@ def peak_staff(problem: JointOptimizationInput, sessions: list[dict]) -> int:
 
 
 def cost(problem: JointOptimizationInput, parts: list[Part]) -> tuple[int, int, int, int, int, int, int]:
-    """(pool, room cost, external, pool cost, per-session staff cost, paid staff time cost, total) of the assembled parts."""
+    """(pool, room cost, external, pool cost, per-session staff cost, paid staff time cost, total) of the assembled parts;
+    every amount in solver units (hundredths of a krona), as in the relaxation and the day models."""
     sessions = [row for part in parts for row in part.sessions]
     used = {row["room_id"] for row in sessions} | reserved_rooms(problem)  # a reserved room is in use through its reservation
     rooms = {room.room_id: room for room in problem.rooms}
     pool = peak_staff(problem, sessions)
-    room_cost = sum(rooms[room].annual_fixed_cost_ore for room in used)
-    external = sum(rooms[row["room_id"]].external_session_cost_ore for row in sessions)
-    pool_cost = problem.staffing.annual_cost_ore_per_staff * pool
-    session_cost = problem.staffing.cost_ore_per_staff_session * sum(row["required_staff"] for row in sessions)
-    paid = paid_cost_ore(problem, sessions) if problem.staffing.paid_minute_cost_ore else 0
+    room_cost = sum(to_units(rooms[room].annual_fixed_cost_kr) for room in used)
+    external = sum(to_units(rooms[row["room_id"]].external_session_cost_kr) for row in sessions)
+    pool_cost = to_units(problem.staffing.annual_cost_kr_per_staff) * pool
+    session_cost = to_units(problem.staffing.cost_kr_per_staff_session) * sum(row["required_staff"] for row in sessions)
+    paid = to_units(paid_cost_kr(problem, sessions)) if problem.staffing.paid_minute_cost_kr else 0
     return pool, room_cost, external, pool_cost, session_cost, paid, room_cost + external + pool_cost + session_cost + paid

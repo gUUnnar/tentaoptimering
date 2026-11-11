@@ -9,6 +9,7 @@ from typing import Any
 
 from ..joint_contract import COMPATIBLE_INPUT_VERSIONS, COMPATIBLE_RESULT_VERSIONS, INPUT_SCHEMA_VERSION, RESULT_SCHEMA_VERSION
 from .report import FAIL, NOT_APPLICABLE, NOT_EVALUATED, PASS, PROVENANCE, RuleResult, rule
+from .money import upgrade
 
 INPUT_FILE = "joint_input.json"
 RESULT_FILE = "joint_result.json"
@@ -38,7 +39,8 @@ def load_artifacts(run_dir: Path) -> tuple[dict[str, Any] | None, dict[str, Any]
             value = json.loads(path.read_text(encoding="utf-8"))
             if not isinstance(value, dict):
                 raise ValueError("toppnivån är inte ett objekt")
-            loaded[name] = value
+            # A run from before kronor holds öre; it is read as kronor here. The file and its hash are untouched.
+            loaded[name] = upgrade(value) if name in (INPUT_FILE, RESULT_FILE) else value
         except (ValueError, OSError) as error:
             broken.append(f"{name}: {error}")
             loaded[name] = None

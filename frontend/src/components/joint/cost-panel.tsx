@@ -2,14 +2,14 @@ import { CartesianGrid, Line, LineChart, ReferenceDot, ResponsiveContainer, Tool
 import { Flag, Info } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { costStatement, formatDuration, formatGap, formatKr, sourceLabel } from "@/lib/jointFormat"
-import { bestIncumbent, costSeries, currentBoundOre, currentCostOre, firstIncumbent, gapFraction, type JointState } from "@/lib/jointState"
+import { bestIncumbent, costSeries, currentBoundKr, currentCostKr, firstIncumbent, gapFraction, type JointState } from "@/lib/jointState"
 
-const MKR = 100_000_000
+const MKR = 1_000_000
 const tick = (value: number) => `${value.toFixed(2).replace(".", ",")}`
 
 export function CostPanel({ state, nowT }: { state: JointState; nowT: number }) {
-  const cost = currentCostOre(state)
-  const bound = currentBoundOre(state)
+  const cost = currentCostKr(state)
+  const bound = currentBoundKr(state)
   const gap = gapFraction(cost, bound)
   const statement = costStatement(cost, bound, state.finished?.outcome === "optimal")
   const first = firstIncumbent(state)
@@ -37,7 +37,7 @@ export function CostPanel({ state, nowT }: { state: JointState; nowT: number }) 
             <Tooltip formatter={(v: number, name: string) => [formatKr(v * MKR), name]} labelFormatter={(v: number) => `Efter ${formatDuration(v)}`}/>
             <Line name="Verifierad kostnad" dataKey="upper" type="stepAfter" stroke="#0c4a6e" strokeWidth={2.5} dot={false} connectNulls isAnimationActive={false}/>
             <Line name="Undre gräns" dataKey="lower" type="stepAfter" stroke="#047857" strokeWidth={2.5} strokeDasharray="7 4" dot={false} connectNulls isAnimationActive={false}/>
-            {first && <ReferenceDot x={first.t} y={first.cost_ore / MKR} r={6} fill="#b45309" stroke="#ffffff" strokeWidth={2} isFront ifOverflow="extendDomain"/>}
+            {first && <ReferenceDot x={first.t} y={first.cost_kr / MKR} r={6} fill="#b45309" stroke="#ffffff" strokeWidth={2} isFront ifOverflow="extendDomain"/>}
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -46,14 +46,14 @@ export function CostPanel({ state, nowT }: { state: JointState; nowT: number }) 
         <li className="flex items-center gap-1.5"><svg width="28" height="8" aria-hidden="true"><line x1="0" y1="4" x2="28" y2="4" stroke="#047857" strokeWidth="3" strokeDasharray="7 4"/></svg>Undre gräns (bevisad), streckad linje</li>
         <li className="flex items-center gap-1.5"><svg width="14" height="14" aria-hidden="true"><circle cx="7" cy="7" r="6" fill="#b45309"/></svg>Första kontrollerade lösning</li>
       </ul>
-      {first ? <p className="flex items-start gap-1.5 text-xs text-slate-800"><Flag size={14} className="mt-0.5 shrink-0" aria-hidden="true"/><span>Första kontrollerade lösning efter <strong>{formatDuration(first.t)}</strong>, {formatKr(first.cost_ore)}, från: <strong>{sourceLabel(first.source)}</strong>.</span></p>
+      {first ? <p className="flex items-start gap-1.5 text-xs text-slate-800"><Flag size={14} className="mt-0.5 shrink-0" aria-hidden="true"/><span>Första kontrollerade lösning efter <strong>{formatDuration(first.t)}</strong>, {formatKr(first.cost_kr)}, från: <strong>{sourceLabel(first.source)}</strong>.</span></p>
         : <p className="text-xs text-slate-800">Ingen kontrollerad lösning har hittats ännu. En placering som inte är kontrollerad räknas inte som lösning.</p>}
       <details className="text-xs"><summary className="cursor-pointer rounded font-medium text-sky-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700">Visa kostnadshändelser som tabell</summary>
         <table className="mt-2 w-full"><caption className="sr-only">Kontrollerade lösningar och bevisade undre gränser</caption>
           <thead><tr className="text-left text-slate-800"><th scope="col" className="p-1">Tid</th><th scope="col">Händelse</th><th scope="col">Värde</th><th scope="col">Källa / varv</th></tr></thead>
           <tbody>
-            {[...state.incumbents.map(p => ({ t: p.t, kind: "Ny verifierad kostnad", value: formatKr(p.cost_ore), extra: `${sourceLabel(p.source)} · ${p.changed_exams} flyttade tentor` })),
-              ...state.bounds.map(p => ({ t: p.t, kind: "Ny undre gräns", value: formatKr(p.lower_ore), extra: `varv ${p.round}` }))]
+            {[...state.incumbents.map(p => ({ t: p.t, kind: "Ny verifierad kostnad", value: formatKr(p.cost_kr), extra: `${sourceLabel(p.source)} · ${p.changed_exams} flyttade tentor` })),
+              ...state.bounds.map(p => ({ t: p.t, kind: "Ny undre gräns", value: formatKr(p.lower_kr), extra: `varv ${p.round}` }))]
               .sort((a, b) => a.t - b.t).map((row, i) => <tr className="border-t" key={i}><td className="p-1 tabular-nums">{formatDuration(row.t)}</td><td>{row.kind}</td><td className="tabular-nums">{row.value}</td><td>{row.extra}</td></tr>)}
           </tbody></table>
         {!state.incumbents.length && !state.bounds.length && <p className="mt-1 text-slate-800">Inga händelser ännu.</p>}
