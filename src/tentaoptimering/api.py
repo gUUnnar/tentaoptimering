@@ -20,6 +20,7 @@ from . import joint_api
 from .job_manager import LocalJobManager
 from .joint_diagnosis_api import register_diagnosis_routes
 from .joint_precheck_api import register_precheck_routes
+from .joint_repair_api import register_repair_routes
 from .joint_savings_api import register_savings_routes
 from .parameter_catalog import load_parameter_catalog
 from .underlay_api import register_underlay_routes
@@ -82,6 +83,7 @@ def create_app(storage_root: Path | None = None) -> FastAPI:
     register_diagnosis_routes(app, storage, jobs)
     register_savings_routes(app, storage, jobs)
     register_precheck_routes(app, storage, jobs)
+    register_repair_routes(app, storage, jobs)
 
     @app.get("/api/joint-runs/warm-start-candidates")
     def warm_start_candidates(problem_id: str | None = None) -> dict[str, Any]:
