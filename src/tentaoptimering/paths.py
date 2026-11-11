@@ -44,9 +44,14 @@ class SourceFiles:
     def attendance(self) -> Path:
         return self.source_dir / "Alla tentor vt2026 närvarouppföljning.xlsx"
 
+    @property
+    def ladok_occasions(self) -> Path:
+        return self.source_dir / "Ladok ALLA aktivitetstillfällen 1 jan 31 jul.xlsx"
+
     def optional_roles(self) -> list[tuple[str, str, Path]]:
         """Source files that add to the underlay when present; the preparation does not need them and `ready` ignores them."""
-        return [("attendance", "Närvarouppföljning (rapporterad närvaro)", self.attendance)]
+        return [("attendance", "Närvarouppföljning (rapporterad närvaro)", self.attendance),
+                ("ladok_occasions", "Ladok, alla aktivitetstillfällen (efterfrågan efter uttagets sista datum)", self.ladok_occasions)]
 
     def roles(self) -> list[tuple[str, str, Path]]:
         """(role, Swedish label, expected path) of every source file the preparation reads."""

@@ -353,6 +353,9 @@ def _quality(left: Ledger, right: Ledger) -> dict[str, Any]:
     if any(ledger.problem.hire_windows for ledger in (left, right)):
         flags.append({"key": "hire_windows", "text": "Anläggningar som måste hyras i sin helhet (Fyrishov) kostar en fast summa per förhyrningsperiod, "
                       "oavsett hur många hallar som används. Kostnaden ingår i posten externa bokningar; personalen vid anläggningen prissätts som bemanning och får inte räknas två gånger."})
+    if any((ledger.problem.resource_basis or {}).get("demand_sources", {}).get("ladok_occasion_list") for ledger in (left, right)):
+        flags.append({"key": "demand_from_occasion_list", "text": "Efterfrågan för tentor efter Ladok-uttagets sista datum kommer från Ladoks aktivitetstillfällelista (Antal anmälda), "
+                      "inte från uttaget. Måttet är inte verksamhetsgodkänt."})
     if proxies:
         flags.append({"key": "proxy_prices", "text": f"{len(proxies)} använda salar saknar kostnad i resursdatan och prissätts per plats enligt en parameter (proxy): {', '.join(proxies[:6])}."})
     if any(((ledger.problem.resource_basis or {}).get("reservations") or {}).get("blocking") for ledger in (left, right)):
