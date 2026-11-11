@@ -118,6 +118,7 @@ def recompute_costs(
     external += sum(
         window.cost for window in ctx.hire_windows
         if any(session.room_id in window.room_ids and window.start <= session.day <= window.end for session in sessions.values())
+        or any(item.room_id in window.room_ids and window.start <= item.scheduled_date <= window.end for item in ctx.reservations)  # a fixed booking uses the facility
     )
     pool_cost = ctx.staff_annual_cost * pool
     session_cost = ctx.staff_session_cost * sum(value or 0 for value in staff.values())

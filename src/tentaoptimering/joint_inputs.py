@@ -95,6 +95,11 @@ def build_real_subset_problem(
         rooms, values, parameters, config["subset"]["plan_area"], slots, catalog_path, processed_dir,
         {item["event_id"] for item in events},
     )
+    # What the placement is sized for against what was registered: a planning share or a demand change makes them differ, and the
+    # run must say so (a complete placement of the planned number is not a seat for every registered student).
+    registered = sum(int(value) for event in events for value in event["frame"]["demand_value"])
+    planned = sum(item.participant_count for item in demands)
+    basis = {**basis, "demand_planning": {"registered_participants": registered, "planned_participants": planned, "below_registered": planned < registered}}
     if "demand_source" in ready:  # which Ladok source the modelled demand rests on; an older underlay has none
         basis = {**basis, "demand_sources": {str(key): int(count) for key, count in ready["demand_source"].fillna("unknown").value_counts().items()}}
     return JointOptimizationInput(

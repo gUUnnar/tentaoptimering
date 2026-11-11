@@ -3,7 +3,12 @@
   "changed_exams": 1,
   "cost_is_proven_optimum": true,
   "cost_kr": 90,
-  "created_at": "2026-10-13T09:41:36Z",
+  "created_at": "2026-11-11T14:23:31Z",
+  "demand_planning": {
+    "below_registered": false,
+    "planned_participants": 100,
+    "registered_participants": 100
+  },
   "exams_total": 2,
   "first_solution_basis": "solver_start",
   "first_solution_seconds": 0.0,
@@ -52,7 +57,7 @@
     ]
   },
   "problem_id": "pair",
-  "run_id": "20261013T094136Z-pair",
+  "run_id": "20261111T142331Z-pair",
   "scenario_id": "pair",
   "solver_outcome": "optimal",
   "staff_pool_size": 1,
@@ -65,6 +70,6 @@
     "technical_validation": "pass",
     "technically_validated": true
   },
-  "wall_time_seconds": 0.05845949999638833,
+  "wall_time_seconds": 0.025945500005036592,
   "warm_start_decision": "not_used"
 }

@@ -16,15 +16,17 @@ from .app_storage import AppStorage
 from .attendance import ATTENDANCE_FILE, QUALITY_FILE, attendance_summary
 
 
-def attendance_payload(processed_dir, reports_dir=None) -> dict[str, Any]:
+def attendance_payload(processed_dir) -> dict[str, Any]:
     path = processed_dir / ATTENDANCE_FILE
+    quality_path = processed_dir / QUALITY_FILE
+    quality = json.loads(quality_path.read_text(encoding="utf-8")) if quality_path.is_file() else None
     if not path.is_file():
+        if quality and quality.get("error"):  # the file was given but could not be read
+            return {"available": False, "quality": quality, "note": quality["error"]}
         return {"available": False, "note": "Närvarouppföljningen är inte förberedd. Lägg filen bland källfilerna och förbered underlaget igen."}
     frame = pd.read_csv(path, encoding="utf-8-sig")
     frame["attendance_above_places"] = frame["attendance_above_places"].astype(bool)
     frame["at_fyrishov"] = frame["at_fyrishov"].astype(bool)
-    quality_path = processed_dir / QUALITY_FILE
-    quality = json.loads(quality_path.read_text(encoding="utf-8")) if quality_path.is_file() else None
     return {"available": True, "summary": attendance_summary(frame), "quality": quality,
             "kind": "observed_attendance", "note": "Rapporterad närvaro är observerad användning och inte dimensionerande efterfrågan."}
 

@@ -114,6 +114,41 @@ class HireWindowValidationTests(unittest.TestCase):
             self.assertEqual(rules["costs_recomputed"]["status"], "fail")
 
 
+class HireWindowReservationTests(unittest.TestCase):
+    def _problem_with_a_fixed_booking_in_a_hall(self):
+        from tentaoptimering.joint_contract import Reservation
+
+        own = Room("own", "main", "Uppsala", 100, 50)
+        booking = Reservation("fixed-1", "hall-a", DAY1, 480, 600)  # a fixed booking outside the optimised exams, inside the hire week
+        return replace(_problem((_demand("e1", 80),), (own, *_halls()), (_window(),)), reservations=(booking,))
+
+    def test_a_fixed_booking_in_a_hall_means_the_facility_is_hired_and_paid(self) -> None:
+        problem = self._problem_with_a_fixed_booking_in_a_hall()
+        baseline = solve_joint_optimization(replace(problem, reservations=()))
+        self.assertEqual(baseline.costs.external_room_session_cost_kr, 0)  # without the fixed booking the cheap own room wins
+        result = solve_joint_optimization(problem)
+        self.assertEqual(result.costs.external_room_session_cost_kr, WINDOW_COST)  # the week is paid because the booking uses the facility
+        self.assertEqual(result.costs.comparable_total_cost_kr, WINDOW_COST)  # and the exam then sits in a hall, which is free once the week is paid
+
+    def test_the_validator_and_the_pricing_count_the_window_through_the_fixed_booking_too(self) -> None:
+        from tentaoptimering.joint_pricing import price, sessions_from_result
+
+        problem = self._problem_with_a_fixed_booking_in_a_hall()
+        result = solve_joint_optimization(problem)
+        with tempfile.TemporaryDirectory() as temp:
+            run = Path(temp) / "run"
+            run.mkdir()
+            write_problem(problem, run / "joint_input.json")
+            write_result(result, run / "joint_result.json")
+            write_run(run, json.loads((run / "joint_input.json").read_text(encoding="utf-8")), json.loads((run / "joint_result.json").read_text(encoding="utf-8")))
+            rules = {item["rule_id"]: item for item in validate_run(run)["rules"]}
+            self.assertEqual(rules["costs_recomputed"]["status"], "pass")
+        priced = price(problem, sessions_from_result(problem, json.loads(json.dumps({"room_sessions": [
+            {"room_id": row["room_id"], "slot_id": row["slot_id"], "available_again_minute": row["available_again_minute"], "participants": row["participants"],
+             "required_staff": row["required_staff"], "exam_demand_ids": row.get("exam_demand_ids", [])} for row in result.room_sessions]}))))
+        self.assertEqual(priced["external_room_session_cost_kr"], WINDOW_COST)
+
+
 class HirePackTests(unittest.TestCase):
     def test_the_simulated_pack_hires_fyrishov_in_two_weeks_and_removes_the_per_session_charge(self) -> None:
         from tentaoptimering.joint_resources import apply_hire_windows

@@ -69,6 +69,7 @@ export type BackendSummary = {
   solver_outcome: string | null; has_verified_solution: boolean; cost_is_proven_optimum?: boolean
   cost_kr: number | null; lower_bound_kr: number | null; gap_kr?: number | null; gap_relative: number | null
   changed_exams: number | null; exams_total?: number | null; staff_pool_size?: number | null
+  demand_planning?: JointSummary["demand_planning"]
   wall_time_seconds: number | null; first_solution_seconds: number | null
   first_solution_basis?: string | null; first_solution_source?: string | null
   cancelled: boolean; warm_start_decision?: string | null
@@ -97,7 +98,7 @@ export function toJointSummary(raw: BackendSummary): JointSummary {
   return {
     run_id: raw.run_id ?? null, problem_id: raw.problem_id ?? null, scenario_id: raw.scenario_id ?? null, created_at: raw.created_at ?? null,
     cost_kr: money(raw.cost_kr), bound_kr: money(raw.lower_bound_kr), gap_kr: money(raw.gap_kr), gap: money(raw.gap_relative),
-    changed_exams: money(raw.changed_exams), exams_total: raw.exams_total ?? null, staff_pool_size: money(raw.staff_pool_size),
+    changed_exams: money(raw.changed_exams), exams_total: raw.exams_total ?? null, staff_pool_size: money(raw.staff_pool_size), demand_planning: raw.demand_planning ?? null,
     first_solution_seconds: raw.first_solution_seconds ?? null, first_solution_basis: raw.first_solution_basis ?? null,
     first_solution_source: raw.first_solution_source ?? null, wall_seconds: raw.wall_time_seconds ?? null,
     outcome, proven_optimum: verified && (raw.cost_is_proven_optimum === true || outcome === "optimal"),

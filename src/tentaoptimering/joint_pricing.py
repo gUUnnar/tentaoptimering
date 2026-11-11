@@ -17,7 +17,7 @@ from datetime import date
 from typing import Any
 
 from .joint_contract import JointOptimizationInput
-from .joint_hire import hire_cost
+from .joint_hire import hire_cost, reserved_room_days
 from .money import kmul, ksum
 
 COMPONENTS = ("annual_room_cost_kr", "external_room_session_cost_kr", "staff_paid_time_cost_kr", "annual_staff_pool_cost_kr", "staff_session_cost_kr")
@@ -107,7 +107,7 @@ def price(problem: JointOptimizationInput, sessions: list[PricedSession]) -> dic
         "annual_room_cost_kr": ksum(rooms[room_id].annual_fixed_cost_kr for room_id in used),
         # Per-session charges plus whole-facility hires: a window is paid once if any of its rooms is used in it.
         "external_room_session_cost_kr": ksum([ksum(rooms[s.room_id].external_session_cost_kr for s in sessions),
-                                              hire_cost(problem.hire_windows, ((s.room_id, s.day) for s in sessions))]),
+                                              hire_cost(problem.hire_windows, [*((s.room_id, s.day) for s in sessions), *reserved_room_days(problem)])]),
         "staff_paid_time_cost_kr": paid,
         "annual_staff_pool_cost_kr": kmul(problem.staffing.annual_cost_kr_per_staff, peak_staff(problem, sessions)),
         "staff_session_cost_kr": kmul(problem.staffing.cost_kr_per_staff_session, sum(s.staff for s in sessions)),

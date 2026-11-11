@@ -23,6 +23,8 @@ HEADER_ROW = 5  # the export starts with four metadata rows and an empty row
 COLUMNS = ["status", "name", "datum", "ort", "lokal", "platser", "anmalda", "kurskod", "kurs", "kurstillfalle", "modul", "anmalningsperiod",
            "anonymt", "prefix", "ansvarig", "typ", "senast_andrad", "info", "installd"]
 KEPT_STATUS = ("Publicerat", "Utkast")
+# header text (lower case, start of the name) at each position that the loader depends on
+EXPECTED_HEADERS = {0: "status", 2: "datum", 3: "ort", 6: "antal anm", 7: "kurskod", 13: "prefix", 15: "typ"}
 OCCASION_SOURCE = "ladok_occasion_list"
 EXTRACT_SOURCE = "ladok_extract"
 # Activity types that are exams the model places; PM and submission tasks are not exams in a room.
@@ -34,6 +36,12 @@ def load_occasions(path: Path) -> pd.DataFrame:
     raw = pd.read_excel(path, header=HEADER_ROW)
     if raw.shape[1] < 16:
         raise ValueError(f"Oväntat antal kolumner i {Path(path).name}: {raw.shape[1]}. Källschemat behöver granskas.")
+    # The layout is read by position, so the header is checked by name: a shifted header or an added column must fail here
+    # rather than assign Kurskod to the wrong field.
+    for index, expected in EXPECTED_HEADERS.items():
+        found = str(raw.columns[index]).strip().lower()
+        if not found.startswith(expected):
+            raise ValueError(f"{Path(path).name}: kolumn {index + 1} ska börja med '{expected}' men heter '{raw.columns[index]}'. Källschemat behöver granskas.")
     raw = raw.iloc[:, : len(COLUMNS)].copy()
     raw.columns = COLUMNS[: raw.shape[1]]
     kept = raw[raw["status"].isin(KEPT_STATUS)].copy()
@@ -80,13 +88,15 @@ def reconcile(occasions: pd.DataFrame, bookings: pd.DataFrame, ladok_activities:
     existing = ladok_activities.copy()
     existing["key_date"] = existing["start_date"].astype(str).str[:10]
     existing["key_time"] = existing["start_time"].astype(str).str[:5]
-    own = occasions.assign(key_date=occasions["datum"].astype(str).str[:10], key_time=occasions["time"])
+    own = occasions.assign(key_date=occasions["datum"].astype(str).str[:10], key_time=occasions["time"], kurskod=occasions["kurskod"].astype(str))
+    existing["course_code"] = existing["course_code"].astype(str)
     joined = existing.merge(own, left_on=["course_code", "key_date", "key_time"], right_on=["kurskod", "key_date", "key_time"], how="inner")
     comparable = joined[joined["anmalda"].notna() & joined["registered_count"].notna()]
+    dates = occasions["date"].dropna()
     month_counts = occasions["date"].map(lambda day: day.strftime("%Y-%m") if pd.notna(day) else None).value_counts().sort_index()
     return {
         "occasions": int(len(occasions)), "rows_dropped": int(occasions.attrs.get("rows_dropped", 0)),
-        "first_date": str(min(occasions["date"].dropna())), "last_date": str(max(occasions["date"].dropna())),
+        "first_date": str(min(dates)) if len(dates) else None, "last_date": str(max(dates)) if len(dates) else None,
         "occasions_per_month": {str(month): int(count) for month, count in month_counts.items()},
         "occasions_without_prefix": int(occasions["prefix"].isna().sum()), "occasions_without_registered": int(occasions["anmalda"].isna().sum()),
         "occasions_without_places": int(occasions["platser"].isna().sum()),
@@ -103,7 +113,7 @@ def main(argv: list[str]) -> int:
 
     source_dir = Path(argv[0]) if argv else default_source_dir()
     processed = Path(argv[1]) if len(argv) > 1 else REPO_ROOT / "data" / "processed"
-    occasions = load_occasions(source_dir / "Ladok ALLA aktivitetstillfällen 1 jan 31 jul.xlsx")
+    occasions = load_occasions(SourceFiles(source_dir=source_dir).ladok_occasions)
     result = reconcile(occasions, pd.read_csv(processed / "bookings.csv", encoding="utf-8-sig"),
                        pd.read_csv(processed / "ladok_activities.csv", encoding="utf-8-sig"))
     print(json.dumps(result, ensure_ascii=False, indent=2))

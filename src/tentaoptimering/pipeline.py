@@ -91,6 +91,20 @@ def _write_csv(frame: pd.DataFrame, path: Path) -> None:
     frame.to_csv(path, index=False, encoding="utf-8-sig")
 
 
+def _optional_attendance(sources: SourceFiles) -> tuple[pd.DataFrame | None, dict | None]:
+    """The optional attendance source (observed attendance, a separate data grain), or a quality record that says why it was left out.
+
+    An unreadable optional file must not stop the required preparation; it is reported instead of raised.
+    """
+    if not sources.attendance.is_file():
+        return None, None
+    try:
+        return normalize_attendance(load_attendance(sources.attendance))
+    except Exception as error:
+        return None, {"error": f"Närvarofilen kunde inte läsas och ingår inte i underlaget: {error}", "rows": 0,
+                      "note": "Rapporterad närvaro är observerad användning, inte dimensionerande efterfrågan."}
+
+
 def _with_occasion_demand(ladok: pd.DataFrame, sources: SourceFiles) -> pd.DataFrame:
     """Add Ladok activity occasions dated after the extract's last date (optional source); the extract keeps every date it has."""
     if not sources.ladok_occasions.is_file():
@@ -135,9 +149,7 @@ def run_pipeline(
         ladok, provisional_scope_decisions(ladok, model_inputs.activity_booking_candidates)
     )
 
-    attendance = attendance_quality = None
-    if sources.attendance.is_file():  # optional source: observed attendance, a separate data grain
-        attendance, attendance_quality = normalize_attendance(load_attendance(sources.attendance))
+    attendance, attendance_quality = _optional_attendance(sources)
 
     notify("write")
     outputs = output_paths(processed_dir, report_dir)
@@ -145,8 +157,11 @@ def run_pipeline(
         _write_csv(attendance, processed_dir / ATTENDANCE_FILE)
         (processed_dir / QUALITY_FILE).write_text(json.dumps(attendance_quality, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     else:  # an older file must not be mistaken for this preparation's result
-        for stale in (processed_dir / ATTENDANCE_FILE, processed_dir / QUALITY_FILE):
-            stale.unlink(missing_ok=True)
+        (processed_dir / ATTENDANCE_FILE).unlink(missing_ok=True)
+        if attendance_quality is not None:  # the file exists but could not be read: say so, without a table
+            (processed_dir / QUALITY_FILE).write_text(json.dumps(attendance_quality, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        else:
+            (processed_dir / QUALITY_FILE).unlink(missing_ok=True)
     _write_csv(bookings, outputs.bookings_csv)
     _write_csv(ladok, outputs.ladok_csv)
     _write_csv(leases, outputs.leases_csv)

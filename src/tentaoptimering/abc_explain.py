@@ -354,6 +354,11 @@ def _quality(left: Ledger, right: Ledger) -> dict[str, Any]:
     if any(ledger.problem.hire_windows for ledger in (left, right)):
         flags.append({"key": "hire_windows", "text": "Anläggningar som måste hyras i sin helhet (Fyrishov) kostar en fast summa per förhyrningsperiod, "
                       "oavsett hur många hallar som används. Kostnaden ingår i posten externa bokningar; personalen vid anläggningen prissätts som bemanning och får inte räknas två gånger."})
+    for ledger in (left, right):
+        planning = (ledger.problem.resource_basis or {}).get("demand_planning") or {}
+        if planning.get("below_registered"):
+            flags.append({"key": "planned_below_registered", "text": f"{ledger.name}: platserna är planerade för {planning['planned_participants']} deltagare men {planning['registered_participants']} är anmälda "
+                          "(planeringsandel eller förändrat antal). En fullständig placering av det planerade antalet ger inte en plats åt varje anmäld student."})
     if any((ledger.problem.resource_basis or {}).get("demand_sources", {}).get("ladok_occasion_list") for ledger in (left, right)):
         flags.append({"key": "demand_from_occasion_list", "text": "Efterfrågan för tentor efter Ladok-uttagets sista datum kommer från Ladoks aktivitetstillfällelista (Antal anmälda), "
                       "inte från uttaget. Måttet är inte verksamhetsgodkänt."})

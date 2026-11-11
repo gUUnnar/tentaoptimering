@@ -387,6 +387,15 @@ class DigitalAndGroupTests(unittest.TestCase):
         self.assertEqual(_scaled_count(15, 0, "down", 90), 13)
         self.assertEqual(_scaled_count(7, 0, "up", 1), 1)       # never below one participant
 
+    def test_the_run_records_planned_against_registered_participants(self) -> None:
+        full = _build(self.dir, {"demand.variation_pct": 0}).resource_basis["demand_planning"]
+        self.assertFalse(full["below_registered"])
+        self.assertEqual(full["registered_participants"], full["planned_participants"])
+        shrunk = _build(self.dir, {"demand.variation_pct": 0, "demand.planning_share_ordinary_pct": 80, "demand.planning_share_retake_pct": 50}).resource_basis["demand_planning"]
+        self.assertEqual(shrunk["registered_participants"], full["registered_participants"])  # the registered number never changes
+        self.assertTrue(shrunk["below_registered"])
+        self.assertLess(shrunk["planned_participants"], shrunk["registered_participants"])
+
 
 if __name__ == "__main__":
     unittest.main()
