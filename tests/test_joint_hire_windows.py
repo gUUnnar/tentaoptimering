@@ -142,6 +142,31 @@ class HirePackTests(unittest.TestCase):
         with self.assertRaises(ResourceDataError):
             _hire_window({"id": "x", "name": "x", "room_ids": ["a"], "start": "2026-01-16", "end": "2026-01-12", "cost_kr": 0.01}, "simulated")
 
+    def test_a_window_cost_is_split_into_an_observed_rent_and_a_derived_rest_that_sum_to_the_whole(self) -> None:
+        from tentaoptimering.joint_resources import apply_hire_windows
+        from tentaoptimering.resource_data import load_pack
+
+        pack = load_pack(Path(__file__).resolve().parents[1] / "config" / "resource_data" / "simulated_dev_2026.toml")
+        window = pack.hire_windows[0]
+        self.assertEqual([(part["cost_kr"], part["origin"]) for part in window.parts], [(303026, "observed"), (296974, "model_calculated")])
+        self.assertEqual(sum(part["cost_kr"] for part in window.parts), window.cost_kr)  # 2.4 Mkr - 1.2 Mkr - 2 x 303 026 = 593 948, half each
+        self.assertEqual(window.provenance.origin, "model_calculated")  # a sum with a derived part is not observed
+        halls = tuple(Room(f"uu-fyrishov-hall-{letter}", "fyrishov", "Uppsala", 300, 0, kind="external") for letter in "def")
+        slots = (CandidateSlot("s0", date(2026, 1, 13), "08:00", 480, 1200),)
+        _, windows = apply_hire_windows(pack, halls, slots)
+        self.assertEqual(windows[0].parts, window.parts)  # the split follows the window into the problem
+        # 300 seats per hall is Fyrishov's figure; the record stays "simulated" because its per-session charge is invented
+        self.assertEqual({room.room_id: (room.capacity, room.provenance.origin) for room in pack.rooms if "fyrishov" in room.room_id},
+                         {f"uu-fyrishov-hall-{letter}": (300, "simulated") for letter in "def"})
+
+    def test_parts_that_do_not_add_up_to_the_cost_are_refused(self) -> None:
+        from tentaoptimering.resource_data import ResourceDataError, _hire_window
+
+        item = {"id": "x", "name": "x", "room_ids": ["a"], "start": "2026-01-12", "end": "2026-01-16", "cost_kr": 600000,
+                "part": [{"label": "Hyra", "cost_kr": 303026, "origin": "observed"}, {"label": "Rest", "cost_kr": 1, "origin": "model_calculated"}]}
+        with self.assertRaisesRegex(ResourceDataError, "delposterna summerar"):
+            _hire_window(item, "simulated")
+
 
 if __name__ == "__main__":
     unittest.main()

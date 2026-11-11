@@ -148,7 +148,7 @@ annual_cost_kr = 90000
 cost_object_id = "ko-campus-gotland"
 origin = "simulated"
 
-# Externa hallar. Kapaciteten är den största bokning som observerats i hallen (en underkant), inte en uppmätt kapacitet.
+# Externa hallar. Kapaciteten är 300 per sal enligt Fyrishovs uppgift (fyrishov.txt, 2026-11-10). Observera att några bokningar överstiger den (sal E upp till 330 platser).
 
 [[room]]
 id = "uu-fyrishov-hall-d"
@@ -161,7 +161,7 @@ digital = "paper"
 cost_object_id = "ko-fyrishov-extern"
 travel_paid_minutes = 30
 origin = "simulated"
-source = "Kapacitet: största observerade bokning i bokningsunderlaget. Pris: påhittat."
+source = "Kapacitet 300 per sal är Fyrishovs uppgift (fyrishov.txt, 2026-11-10); salens debitering per tillfälle nedan är påhittad och används inte, eftersom hela anläggningen hyrs per vecka (se [[hire_window]]). Posten är därför märkt simulerad."
 [room.charge]
 basis = "per_hour"
 price_kr = 3000
@@ -175,12 +175,12 @@ name = "Fyrishov, Sal E"
 kind = "external"
 plan_area = "Uppsala"
 building_id = "fyrishov"
-capacity = 330
+capacity = 300
 digital = "paper"
 cost_object_id = "ko-fyrishov-extern"
 travel_paid_minutes = 30
 origin = "simulated"
-source = "Kapacitet: största observerade bokning i bokningsunderlaget. Pris: påhittat."
+source = "Kapacitet 300 per sal är Fyrishovs uppgift (fyrishov.txt, 2026-11-10); salens debitering per tillfälle nedan är påhittad och används inte, eftersom hela anläggningen hyrs per vecka (se [[hire_window]]). Posten är därför märkt simulerad."
 [room.charge]
 basis = "per_hour"
 price_kr = 3300
@@ -194,12 +194,12 @@ name = "Fyrishov, Sal F"
 kind = "external"
 plan_area = "Uppsala"
 building_id = "fyrishov"
-capacity = 260
+capacity = 300
 digital = "paper"
 cost_object_id = "ko-fyrishov-extern"
 travel_paid_minutes = 30
 origin = "simulated"
-source = "Kapacitet: största observerade bokning i bokningsunderlaget. Pris: påhittat."
+source = "Kapacitet 300 per sal är Fyrishovs uppgift (fyrishov.txt, 2026-11-10); salens debitering per tillfälle nedan är påhittad och används inte, eftersom hela anläggningen hyrs per vecka (se [[hire_window]]). Posten är därför märkt simulerad."
 [room.charge]
 basis = "per_session"
 price_kr = 12000
@@ -218,9 +218,12 @@ source = "Påhittad timkostnad 270 kr inklusive lönebikostnader. Verklig kostna
 rules_basis = "Kortaste betalda pass 2 timmar följer lokalt kollektivavtal UFV-PA 2023/4939 §2.2 (verifierat i avtalet). Timkostnaden är simulerad."
 
 # ---- Förhyrning av hela Fyrishov (två tillfällen per år). Hela anläggningen måste hyras, så kostnaden är fast per tillfälle. ----
-# Perioderna är de veckor då bokningsunderlaget har tentor i Fyrishov. Beloppet är PÅHITTAT: uppgiften är cirka 1,2 mnkr per år i hyra och
-# kringkostnader (flytt av möbler, möblering) för två tillfällen, fördelat lika, men uppdelning per tillfälle saknas. Personalkostnaden vid
-# Fyrishov ingår inte här (den prissätts som bemanning); den får inte läggas till en gång till.
+# Uppgift från Fyrishov (fyrishov.txt, 2026-11-10): hyran är 303 026 kr per vecka (söndag 12:00 till fredag 22:30), sista tentan slutar fredag 19:00,
+# och kostnaden 2026 är cirka 2,4 mnkr varav cirka 1,2 mnkr löner. Det som återstår efter lön och hyra för två veckor är kringkostnader (flytt av
+# möbler, möblering m.m.): (2 400 000 - 1 200 000 - 2 x 303 026) / 2 = 296 974 kr per tillfälle. Den resten är härledd ur ett avrundat ("cirka")
+# årsbelopp och därför modellberäknad, inte observerad. Perioderna är de veckor då bokningsunderlaget har tentor i Fyrishov (måndag-fredag);
+# hyresperioden börjar söndagen före. Personalkostnaden vid Fyrishov ingår inte här (den prissätts som bemanning) och får inte läggas till igen.
+# Sluttiden fredag 19:00 modelleras inte (det finns ingen sluttidsgräns per sal).
 
 [[hire_window]]
 id = "hw-fyrishov-2026-01"
@@ -229,8 +232,18 @@ room_ids = ["uu-fyrishov-hall-d", "uu-fyrishov-hall-e", "uu-fyrishov-hall-f"]
 start = "2026-01-12"
 end = "2026-01-16"
 cost_kr = 600000
-origin = "simulated"
-source = "Påhittad fördelning: 1,2 mnkr hyra och kringkostnader per år delat lika på två tillfällen. Uppgift från Fyrishovs kostnadsunderlag (fyrishov.txt), uppdelning saknas."
+origin = "model_calculated"
+source = "Summan av hyran (uppgiven) och kringkostnaderna (härledd rest); se delposterna."
+[[hire_window.part]]
+label = "Hyra (söndag 12:00 till fredag 22:30)"
+cost_kr = 303026
+origin = "observed"
+source = "Fyrishov, fyrishov.txt 2026-11-10: hyra 303 026 kr per vecka."
+[[hire_window.part]]
+label = "Kringkostnader (flytt av möbler, möblering m.m.)"
+cost_kr = 296974
+origin = "model_calculated"
+source = "Rest av cirka 2,4 mnkr per år efter cirka 1,2 mnkr lön och två veckors hyra, delat lika på två tillfällen; avrundat underlag."
 
 [[hire_window]]
 id = "hw-fyrishov-2026-06"
@@ -239,8 +252,18 @@ room_ids = ["uu-fyrishov-hall-d", "uu-fyrishov-hall-e", "uu-fyrishov-hall-f"]
 start = "2026-06-01"
 end = "2026-06-05"
 cost_kr = 600000
-origin = "simulated"
-source = "Påhittad fördelning: 1,2 mnkr hyra och kringkostnader per år delat lika på två tillfällen. Uppgift från Fyrishovs kostnadsunderlag (fyrishov.txt), uppdelning saknas."
+origin = "model_calculated"
+source = "Summan av hyran (uppgiven) och kringkostnaderna (härledd rest); se delposterna."
+[[hire_window.part]]
+label = "Hyra (söndag 12:00 till fredag 22:30)"
+cost_kr = 303026
+origin = "observed"
+source = "Fyrishov, fyrishov.txt 2026-11-10: hyra 303 026 kr per vecka."
+[[hire_window.part]]
+label = "Kringkostnader (flytt av möbler, möblering m.m.)"
+cost_kr = 296974
+origin = "model_calculated"
+source = "Rest av cirka 2,4 mnkr per år efter cirka 1,2 mnkr lön och två veckors hyra, delat lika på två tillfällen; avrundat underlag."
 
 # ---- Faktisk bemanning (valfri). Här bara simulerade rader som visar formatet; de är inte observationer. ------------
 

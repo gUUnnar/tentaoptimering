@@ -25,7 +25,7 @@ import json
 from pathlib import Path
 import tomllib
 from typing import Any
-from .money import check_kr, from_units, to_units
+from .money import check_kr, from_units, ksum, to_units
 
 SCHEMA_VERSION = "resource-data-v1"
 ORIGINS = ("observed", "model_calculated", "simulated", "assumption")
@@ -111,8 +111,9 @@ class HireWindow:
     room_ids: tuple[str, ...]
     start: str
     end: str
-    cost_kr: int
+    cost_kr: float
     provenance: Provenance
+    parts: tuple[dict[str, Any], ...] = ()  # the cost split into posts that sum to `cost_kr`, each with its own origin
 
 
 @dataclass(frozen=True)
@@ -326,7 +327,13 @@ def _hire_window(item: dict[str, Any], pack_origin: str) -> HireWindow:
     cost = _money(item.get("cost_kr"), where)
     if cost is None:
         raise ResourceDataError(f"{where}: cost_kr (hela förhyrningens kostnad i öre) saknas.")
-    return HireWindow(key, _text(item, "name", where), tuple(rooms), start, end, cost, _provenance(item, where, pack_origin))
+    parts = []
+    for raw in item.get("part", ()):
+        parts.append({"label": _text(raw, "label", f"{where} part"), "cost_kr": _money(raw.get("cost_kr"), f"{where} part"),
+                      "origin": _origin(raw.get("origin", pack_origin), f"{where} part"), "source": str(raw.get("source", ""))})
+    if parts and ksum(part["cost_kr"] or 0 for part in parts) != cost:
+        raise ResourceDataError(f"{where}: delposterna summerar till {ksum(part['cost_kr'] or 0 for part in parts)} kr men cost_kr är {cost} kr.")
+    return HireWindow(key, _text(item, "name", where), tuple(rooms), start, end, cost, _provenance(item, where, pack_origin), tuple(parts))
 
 
 def _staff(item: dict[str, Any] | None, pack_origin: str) -> StaffRules | None:

@@ -107,7 +107,7 @@ def apply_hire_windows(
         start, end = date.fromisoformat(item.start), date.fromisoformat(item.end)
         room_ids = tuple(room_id for room_id in item.room_ids if room_id in present)
         if room_ids and first and last and start <= last and end >= first:
-            windows.append(HireWindow(item.window_id, item.name, room_ids, start, end, item.cost_kr, item.provenance.origin, item.provenance.source))
+            windows.append(HireWindow(item.window_id, item.name, room_ids, start, end, item.cost_kr, item.provenance.origin, item.provenance.source, item.parts))
     hired = {room_id for item in pack.hire_windows for room_id in item.room_ids}
     result = []
     for room in rooms:
@@ -212,7 +212,7 @@ def build_resource_layer(
     reserved = {item.room_id for item in reservations}
     basis = {**trace, "staff": staff, "reservations": reservation_basis, "reserved_rooms": sorted(reserved),
              "hire_windows": [{"window_id": w.window_id, "name": w.name, "room_ids": list(w.room_ids), "start": w.start.isoformat(),
-                               "end": w.end.isoformat(), "cost_kr": w.cost_kr, "origin": w.origin} for w in hire_windows]}
+                               "end": w.end.isoformat(), "cost_kr": w.cost_kr, "origin": w.origin, "parts": [dict(part) for part in w.parts]} for w in hire_windows]}
     return chosen, staff, reservations, basis, hire_windows
 
 
