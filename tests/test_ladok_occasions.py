@@ -44,5 +44,26 @@ class OccasionTests(unittest.TestCase):
             self.assertEqual(len(COLUMNS), 19)
 
 
+class RobustnessTests(unittest.TestCase):
+    def test_an_empty_list_reconciles_without_crashing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "ladok.xlsx"
+            _write(path, [])
+            occasions = load_occasions(path)
+            result = reconcile(occasions, pd.DataFrame({"prefix": ["PFX01"], "scheduled_date": ["2026-04-07"]}),
+                               pd.DataFrame({"course_code": [], "start_date": [], "start_time": [], "registered_count": []}))
+            self.assertEqual((result["occasions"], result["first_date"], result["last_date"]), (0, None, None))
+
+    def test_a_shifted_header_fails_instead_of_assigning_columns_to_the_wrong_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "ladok.xlsx"
+            _write(path, [])
+            frame = pd.read_excel(path, header=None)
+            frame.iloc[5, 7], frame.iloc[5, 6] = frame.iloc[5, 6], frame.iloc[5, 7]  # Kurskod and Antal anmälda swap places
+            frame.to_excel(path, header=False, index=False)
+            with self.assertRaisesRegex(ValueError, "Källschemat behöver granskas"):
+                load_occasions(path)
+
+
 if __name__ == "__main__":
     unittest.main()

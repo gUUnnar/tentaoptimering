@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from .abc_ledger import Ledger
-from .joint_hire import active_windows
+from .joint_hire import active_windows, reserved_room_days
 from .money import kdiff
 
 
@@ -21,7 +21,7 @@ def hire_window_rows(left: Ledger, right: Ledger) -> list[dict[str, Any]]:
         sides = {}
         for key, ledger in (("left", left), ("right", right)):
             window = next((w for w in ledger.problem.hire_windows if w.window_id == window_id), None)
-            used = [(s.room_id, s.day) for s in ledger.sessions]
+            used = [(s.room_id, s.day) for s in ledger.sessions] + reserved_room_days(ledger.problem)
             hired = bool(window and active_windows([window], used))
             sides[key] = {"hired": hired, "cost_kr": window.cost_kr if hired and window else 0, "known": window is not None}
         meta = next(w for ledger in (right, left) for w in ledger.problem.hire_windows if w.window_id == window_id)

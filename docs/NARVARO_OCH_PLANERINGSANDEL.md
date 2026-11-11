@@ -37,5 +37,7 @@ Totalt 72 842 närvarande av 108 751 justerade platser (67 %). Fyrishovveckorna 
   eller "Fyrishov" som lokal).
 - Stödstudenter, e-tentor och salarnas format är inte prövade mot en lägre andel.
 
+Körningen sparar planerat och anmält antal (`demand_planning` i underlagsbasen och i sammanfattningen) och förklaringen flaggar när det planerade antalet är lägre än det anmälda: en fullständig placering av det planerade antalet ger inte en plats åt varje anmäld student.
+
 Slutsats: närvaron motiverar att *undersöka* en lägre planeringsandel i C-körningar, men ger inget
 verifierat behov och ingen verifierad besparing.

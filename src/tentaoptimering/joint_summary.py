@@ -114,6 +114,7 @@ def run_summary(storage: AppStorage, run_id: str, bundled_dir: Path | None = Non
         "gap_relative": solver.get("relative_gap") if verified else None,
         "changed_exams": result.get("changed_exam_demands") if verified else None,
         "exams_total": coverage.get("exam_demands_total"),
+        "demand_planning": _demand_planning(directory),  # planned against registered participants (None for an older run)
         "technical_placement_complete": coverage.get("technical_placement_complete"),
         "staff_pool_size": result.get("staff_pool_size") if verified else None,
         "wall_time_seconds": solver.get("wall_time_seconds"),
@@ -131,6 +132,12 @@ def run_summary(storage: AppStorage, run_id: str, bundled_dir: Path | None = Non
             "source": "validated_now",
         },
     }
+
+
+def _demand_planning(directory: Path) -> dict[str, Any] | None:
+    basis = (read_json(directory / "joint_input.json") or {}).get("resource_basis")
+    planning = basis.get("demand_planning") if isinstance(basis, dict) else None
+    return planning if isinstance(planning, dict) else None
 
 
 def _run_room_ids(directory: Path) -> set[str] | None:

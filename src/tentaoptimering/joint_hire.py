@@ -18,16 +18,25 @@ if TYPE_CHECKING:
 
 
 def add_hire_windows(model: cp_model.CpModel, problem: JointOptimizationInput, sessions: dict[tuple[str, str], Any]) -> Any:
-    """Add one `hired` variable per window, force it on when a window room has a session in the window, and return the cost."""
+    """Add one `hired` variable per window, force it on when a window room has a session or a fixed booking in the window,
+    and return the cost (in solver units)."""
     terms: list[Any] = []
+    reserved = reserved_room_days(problem)
     for window in problem.hire_windows:
         hired = model.NewBoolVar(f"hired_{window.window_id}")
+        if active_windows([window], reserved):
+            model.Add(hired == 1)  # a fixed booking in a hall means the facility is in use, whatever the optimised exams do
         for room_id in window.room_ids:
             for slot in problem.slots:
                 if window.start <= slot.scheduled_date <= window.end and (room_id, slot.slot_id) in sessions:
                     model.Add(sessions[room_id, slot.slot_id] <= hired)
         terms.append(to_units(window.cost_kr) * hired)
     return sum(terms) if terms else 0
+
+
+def reserved_room_days(problem: JointOptimizationInput) -> list[tuple[str, date]]:
+    """The room-days that fixed bookings (reservations) use; a hired facility is in use through them too."""
+    return [(item.room_id, item.scheduled_date) for item in problem.reservations]
 
 
 def active_windows(windows: Iterable[HireWindow], used: Iterable[tuple[str, date]]) -> list[HireWindow]:

@@ -33,6 +33,7 @@ const SUMMARY_FIELDS: Record<string, [(out: JointSummary) => unknown, (raw: Raw)
   lower_bound_kr: [out => out.bound_kr, raw => raw.lower_bound_kr],
   parameters_changed_count: [out => out.parameters_changed_count, raw => raw.parameters_changed_count],
   parameters_changed_from_default: [out => ids(out), raw => raw.parameters_changed_from_default],
+  demand_planning: [out => out.demand_planning, raw => raw.demand_planning ?? null],
   problem_id: [out => out.problem_id, raw => raw.problem_id],
   period: [out => out.period, raw => raw.period],
   planning_basis: [out => out.planning_basis, raw => raw.planning_basis],

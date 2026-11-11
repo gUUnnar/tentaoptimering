@@ -191,6 +191,8 @@ export type JointSummary = {
   cost_kr: number | null; bound_kr: number | null; gap_kr: number | null
   gap: number | null // gap som bråkdel, t.ex. 0.075
   changed_exams: number | null; exams_total: number | null; staff_pool_size: number | null
+  /** Planerat mot anmält antal deltagare; null för äldre körningar. Planerat under anmält betyder att inte varje anmäld student har en plats. */
+  demand_planning: { registered_participants: number; planned_participants: number; below_registered: boolean } | null
   first_solution_seconds: number | null; first_solution_basis: string | null; first_solution_source: string | null
   wall_seconds: number | null
   outcome: string

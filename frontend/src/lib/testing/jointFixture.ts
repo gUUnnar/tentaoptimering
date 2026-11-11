@@ -144,7 +144,7 @@ export function fixtureSummary(events: JointEvent[], warm: FixtureWarm): JointSu
     run_id: DEMO_RUN_ID, problem_id: "term-vt-2027", scenario_id: "joint_test", created_at: "2026-10-11T09:12:00",
     cost_kr: cost, bound_kr: bound, gap_kr: cost !== null && bound !== null ? cost - bound : null,
     gap: cost && bound !== null ? Math.max(0, (cost - bound) / cost) : null,
-    changed_exams: lastIncumbent?.type === "incumbent" ? lastIncumbent.changed_exams : null, exams_total: 1172, staff_pool_size: 41,
+    changed_exams: lastIncumbent?.type === "incumbent" ? lastIncumbent.changed_exams : null, exams_total: 1172, staff_pool_size: 41, demand_planning: null,
     first_solution_seconds: firstIncumbent?.t ?? null, first_solution_basis: "solver_start", first_solution_source: "warm start",
     wall_seconds: last?.t ?? null, outcome, proven_optimum: outcome === "optimal", has_verified_solution: outcome !== "unknown", cancelled: outcome === "cancelled",
     warm_start_decision: warm === "none" ? "not_used" : warm, parameters_changed_from_default: [], parameters_changed_count: 0, period: { date_from: null, date_to: null, requested_from: null, requested_to: null, partial: false, partial_accepted: false }, planning_basis: null, unverified_reason: null,

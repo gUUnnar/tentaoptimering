@@ -90,5 +90,29 @@ class SourceTests(unittest.TestCase):
             self.assertEqual(payload["summary"]["total"]["adjusted_places"], 190)
 
 
+class OptionalSourceTests(unittest.TestCase):
+    def test_an_unreadable_attendance_file_is_reported_and_does_not_stop_the_preparation(self) -> None:
+        from tentaoptimering.pipeline import _optional_attendance
+
+        with tempfile.TemporaryDirectory() as temp:
+            sources = SourceFiles(source_dir=Path(temp))
+            self.assertEqual(_optional_attendance(sources), (None, None))  # no file: nothing to report
+            sources.attendance.write_bytes(b"this is not a spreadsheet")
+            frame, quality = _optional_attendance(sources)
+            self.assertIsNone(frame)
+            self.assertIn("kunde inte läsas", quality["error"])
+
+    def test_the_route_tells_when_the_file_was_given_but_could_not_be_read(self) -> None:
+        import json
+
+        from tentaoptimering.attendance import QUALITY_FILE
+
+        with tempfile.TemporaryDirectory() as temp:
+            (Path(temp) / QUALITY_FILE).write_text(json.dumps({"error": "Närvarofilen kunde inte läsas och ingår inte i underlaget: x"}), encoding="utf-8")
+            payload = attendance_payload(Path(temp))
+            self.assertFalse(payload["available"])
+            self.assertIn("kunde inte läsas", payload["note"])
+
+
 if __name__ == "__main__":
     unittest.main()
