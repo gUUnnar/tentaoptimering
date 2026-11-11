@@ -1,4 +1,4 @@
-catalog_version = "2.6.0"
+catalog_version = "2.7.0"
 
 [[parameter]]
 id = "demand.variation_pct"
@@ -21,6 +21,30 @@ default = "up"
 default_basis = "assumption"
 help_text = "Avrundningsregel efter efterfrågevariation."
 choices = [{value = "up", label = "Uppåt (försiktigt, fler platser)"}, {value = "nearest", label = "Till närmaste heltal"}, {value = "down", label = "Nedåt"}]
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "demand.planning_share_ordinary_pct"
+group = "Efterfrågan"
+label = "Planeringsandel, ordinarie tentor"
+value_type = "integer"
+unit = "percent"
+default = 100
+default_basis = "experiment"
+help_text = "Andel av det dimensionerande deltagarantalet som platser planeras för vid ordinarie tentor, dugga och hybridtenta. 100 betyder att alla anmälda ska ha plats. Historisk närvaro vt2026 var cirka 67-83 procent av justerade platser (se docs/NARVARO_OCH_PLANERINGSANDEL.md), men en lägre andel är ett antagande om risk och inte ett verifierat behov."
+engine_support = "implemented"
+honored_by = "joint_inputs.build_real_subset_problem"
+
+[[parameter]]
+id = "demand.planning_share_retake_pct"
+group = "Efterfrågan"
+label = "Planeringsandel, omtentor"
+value_type = "integer"
+unit = "percent"
+default = 100
+default_basis = "experiment"
+help_text = "Som planeringsandel för ordinarie tentor men för tentor som enbart är omtentor. Historisk närvaro vt2026 var cirka 42-54 procent av justerade platser."
 engine_support = "implemented"
 honored_by = "joint_inputs.build_real_subset_problem"
 

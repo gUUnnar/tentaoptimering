@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import math
 import time
 from typing import Any
@@ -21,6 +21,7 @@ from .joint_contract import (
 )
 from .joint_blocking import apply_reservations, reserved_rooms
 from .joint_costing import staffing_summary
+from .joint_hire import add_hire_windows
 from .joint_paid_time import add_paid_time
 from .joint_preference import has_preference, penalty_weights
 from .joint_progress import ProgressSink, emit, finished_event
@@ -64,6 +65,12 @@ def _solve(
     if blocked:
         return _blocked_result(problem, blocked)
     seed = start_placement(start)
+    if problem.hire_windows and problem.solver.strategy == "decomposed":
+        # The decomposed strategy couples the days only through room portfolio and pool; a whole-facility hire is a third
+        # coupling that it does not model, so such a problem is solved as one model.
+        problem = replace(problem, solver=replace(problem.solver, strategy="monolithic"))
+        if report is not None:
+            report.notes.append("Förhyrning av hel anläggning finns i problemet; den monolitiska strategin användes i stället för den dekomponerade.")
     if problem.solver.strategy == "decomposed":
         from .joint_strategy import solve_decomposed  # the strategy builds on this module
 
@@ -92,6 +99,7 @@ def _solve(
         for room in problem.rooms
         for slot in problem.slots
     )
+    external_cost = external_cost + add_hire_windows(model, problem, variables.sessions)
     staff_pool_cost = problem.staffing.annual_cost_ore_per_staff * variables.staff_pool
     staff_session_cost = problem.staffing.cost_ore_per_staff_session * sum(variables.staff.values())
     paid_time_cost = add_paid_time(model, problem, variables)

@@ -40,6 +40,14 @@ class SourceFiles:
     def leases(self) -> Path:
         return self.source_dir / "2026 Tentamenslokaler.xlsx"
 
+    @property
+    def attendance(self) -> Path:
+        return self.source_dir / "Alla tentor vt2026 närvarouppföljning.xlsx"
+
+    def optional_roles(self) -> list[tuple[str, str, Path]]:
+        """Source files that add to the underlay when present; the preparation does not need them and `ready` ignores them."""
+        return [("attendance", "Närvarouppföljning (rapporterad närvaro)", self.attendance)]
+
     def roles(self) -> list[tuple[str, str, Path]]:
         """(role, Swedish label, expected path) of every source file the preparation reads."""
         return [("bookings", "Tentaplaceringar (lokalbokningar)", self.bookings),

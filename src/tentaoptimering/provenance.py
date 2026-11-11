@@ -29,6 +29,7 @@ def write_run_manifest(
         "ladok": sources.ladok,
         "leases": sources.leases,
     }
+    source_paths.update({role: path for role, _label, path in sources.optional_roles() if path.is_file()})
     payload = {
         "schema_version": 1,
         "sources": {

@@ -164,6 +164,9 @@ CASES = [
      {"calendar.start_times": ["08:00"], "rooms.selection": ["uu-r1"]}, "infeasible", None),
     ("variation_makes_exams_too_big_for_one_room", ("demand.variation_pct",), PAIR, TWO_ROOMS,
      {"demand.variation_pct": 30}, "infeasible", None),
+    # The same +30 % that makes the pair infeasible fits again when the planning share is 70 % (1.30 x 0.70 = 0.91); the retake share is proven in test_joint_parameter_effects.
+    ("planning_share_brings_the_pair_back_to_feasible", ("demand.planning_share_ordinary_pct", "demand.planning_share_retake_pct"), PAIR, TWO_ROOMS,
+     {"demand.variation_pct": 30, "demand.planning_share_ordinary_pct": 70, "demand.planning_share_retake_pct": 70}, "optimal", None),
     ("variation_with_building_split_costs_two_rooms", ("demand.variation_pct", "rooms.allow_split_across_buildings"), PAIR, TWO_ROOMS,
      {"demand.variation_pct": 30, "rooms.allow_split_across_buildings": True}, "optimal", 14_000),
     ("one_exam_needs_two_buildings_by_default", ("rooms.allow_split_across_buildings",), [_event("Z", count=100)], TWO_ROOMS,

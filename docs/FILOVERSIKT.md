@@ -49,6 +49,7 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `docs/FRAGOR_TILL_DATAAGARE.md` | Frågor till dataägaren om bokningsuttaget (sal, status, icke-fysiska lokaler, salsregister, Ladok-täckning) och om tentavakter, med siffror ur datakvalitetsrapporten och hur svaren läggs in som verifierade regler. |
 | `docs/KOSTNADSMODELL.md` | Avgränsning mellan resursbehov, intern kostnadsfördelning och realiserbar besparing. |
 | `docs/PARAMETERKATALOG.md` | Utkast till den enda parameterkatalogen (endast parametrar som motorn läser) med grund och effektfall. |
+| `docs/NARVARO_OCH_PLANERINGSANDEL.md` | Historisk närvaro vt2026 som underlag för planeringsandelsparametrarna, med begränsningar. |
 | `docs/ANALYS_KOLLEKTIVAVTAL.md` | Analys av lokalt kollektivavtal för tentamenspersonal och vad som kan bli verifierat. |
 | `docs/LOKALT_GRANSSNITT.md` | Arkitektur, API-kontrakt, källkodsutveckling och offlineverifiering av Windowsdistributionen. |
 | `docs/historik/README.md` | Register över bevarade historiska rapporter; slår fast att de inte är aktuella krav- eller statuskällor. |
@@ -65,12 +66,17 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `cli.py` | JSON-först-kommandon: `prepare`, `status`, `resources`, `joint-parameters`, `optimize-joint` och `validate-joint-run`. |
 | `canonical_demand.py` | Validerar fullständiga scope-beslut och explicita relationer från Ladokaktiviteter via delgrupper till unika tentamensbehov. |
 | `joint_contract.py` | Versionsmärkt JSON-kontrakt (v3, v2 läses) för gemensamma modellindata och resultat, inklusive delgrupper, stödstatus, kostnader, solvergränser, fasta bokningar, resursunderlag och betald personaltid. |
-| `resource_data.py` | Resurspaketets kontrakt (`resource-data-v1`): namngivna salar, avtalsobjekt, externa debiteringar, personalregler och faktisk bemanning, var och en med ursprung (`observed`, `model_calculated`, `simulated`, `assumption`), källa och giltighet; inläsning, validering, hash och den frusna kopian per körning. |
+| `resource_data.py` | Resurspaketets kontrakt (`resource-data-v1`): namngivna salar, avtalsobjekt, externa debiteringar, förhyrningsfönster, personalregler och faktisk bemanning, var och en med ursprung (`observed`, `model_calculated`, `simulated`, `assumption`), källa och giltighet; inläsning, validering, hash och den frusna kopian per körning. |
 | `joint_resources.py` | Lägger valt resurspaket i en körning: namn, kostnad, avtalsobjekt och restid för salar, externa salar, personalvärden (ändrad parameter gäller före paketet), bortvalda salar, spårning av vad som är data och vad som är proxy, och frysning av paketet. |
 | `joint_reservations.py` | Fasta bokningar utanför de valda tentorna som reservationer: bara identifierade salar spärrar, oidentifierade bokningar räknas och redovisas; grupperade efter orsak med en uttrycklig åtgärd per grupp (behåll fast eller ta bort) och en lista för förkontrollen. |
 | `joint_blocking.py` | Reservationerna som villkor i CP-SAT-modellen (spärrad tid plus ställtid, sal med fast bokning är alltid använd). |
 | `joint_paid_time.py` | Betald personaltid i CP-SAT-modellen: vaktar × betald längd per sal och pass. |
 | `joint_costing.py` | Optimerarens egna salstillfällesrader omsatta till betald tid och kostnad (via `joint_pricing`). |
+| `attendance.py` | Närvarouppföljningen som eget datakorn: inläsning, normalisering, dubbletter och kvalitetsflaggor, sammanfattning av närvaro mot justerade platser per månad och tenttyp. |
+| `ladok_occasions.py` | Avstämning av Ladoks aktivitetstillfällelista mot bokningar och Ladok-uttaget (täckning per månad, koppling på prefix och datum); skriver ingen efterfrågan. |
+| `attendance_api.py` | Skrivskyddad route `/api/attendance` över den förberedda närvarofilen. |
+| `joint_hire.py` | Förhyrning av hel extern anläggning (Fyrishov): en fast kostnad per period som uppstår om någon av salarna används, i optimeringsmodellen och i prissättningen. |
+| `abc_hire.py` | Förhyrningsfönster per alternativ i den förklarade skillnaden (hyrd/ej hyrd, kostnad, skillnad). |
 | `joint_pricing.py` | Prissätter vilken plan som helst (en körning eller den faktiska bokningen) med en sparad körnings regler: hyra, externa debiteringar, betalda pass och minuter, pool. Underlag för jämförelsen. |
 | `cost_realization.py` | Kan en lokalbesparing realiseras? Klassar en lokal som inte längre används mot sitt avtalsobjekt (`verified`, villkorad, delat avtal, ej uppsägningsbart); aldrig verifierad av simulerade uppgifter. |
 | `abc_ledger.py` | Kostnadsunderlag per alternativ: en körning ur sina artefakter, A prissatt med körningens regler och märkt modellberäknad (aldrig historisk eller observerad bemanning). |
@@ -175,6 +181,9 @@ Detta är innehållsförteckningen för de versionshanterade filer som utgör Po
 | `tests/test_joint_optimizer.py` | Handräknade referensfall för kostnadsavvägning, full täckning, samtentor, digitalt krav, kurskrock, ställtid och kontraktsrundresa. |
 | `tests/test_joint_paid_time.py` | Betald personaltid och fasta bokningar med handräknade svar: pass, kortaste pass, restid, fler betalda timmar när lokalbesparingen är större, spärrade salar, ställtid och oanvänd men bokad sal; monolitisk och dekomponerad strategi och den oberoende valideraren. |
 | `tests/test_joint_paid_time_differential.py` | 30 slumpade problem med betald tid, restid, externhyra och fasta bokningar: optimerare, `joint_pricing` och validerare överens, och båda strategierna når samma optimum. |
+| `tests/test_ladok_occasions.py` | Inläsning av tillfällelistan (upprepade rubriker bort) och avstämningens räkning mot bokningar och uttaget. |
+| `tests/test_attendance.py` | Närvaro: dubbletter, rader över platser, okända värden, sammanfattning med handräknade tal, valfri källfil och routens svar utan förberedd fil. |
+| `tests/test_joint_hire_windows.py` | Förhyrning av hel anläggning med handräknade svar: en gång per period oavsett antal hallar och pass, undviks när egen sal är billigare, fönster utanför tentadagarna, fallback från dekomponerad strategi, simulerat paket och den oberoende valideraren. |
 | `tests/test_resource_data.py` | Resurspaketets kontrakt (ursprung, felaktiga paket nekas), hur paketet prissätter salar och personal i en körning, bortvalda salar, frysning och reservationsbyggaren på syntetiska bokningar. |
 | `tests/test_abc_explain.py` | Förklarad skillnad med handräknade fall: poster som summerar till totalen, namngivna salar, undviken extern bokning, färre och fler betalda timmar, villkorad besparing, utnyttjande mot priser, spärrade jämförelser, A prissatt med körningens regler. |
 | `tests/test_explained_saving_chain.py` | Hela kedjan på riktiga filer: resursdata och bokningar in, körningar, oberoende validering och förklarad jämförelse (A mot C, C mot C med spärrande bokningar, bortvald sal, ändrade priser, körning utan lösning). |

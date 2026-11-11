@@ -17,6 +17,7 @@ from datetime import date
 from typing import Any
 
 from .joint_contract import JointOptimizationInput
+from .joint_hire import hire_cost
 
 COMPONENTS = ("annual_room_cost_ore", "external_room_session_cost_ore", "staff_paid_time_cost_ore", "annual_staff_pool_cost_ore", "staff_session_cost_ore")
 
@@ -103,7 +104,9 @@ def price(problem: JointOptimizationInput, sessions: list[PricedSession]) -> dic
     paid = problem.staffing.paid_minute_cost_ore * sum(row["paid_minutes"] for row in passes(problem, sessions))
     parts = {
         "annual_room_cost_ore": sum(rooms[room_id].annual_fixed_cost_ore for room_id in used),
-        "external_room_session_cost_ore": sum(rooms[s.room_id].external_session_cost_ore for s in sessions),
+        # Per-session charges plus whole-facility hires: a window is paid once if any of its rooms is used in it.
+        "external_room_session_cost_ore": sum(rooms[s.room_id].external_session_cost_ore for s in sessions)
+        + hire_cost(problem.hire_windows, ((s.room_id, s.day) for s in sessions)),
         "staff_paid_time_cost_ore": paid,
         "annual_staff_pool_cost_ore": problem.staffing.annual_cost_ore_per_staff * peak_staff(problem, sessions),
         "staff_session_cost_ore": problem.staffing.cost_ore_per_staff_session * sum(s.staff for s in sessions),
@@ -130,4 +133,5 @@ def pricing_signature(problem: JointOptimizationInput) -> dict[str, Any]:
                   problem.staffing.cost_ore_per_staff_session, problem.staffing.preparation_minutes, problem.staffing.closing_minutes,
                   tuple((step.max_participants, step.required_staff) for step in problem.staffing.ladder)),
         "reservations": tuple(sorted(reserved_rooms(problem))),
+        "hire_windows": tuple((w.window_id, w.room_ids, w.start.isoformat(), w.end.isoformat(), w.cost_ore) for w in problem.hire_windows),
     }

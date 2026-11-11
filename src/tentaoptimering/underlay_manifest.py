@@ -30,7 +30,8 @@ def build_manifest(source_dir: Path, processed_dir: Path, reports_dir: Path, pre
     """Describe the underlay just written to `processed_dir`/`reports_dir`; the files must already be there."""
     run = _json(reports_dir / "run_manifest.json")
     sources = {}
-    for role, label, path in SourceFiles(source_dir=source_dir).roles():
+    found = SourceFiles(source_dir=source_dir)
+    for role, label, path in [*found.roles(), *[item for item in found.optional_roles() if item[2].is_file()]]:
         recorded = run.get("sources", {}).get(role, {})
         sources[role] = {"label": label, "filename": path.name, "sha256": recorded.get("sha256"), **file_facts(path)}
     files = {name: {"bytes": (processed_dir / name).stat().st_size} for name in REQUIRED_FILES}

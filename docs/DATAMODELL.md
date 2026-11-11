@@ -54,6 +54,10 @@ Den normaliserade bokningsplaceringen och motsvarande tentahändelse ska kunna h
 
 För analys av utnyttjande redovisas mått explicit: **bokade salstimmar**, **dokumenterade tillgängliga salstimmar**, **bokade platser**, **anmälda tentander**, **faktiskt närvarande** eller **verklig lokalbeläggning** beroende på källans definition. Gör aldrig en kvot mellan olika korn utan att förklara relationen, nämnaren och täckningsgraden. Specifika nya tabeller/kolumner fastställs först när leveransens schema granskats.
 
+## Närvaro (rapporterad användning)
+
+Närvarouppföljningen (*Alla tentor vt2026 närvarouppföljning.xlsx*) är en **valfri** källfil som förberedelsen läser om den finns. Den blir `attendance.csv` och `attendance_quality.json` (ett eget datakorn bredvid bokning, beställning och Ladok): en rad per tenta och lokalangivelse, med närvaro, justerade skrivplatser, andel och flaggor för exakta dubbletter (borttagna och räknade), närvaro över platser, datum i statuskolumnen och Fyrishov. Den är inte kopplad till en bokad sal eller till modellens efterfrågan, lokalangivelsen behålls som den är skriven och saknade värden är okända, aldrig noll. `/api/attendance` ger sammanfattningen per månad och tenttyp.
+
 ## Resursdata: namngivna lokaler, avtalsobjekt, externhyra och personalregler
 
 Kostnader och avtalsvillkor ligger i ett **resurspaket**: en TOML-fil i `config/resource_data/` med schemat `resource-data-v1` (`resource_data.py`). Ett paket väljs med parametern `resources.pack`; ett nytt paket med verkliga uppgifter läggs som en ny fil och en ny rad bland valen i katalogen, utan kodändring. Samma kontrakt bär verkliga och simulerade uppgifter. Den medföljande `simulated_dev_2026.toml` är **simulerad** och används tills verkliga uppgifter finns.
@@ -62,6 +66,7 @@ Kostnader och avtalsvillkor ligger i ett **resurspaket**: en TOML-fil i `config/
 |---|---|
 | `[pack]` | id, namn, ursprung, giltighetsperiod, beskrivning och vad den ska ersättas av |
 | `[[cost_object]]` | hyres- eller avtalsobjekt: art (`internal_rent`, `external_lease`, `owned`, `external_hire`), årskostnad, `avoidable` (`yes`/`no`/`unknown`), uppsägningstid, tidigaste frigörande, engångskostnad |
+| `[[hire_window]]` | förhyrning av en hel extern anläggning (Fyrishov) för en period: id, namn, de salar den omfattar (externa salar i paketet), `start`, `end` och `cost_ore` för hela förhyrningen. Kostnaden uppstår en gång om någon av salarna används i perioden, hur många hallar eller pass det än är; salarna kan bara användas inom fönstren och har då ingen kostnad per salstillfälle. Kostnaden redovisas i posten externa bokningar. Personalen vid anläggningen prissätts som bemanning och ingår inte här. |
 | `[[room]]` | namngiven sal: stabilt sal-id, namn, `internal` eller `external`, kostnad (egen fördelning eller en jämn andel av avtalsobjektet), kopplat avtalsobjekt, betald restid, tillgänglighet; för en extern sal dessutom kapacitet, planeringsområde, byggnad och debitering (`per_session` eller `per_hour` med minsta debiterade och antagen debiterad tid) |
 | `[staff]` | kostnad per betald minut, kortaste betalda pass, kostnad per pool-resurs, regelgrund |
 | `[[actual_staffing]]` | valfri faktisk bemanning (datum, sal, antal, betalda minuter) |

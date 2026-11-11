@@ -133,6 +133,21 @@ class Reservation:
 
 
 @dataclass(frozen=True)
+class HireWindow:
+    """A whole external facility hired for a period: `cost_ore` is incurred once if any of `room_ids` has a session on a date
+    in `[start, end]`. The rooms carry no per-session charge and are available only inside the windows that name them."""
+
+    window_id: str
+    name: str
+    room_ids: tuple[str, ...]
+    start: date
+    end: date
+    cost_ore: int
+    origin: str = "assumption"
+    source: str = ""
+
+
+@dataclass(frozen=True)
 class SolverSettings:
     time_limit_seconds: float = 60.0
     random_seed: int = 20261009
@@ -172,6 +187,7 @@ class JointOptimizationInput:
     # (pack id and hash, origin, how many bookings could not be identified and therefore block nothing).
     reservations: tuple[Reservation, ...] = ()
     resource_basis: dict[str, Any] | None = None
+    hire_windows: tuple[HireWindow, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -292,6 +308,11 @@ def read_problem(path: Path) -> JointOptimizationInput:
             for item in payload.get("reservations", ())
         ),
         resource_basis=payload.get("resource_basis"),
+        hire_windows=tuple(
+            HireWindow(**{**item, "room_ids": tuple(item["room_ids"]), "start": date.fromisoformat(item["start"]),
+                          "end": date.fromisoformat(item["end"])})
+            for item in payload.get("hire_windows", ())
+        ),
     )
 
 
@@ -391,6 +412,9 @@ def validate_problem(problem: JointOptimizationInput) -> None:
     for reservation in problem.reservations:
         if reservation.room_id not in known_rooms or reservation.start_minute >= reservation.end_minute:
             raise ValueError(f"Ogiltig fast bokning: {reservation.reservation_id}")
+    for window in problem.hire_windows:
+        if window.cost_ore < 0 or window.start > window.end or not window.room_ids or not set(window.room_ids) <= known_rooms:
+            raise ValueError(f"Ogiltig förhyrning: {window.window_id}")
 
 
 def _jsonable(value: Any) -> Any:

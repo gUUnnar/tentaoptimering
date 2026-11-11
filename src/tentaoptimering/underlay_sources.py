@@ -27,4 +27,7 @@ def inspect_source_dir(source_dir: Path | str | None) -> dict[str, Any]:
     for role, label, path in SourceFiles(source_dir=folder).roles():
         found = path.is_file()
         files.append({"role": role, "label": label, "filename": path.name, "found": found, **(file_facts(path) if found else {})})
-    return {"source_dir": str(folder), "exists": True, "ready": all(item["found"] for item in files), "files": files}
+    ready = all(item["found"] for item in files)
+    optional = [{"role": role, "label": label, "filename": path.name, "found": path.is_file(), **(file_facts(path) if path.is_file() else {})}
+                for role, label, path in SourceFiles(source_dir=folder).optional_roles()]
+    return {"source_dir": str(folder), "exists": True, "ready": ready, "files": files, "optional_files": optional}

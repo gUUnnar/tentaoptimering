@@ -29,6 +29,8 @@ MAX_ORE = 100_000_000_000  # keeps cost sums far from the solver's 64-bit limit
 # (lowest, highest) for numeric parameters. A parameter that is not listed gets the default limits of its type.
 _LIMITS: dict[str, tuple[float | None, float | None]] = {
     "demand.variation_pct": (-99, None),
+    "demand.planning_share_ordinary_pct": (1, 100),
+    "demand.planning_share_retake_pct": (1, 100),
     "rooms.max_rooms_per_exam": (1, 1000),
     "solver.workers": (1, 512),
     "solver.seed": (0, MAX_INT),

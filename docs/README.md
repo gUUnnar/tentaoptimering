@@ -44,6 +44,7 @@ statusmatrisen.
 |---|---|
 | [DATAMODELL.md](DATAMODELL.md) | Datakorn, nycklar, önskemål, täckning och läsvyer. |
 | [PARAMETERKATALOG.md](PARAMETERKATALOG.md) | Parameterkontrakt, grund, redigerbarhet och motorstöd. |
+| [NARVARO_OCH_PLANERINGSANDEL.md](NARVARO_OCH_PLANERINGSANDEL.md) | Historisk närvaro vt2026 och parametrarna för planeringsandel. |
 | [OPTIMERINGSSTRATEGI.md](OPTIMERINGSSTRATEGI.md) | Dekomponerad lösningsstrategi, mätningar och begränsningar. |
 | [PERIODVAL_OCH_SNABBA_KORNINGAR.md](PERIODVAL_OCH_SNABBA_KORNINGAR.md) | Periodval, korta körningar och reservationsmodellen för fasta bokningar. |
 | [LOKALT_GRANSSNITT.md](LOKALT_GRANSSNITT.md) | Aktuellt lokalt gränssnitt, API och paketering. |

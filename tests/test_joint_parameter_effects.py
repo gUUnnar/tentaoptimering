@@ -148,6 +148,8 @@ def _fingerprint(problem) -> str:
 # parameter id -> alternative value. Each must change what the optimizer receives.
 EFFECT_CASES: dict[str, object] = {
     "demand.variation_pct": 50,
+    "demand.planning_share_ordinary_pct": 50,
+    "demand.planning_share_retake_pct": 50,
     "demand.rounding": "down",
     "window.earlier_days": 0,
     "window.later_days": 0,
@@ -370,6 +372,20 @@ class DigitalAndGroupTests(unittest.TestCase):
         self.assertEqual(_scaled_count(15, 10, "nearest"), 17)  # half up
         self.assertEqual(_scaled_count(7, -90, "down"), 1)      # never below one participant
         self.assertEqual(_scaled_count(7, 0, "up"), 7)
+
+    def test_planning_share_scales_ordinary_and_retake_events_separately(self) -> None:
+        base = {"demand.variation_pct": 0}
+        problem = _build(self.dir, {**base, "demand.planning_share_ordinary_pct": 80, "demand.planning_share_retake_pct": 50})
+        counts = {item.exam_demand_id: item.participant_count for item in problem.demands}
+        self.assertEqual(counts["exam-ev1"], 12)   # ordinary 15 at 80 %
+        self.assertEqual(counts["exam-ev2"], 20)   # retake 40 at 50 %
+        self.assertEqual(counts["exam-ev6"], 40)   # ordinary 20 + 30 at 80 %, each group rounded up
+
+    def test_planning_share_and_variation_round_once(self) -> None:
+        from tentaoptimering.joint_inputs import _scaled_count
+        self.assertEqual(_scaled_count(15, 10, "up", 90), 15)   # 14.85 -> 15, not 17 * 0.9
+        self.assertEqual(_scaled_count(15, 0, "down", 90), 13)
+        self.assertEqual(_scaled_count(7, 0, "up", 1), 1)       # never below one participant
 
 
 if __name__ == "__main__":

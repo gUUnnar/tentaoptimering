@@ -113,6 +113,11 @@ def recompute_costs(
     external = sum(
         ctx.rooms[room_id].external_cost * count for room_id, count in per_room_sessions.items() if room_id in ctx.rooms
     )
+    # Whole-facility hires are paid once per window in which any of its rooms is used; booked with the external hire cost.
+    external += sum(
+        window.cost for window in ctx.hire_windows
+        if any(session.room_id in window.room_ids and window.start <= session.day <= window.end for session in sessions.values())
+    )
     pool_cost = ctx.staff_annual_cost * pool
     session_cost = ctx.staff_session_cost * sum(value or 0 for value in staff.values())
     paid_cost = ctx.paid_minute_cost * sum(item["paid"] for item in paid_passes(ctx, sessions, staff))

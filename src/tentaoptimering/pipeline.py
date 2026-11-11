@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from pathlib import Path
 from typing import Callable
 
 import pandas as pd
 
+from .attendance import ATTENDANCE_FILE, QUALITY_FILE, load_attendance, normalize_attendance
 from .canonical_demand import build_scope_report, provisional_scope_decisions
 from .loaders import load_bookings, load_ladok, load_leases
 from .linkage import candidate_linkage
@@ -117,8 +119,18 @@ def run_pipeline(
         ladok, provisional_scope_decisions(ladok, model_inputs.activity_booking_candidates)
     )
 
+    attendance = attendance_quality = None
+    if sources.attendance.is_file():  # optional source: observed attendance, a separate data grain
+        attendance, attendance_quality = normalize_attendance(load_attendance(sources.attendance))
+
     notify("write")
     outputs = output_paths(processed_dir, report_dir)
+    if attendance is not None:
+        _write_csv(attendance, processed_dir / ATTENDANCE_FILE)
+        (processed_dir / QUALITY_FILE).write_text(json.dumps(attendance_quality, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    else:  # an older file must not be mistaken for this preparation's result
+        for stale in (processed_dir / ATTENDANCE_FILE, processed_dir / QUALITY_FILE):
+            stale.unlink(missing_ok=True)
     _write_csv(bookings, outputs.bookings_csv)
     _write_csv(ladok, outputs.ladok_csv)
     _write_csv(leases, outputs.leases_csv)
@@ -177,6 +189,7 @@ def run_pipeline(
                 model_inputs.optimization_placements,
             ),
             "demand_scope": (outputs.demand_scope_csv, scope_report.activities),
+            **({"attendance": (processed_dir / ATTENDANCE_FILE, attendance)} if attendance is not None else {}),
         },
         outputs.run_manifest_json,
     )

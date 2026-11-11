@@ -89,7 +89,7 @@ def build_real_subset_problem(
         StaffingStep(int(item["max_participants"]), int(item["required_staff"]))
         for item in values["staffing.ladder"]
     )
-    rooms, staff, reservations, basis = build_resource_layer(
+    rooms, staff, reservations, basis, hire_windows = build_resource_layer(
         rooms, values, parameters, config["subset"]["plan_area"], slots, catalog_path, processed_dir,
         {item["event_id"] for item in events},
     )
@@ -126,6 +126,7 @@ def build_real_subset_problem(
         preference=str(values["wish.tiebreak"]),
         reservations=reservations,
         resource_basis=basis,
+        hire_windows=hire_windows,
     )
 
 
@@ -164,6 +165,10 @@ def _prepare_events(ready: pd.DataFrame, values: dict[str, Any], wishes: dict[st
             "duration": next(iter(durations)),
             "requires_room": not all("hemtenta" in value or "hemma" in value for value in exam_types),
             "movable": any(token in exam_type for token in values["flex.movable_types"]),
+            # A retake share applies only to events that consist solely of retakes; a mixed or other event keeps the
+            # ordinary share, which is the more cautious choice.
+            "planning_share_pct": int(values["demand.planning_share_retake_pct"] if exam_types and all(
+                "omtenta" in value for value in exam_types) else values["demand.planning_share_ordinary_pct"]),
             "digital_requirement": requirement, "digital_basis": basis,
             "wish": wish_for(wishes, str(event_id)),
         })
@@ -227,7 +232,8 @@ def _demand(
         ParticipantGroup(
             group_id=f"{event['event_id']}-group-{index:02d}",
             participant_count=_scaled_count(
-                int(row.demand_value), int(values["demand.variation_pct"]), str(values["demand.rounding"])
+                int(row.demand_value), int(values["demand.variation_pct"]), str(values["demand.rounding"]),
+                event["planning_share_pct"],
             ),
             source_activity_ids=(str(row.activity_id),),
             count_basis=str(row.demand_measure_source_field),
@@ -446,15 +452,19 @@ def _rationales(config: dict[str, Any]) -> dict[str, str]:
     return {str(key): str(value) for key, value in config.get("rationales", {}).items()}
 
 
-def _scaled_count(count: int, percentage: int, rounding: str) -> int:
-    """Scale with exact integer arithmetic so rounding never depends on float noise."""
-    numerator = count * (100 + percentage)
+def _scaled_count(count: int, percentage: int, rounding: str, planning_share_pct: int = 100) -> int:
+    """Scale with exact integer arithmetic so rounding never depends on float noise.
+
+    The demand variation and the planning share are applied together before a single rounding, so the
+    result does not depend on the order in which they are applied.
+    """
+    numerator = count * (100 + percentage) * planning_share_pct
     if rounding == "up":
-        return max(1, -(-numerator // 100))
+        return max(1, -(-numerator // 10_000))
     if rounding == "nearest":
-        return max(1, (numerator + 50) // 100)
+        return max(1, (numerator + 5_000) // 10_000)
     if rounding == "down":
-        return max(1, numerator // 100)
+        return max(1, numerator // 10_000)
     raise ValueError(f"Okänd avrundningsregel: {rounding}")
 
 
