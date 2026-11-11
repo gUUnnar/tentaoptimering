@@ -148,6 +148,7 @@ class HireWindow:
     cost_kr: float
     origin: str = "assumption"
     source: str = ""
+    parts: tuple[dict[str, Any], ...] = ()  # the cost split into posts that sum to `cost_kr`, each with its own origin
 
 
 @dataclass(frozen=True)
@@ -313,7 +314,7 @@ def read_problem(path: Path) -> JointOptimizationInput:
         resource_basis=payload.get("resource_basis"),
         hire_windows=tuple(
             HireWindow(**{**item, "room_ids": tuple(item["room_ids"]), "start": date.fromisoformat(item["start"]),
-                          "end": date.fromisoformat(item["end"])})
+                          "end": date.fromisoformat(item["end"]), "parts": tuple(item.get("parts", ()))})
             for item in payload.get("hire_windows", ())
         ),
     )

@@ -28,7 +28,7 @@ def hire_window_rows(left: Ledger, right: Ledger) -> list[dict[str, Any]]:
         status = "kept" if sides["left"]["hired"] and sides["right"]["hired"] else "avoidable" if sides["left"]["hired"] else "added" if sides["right"]["hired"] else "unused"
         rows.append({
             "window_id": window_id, "name": meta.name, "start": meta.start.isoformat(), "end": meta.end.isoformat(), "origin": meta.origin,
-            "room_ids": list(meta.room_ids), "status": status, "left": sides["left"], "right": sides["right"],
+            "room_ids": list(meta.room_ids), "parts": [dict(part) for part in meta.parts], "status": status, "left": sides["left"], "right": sides["right"],
             "difference_kr": kdiff(sides["right"]["cost_kr"], sides["left"]["cost_kr"]),
         })
     return rows

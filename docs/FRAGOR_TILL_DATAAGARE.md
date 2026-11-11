@@ -37,6 +37,7 @@ Läget i uttaget (aktiva rader, 8 102): sal identifierad i registret på 5 005 r
 | # | Fråga | Underlag | Därför frågar vi |
 |---|---|---|---|
 | D1 | Vilken kapacitet har de salar som saknar kapacitetsuppgift (Fyrishov D–F och Hemtenta)? | 293 bokningsrader hänför sig till en sal som finns i registret men saknar kapacitet: 178 på Fyrishov och 115 på Hemtenta. | Utan kapacitet kan inga platsandelar anges. |
+| D1b | (Antal hallar är bekräftat: D–F, tre.) Varför överstiger bokningar kapaciteten 300 (sal E upp till 330, en förmiddag 902 mot 900)? Och bekräftar ni att kringkostnaderna är cirka 297 000 kr per tillfälle (cirka 2,4 mnkr − 1,2 mnkr lön − 2 × 303 026 kr, delat på två)? | Varje sal rymmer 300, men en förmiddag har 902 bokade platser och sal E har bokningar på 330. Kringkostnaden är en härledd rest av ett avrundat belopp. | Avgör om Fyrishov kan rymma pass med fler än 900 platser och hur mycket en undvikt vecka sparar. |
 | D2 | Är bokningarna med **fler bokade platser än salens kapacitet** fel i bokningen, fel i kapacitetsuppgiften, eller avsiktlig överbokning (t.ex. utökad kapacitet)? | 72 rader; vissa salar når över 100 % samtidigt (bl.a. Sal 2 på Bergsbrunnagatan 15). | Skiljer fel i data från verklig praxis. |
 | D3 | Vilka salar får bli **operativt godkända**, och på vilket underlag? | `eligible_for_operational_scheduling` är falskt för alla åtta salar i optimeringsunderlaget. | Tillförlitlig planering är i dag omöjlig för varje sal. |
 
