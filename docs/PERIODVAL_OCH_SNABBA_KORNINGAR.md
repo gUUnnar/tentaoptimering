@@ -127,3 +127,12 @@ Motorn ändras inte förrän dessa punkter är uppfyllda.
 
 - Python: `tests/test_joint_period.py` (täckning, kontroll, kantfall, scenariokopia, unika id:n) och `tests/test_joint_period_run.py` (dag och vecka mot riktigt underlag med oberoende räkning, märkning, ojämförbara perioder, avvisning).
 - Frontend: `frontend/src/lib/period.test.ts`.
+
+## Förslag på minsta ändring när körningen inte går att lösa
+
+Säger förkontrollen blockerad eller omöjlig, eller saknar en körning lösning, finns knappen **Föreslå minsta ändring**. Sökningen (`joint_repair.py`) får bara ändra kalender och datum (veckodagar, starttider, kalenderns gränser, flyttfönster, önskemål och fönster) och fasta bokningar, aldrig lokaler, delning eller planeringsandel.
+
+1. **Tentor utan tillåtet tillfälle** (snabbt, ingen lösning): ändringar prövas girigt (den som frigör flest tentor) och därefter tas varje ändring bort om antalet blockerade ändå är noll, så att mängden inte kan minskas.
+2. **Kapacitet** (solvern, 20 s per prov): bevisas tentorna inte ryma prövas fasta bokningsgrupper en i taget, minsta först, därefter alla tillsammans (och minskas igen). Ett prov som varken ger lösning eller bevis är *oavgjort* och räknas aldrig som möjligt; det minsta oavgjorda förslaget redovisas som `unproven` och får en längre andra chans (90 s).
+
+Svaret är minst bland de prövade ändringarna och säger det. Att ta bort fasta bokningar gör resultatet explorativt (en egen körning, C). **Tillämpa i formuläret** lägger förslagets värden som ändringar i parameterformuläret, så att du ser och kan justera dem innan start.

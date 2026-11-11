@@ -25,7 +25,7 @@ export default function JointPage({ onOpenUnderlay, reloadKey }: { onOpenUnderla
   const [startError, setStartError] = useState("")
   const [tab, setTab] = useState<Tab>("overview")
   const [resultRunId, setResultRunId] = useState<string | null>(null)
-  const [baseRequest, setBaseRequest] = useState<{ id: string; nonce: number } | null>(null)
+  const [baseRequest, setBaseRequest] = useState<{ id: string; nonce: number; parameters?: Record<string, unknown> } | null>(null)
   const [compareRequest, setCompareRequest] = useState<{ ref: string; nonce: number } | null>(null)
   const { job, state, nowT, start, cancel } = useJointJob()
 
@@ -55,7 +55,7 @@ export default function JointPage({ onOpenUnderlay, reloadKey }: { onOpenUnderla
     try { await begin({ scenario: BASE_SCENARIO_ID, warm_start: "auto", threads: 0, memory_mb: null, parallel_day_checks: true }, []) }
     catch (error) { setStartError((error as Error).message) }
   }
-  const newRun = (basedOn: string | null) => { setBaseRequest({ id: basedOn ? scenarioIdForRun(basedOn) : BASE_SCENARIO_ID, nonce: Date.now() }); setTab("start") }
+  const newRun = (basedOn: string | null, parameters?: Record<string, unknown>) => { setBaseRequest({ id: basedOn ? scenarioIdForRun(basedOn) : BASE_SCENARIO_ID, nonce: Date.now(), ...(parameters ? { parameters } : {}) }); setTab("start") }
   const openResult = (runId: string) => { setResultRunId(runId); setTab("result") }
   const openCompare = (runId: string) => { setCompareRequest({ ref: runId, nonce: Date.now() }); setTab("overview") }
 
@@ -75,7 +75,7 @@ export default function JointPage({ onOpenUnderlay, reloadKey }: { onOpenUnderla
       <Tabs.Content value="start" forceMount className="data-[state=inactive]:hidden">
         <StartPanel scenarios={startScenarios} loadError={loadError} busy={busy} onStart={begin} onOpenUnderlay={onOpenUnderlay} onSaved={async () => { await loadScenarios() }} baseRequest={baseRequest}/>
       </Tabs.Content>
-      <Tabs.Content value="result"><ResultView runId={resultRunId} runs={runs} scenarios={scenarios} onSelectRun={setResultRunId} onCompare={openCompare} live={{ job, state, nowT, onCancel: () => void cancel(), onOpenUnderlay }}/></Tabs.Content>
+      <Tabs.Content value="result"><ResultView runId={resultRunId} runs={runs} scenarios={scenarios} onSelectRun={setResultRunId} onCompare={openCompare} onApplyRepair={newRun} live={{ job, state, nowT, onCancel: () => void cancel(), onOpenUnderlay }}/></Tabs.Content>
     </Tabs.Root>
   </div>
 }

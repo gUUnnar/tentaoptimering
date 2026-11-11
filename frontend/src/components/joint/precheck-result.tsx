@@ -1,19 +1,21 @@
 import { CircleCheck, CircleHelp, Loader2 } from "lucide-react"
 import { InfoTip } from "@/components/ui/info-tip"
 import { Notice } from "@/components/ui/notice"
+import type { RepairBody } from "@/lib/repairApi"
 import { FixedBookingsCard } from "./fixed-bookings"
+import { RepairCard } from "./repair-card"
 import { precheckTitle, precheckTone } from "@/lib/precheckView"
 import type { PrecheckState } from "@/lib/usePrecheck"
 
 /** Utfallet av förkontrollen: ett hinder som varning med skälen hopfällda, annars en rad med ikon och skälen bakom ⓘ. */
-export function PrecheckResult({ state }: { state: PrecheckState }) {
+export function PrecheckResult({ state, repair }: { state: PrecheckState; repair?: { body: RepairBody; stateKey: string; onApply: (parameters: Record<string, unknown>) => void } }) {
   if (state.status === "running") return <p className="flex items-center gap-2 text-sm" role="status"><Loader2 size={15} className="animate-spin" aria-hidden="true"/>Kontrollerar om tentorna går att placera (högst 20 s) …</p>
   if (state.status === "error") return <Notice tone="error" title="Förkontrollen kunde inte genomföras." open><p>{state.error}</p></Notice>
   if (state.status !== "done" || !state.result) return null
   const { result } = state
   const fixed = result.fixed_bookings ? <FixedBookingsCard data={result.fixed_bookings}/> : null
   if (precheckTone(result.verdict) === "blocker") {
-    return <div className="space-y-2"><Notice tone="error" title={precheckTitle(result)}>{result.reasons.map(reason => <p key={reason}>{reason}</p>)}</Notice>{fixed}</div>
+    return <div className="space-y-2"><Notice tone="error" title={precheckTitle(result)}>{result.reasons.map(reason => <p key={reason}>{reason}</p>)}</Notice>{repair && <RepairCard {...repair}/>}{fixed}</div>
   }
   const Icon = result.verdict === "possible" ? CircleCheck : CircleHelp
   return <div className="space-y-2"><p className="flex items-center gap-2 text-sm" role="status">
