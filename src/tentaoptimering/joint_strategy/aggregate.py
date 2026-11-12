@@ -26,6 +26,7 @@ from ortools.sat.python import cp_model
 
 from ..joint_blocking import reserved_rooms
 from ..joint_contract import ExamDemand, JointOptimizationInput, Room, SolverSettings, StaffingStep
+from ..joint_hire import active_windows, hire_owner_id, reserved_room_days
 from ..money import to_units
 from ..joint_optimizer import _conflicts, _overlap, staffing_cut_edges
 from ..joint_preference import has_preference, penalty_weights
@@ -152,6 +153,8 @@ def _build(problem: JointOptimizationInput, cuts: tuple[Cut, ...], hint: dict[st
     slots = {slot.slot_id: slot for slot in problem.slots}
     cap = _room_capacity(problem)
     owned = {room.room_id: model.NewBoolVar(f"own_{room.room_id}") for room in problem.rooms}
+    for window in problem.hire_windows:  # a hire window is part of the portfolio like a room: hired or not, for the whole period
+        owned[hire_owner_id(window)] = model.NewBoolVar(f"hire_{window.window_id}")
     x: dict[tuple[str, str], Any] = {}
     for demand in problem.demands:
         for slot_id in demand.candidate_slot_ids:
@@ -162,10 +165,14 @@ def _build(problem: JointOptimizationInput, cuts: tuple[Cut, ...], hint: dict[st
     pool = model.NewIntVar(0, len(problem.rooms) * problem.staffing.ladder[-1].required_staff * len(problem.slots), "pool")
     session_staff, external, paid = _staffing_bound(model, problem, slots, x, owned, cap, pool)
     _conflict_pairs(model, problem, slots, x)
+    for window in problem.hire_windows:
+        if active_windows([window], reserved_room_days(problem)):
+            model.Add(owned[hire_owner_id(window)] == 1)  # a fixed booking in one of its halls: the facility is in use whatever the exams do
     for room_id in reserved_rooms(problem):
         model.Add(owned[room_id] == 1)  # a reserved room is in use through its fixed booking (the reservations themselves are not relaxed in)
     cost = (
         sum(to_units(room.annual_fixed_cost_kr) * owned[room.room_id] for room in problem.rooms)
+        + sum(to_units(window.cost_kr) * owned[hire_owner_id(window)] for window in problem.hire_windows)
         + to_units(problem.staffing.annual_cost_kr_per_staff) * pool
         + to_units(problem.staffing.cost_kr_per_staff_session) * session_staff
         + external + paid
@@ -250,6 +257,10 @@ def _staffing_bound(model, problem, slots, x, owned, cap, pool) -> tuple[Any, An
     (every session lasts at least its shortest candidate exam, so each staff position is paid at least that)."""
     prep, closing = problem.staffing.preparation_minutes, problem.staffing.closing_minutes
     max_staff = problem.staffing.ladder[-1].required_staff
+    windows_of: dict[str, list[Any]] = defaultdict(list)
+    for window in problem.hire_windows:
+        for room_id in window.room_ids:
+            windows_of[room_id].append(window)
     starting: dict[str, int | Any] = {}
     external: list[Any] = []
     paid: list[Any] = []
@@ -272,6 +283,9 @@ def _staffing_bound(model, problem, slots, x, owned, cap, pool) -> tuple[Any, An
             model.Add(occupancy <= cap[room.room_id] * used)
             model.Add(occupancy >= used)
             model.Add(used <= owned[room.room_id])
+            for window in windows_of.get(room.room_id, ()):
+                if window.start <= slot.scheduled_date <= window.end:
+                    model.Add(used <= owned[hire_owner_id(window)])  # a hall is only in use on a day of a hired window
             model.Add(staff >= used)
             for (x0, y0), (x1, y1) in _hull_from_one(_ladder_table(problem, cap[room.room_id])):
                 rise, run = y1 - y0, x1 - x0
@@ -340,7 +354,7 @@ def _add_cuts(model, problem, slots, x, owned, pool, cuts: tuple[Cut, ...]) -> N
             1 - sum(x[exam, slot_id] for slot_id in candidates[exam] if slots[slot_id].scheduled_date in days)
             for exam in sorted(exams)
         ]
-        extra = [owned[room.room_id] for room in problem.rooms if room.room_id not in rooms]
+        extra = [var for key, var in owned.items() if key not in rooms]  # rooms and hire windows that the cut's portfolio did not have
         if kind == "rooms":
             model.Add(sum(outside) + sum(extra) >= 1)
         else:

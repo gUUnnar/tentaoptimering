@@ -84,12 +84,80 @@ class HireWindowCostTests(unittest.TestCase):
         result = solve_joint_optimization(_problem((_demand("e1", 80),), (own, *_halls()), (later,)))
         self.assertEqual(result.costs.external_room_session_cost_kr, 0)
 
-    def test_the_decomposed_strategy_falls_back_to_one_model(self) -> None:
-        problem = replace(_problem((_demand("e1", 80),), _halls(), (_window(),)), solver=SolverSettings(20, 1, 1, False, "decomposed"))
+    def test_the_decomposed_strategy_gives_the_same_cost_as_the_monolithic_one(self) -> None:
+        from tentaoptimering.joint_contract import Reservation
+
+        own_cheap, own_dear = Room("own", "main", "Uppsala", 100, 50), Room("own", "main", "Uppsala", 100, 50_000)
+        later = _window(start=DAY2 + timedelta(days=30), end=DAY2 + timedelta(days=34))
+        booking = Reservation("fixed-1", "hall-a", DAY1, 480, 600)
+        cases = {
+            "two halls, one day": (_problem((_demand("e1", 80), _demand("e2", 80)), _halls(), (_window(),)), WINDOW_COST),
+            "two days": (_problem((_demand("e1", 80, "d1"), _demand("e2", 80, "d2")), _halls(), (_window(),)), WINDOW_COST),
+            "a cheaper own room avoids the hire": (_problem((_demand("e1", 80),), (own_cheap, *_halls()), (_window(),)), 50),
+            "the hire is cheaper than owning": (_problem((_demand("e1", 80),), (own_dear, *_halls()), (_window(),)), WINDOW_COST),
+            "a window outside the exam days costs nothing": (_problem((_demand("e1", 80),), (own_cheap, *_halls()), (later,)), 0),
+            "a fixed booking in a hall": (replace(_problem((_demand("e1", 80),), (own_cheap, *_halls()), (_window(),)), reservations=(booking,)), WINDOW_COST),
+        }
+        for name, (problem, expected) in cases.items():
+            with self.subTest(case=name):
+                mono = solve_joint_optimization(problem)
+                deco = solve_joint_optimization(replace(problem, solver=SolverSettings(20, 1, 1, False, "decomposed")))
+                self.assertEqual((deco.solver.strategy, deco.solver.outcome), ("decomposed", "optimal"))
+                self.assertEqual(deco.costs.comparable_total_cost_kr, mono.costs.comparable_total_cost_kr)
+                self.assertEqual(deco.costs.external_room_session_cost_kr, mono.costs.external_room_session_cost_kr)
+                self.assertEqual(deco.costs.comparable_total_cost_kr, expected)
+
+    def test_a_decomposed_result_with_a_hire_is_accepted_by_the_independent_validator(self) -> None:
+        problem = replace(_problem((_demand("e1", 80), _demand("e2", 80)), _halls(), (_window(),)), solver=SolverSettings(20, 1, 1, False, "decomposed"))
         result = solve_joint_optimization(problem)
-        self.assertEqual(result.solver.outcome, "optimal")
-        self.assertEqual(result.solver.strategy, "monolithic")
-        self.assertEqual(result.costs.external_room_session_cost_kr, WINDOW_COST)
+        with tempfile.TemporaryDirectory() as temp:
+            run = Path(temp) / "run"
+            run.mkdir()
+            write_problem(problem, run / "joint_input.json")
+            write_result(result, run / "joint_result.json")
+            write_run(run, json.loads((run / "joint_input.json").read_text(encoding="utf-8")), json.loads((run / "joint_result.json").read_text(encoding="utf-8")))
+            rules = {item["rule_id"]: item for item in validate_run(run)["rules"]}
+            self.assertEqual(rules["costs_recomputed"]["status"], "pass")
+
+
+class DecomposedAgreesWithMonolithicTests(unittest.TestCase):
+    """Random small problems with a hire window over two of three days: the decomposed strategy is exact where it claims optimality,
+    never below the true optimum and never cheaper than it, and its relaxation never rises above the optimum."""
+
+    def _random_problem(self, seed: int):
+        import random
+
+        rng = random.Random(seed)
+        day3 = date(2026, 6, 3)
+        slots = SLOTS + (CandidateSlot("d3", day3, "08:00", 480, 1200),)
+        demands = tuple(
+            ExamDemand(f"e{index}", (ParticipantGroup(f"g{index}", rng.choice((40, 70, 90)), (f"a{index}",), "registered_count"),), 120, "Uppsala",
+                       (slot := rng.choice(("d1", "d2", "d3")),), slot, original_date=DAY1, original_start_minute=480, movable=False)
+            for index in range(rng.randint(2, 5)))
+        rooms = (Room("own-1", "main", "Uppsala", rng.choice((60, 100)), rng.choice((5, 20, 40_000))),
+                 Room("own-2", "main", "Uppsala", rng.choice((60, 100)), rng.choice((5, 20, 40_000))), *_halls())
+        window = HireWindow("fy-1", "Fyrishov", ("hall-a", "hall-b"), DAY1, DAY2, rng.choice((15, 30_000)), "simulated")
+        # the halls are only usable on the days of the window, as `apply_hire_windows` makes them in a real problem
+        rooms = tuple(replace(room, available_slot_ids=("d1", "d2")) if room.room_id.startswith("hall") else room for room in rooms)
+        return replace(_problem(demands, rooms, (window,)), slots=slots)
+
+    def test_random_cases(self) -> None:
+        compared = 0
+        for seed in range(16):
+            problem = self._random_problem(seed)
+            mono = solve_joint_optimization(problem)
+            deco = solve_joint_optimization(replace(problem, solver=SolverSettings(20, 1, 1, False, "decomposed")))
+            with self.subTest(seed=seed):
+                if mono.solver.outcome != "optimal":
+                    self.assertNotEqual(deco.solver.outcome, "optimal")
+                    continue
+                compared += 1
+                self.assertIn(deco.solver.outcome, {"optimal", "feasible_not_proven"})
+                self.assertGreaterEqual(deco.costs.comparable_total_cost_kr, mono.costs.comparable_total_cost_kr)
+                self.assertLessEqual(deco.solver.best_objective_bound_kr, mono.costs.comparable_total_cost_kr)
+                if deco.solver.outcome == "optimal":
+                    self.assertEqual(deco.costs.comparable_total_cost_kr, mono.costs.comparable_total_cost_kr)
+        self.assertGreaterEqual(compared, 8)  # the generator must give enough solvable cases to mean something
 
 
 class HireWindowValidationTests(unittest.TestCase):
