@@ -19,6 +19,7 @@ from typing import Iterator, NamedTuple
 from ..joint_blocking import reserved_rooms
 from ..joint_contract import JointOptimizationInput
 from ..joint_costing import paid_cost_kr
+from ..joint_hire import hire_cost, portfolio_rooms, reserved_room_days
 from ..money import to_units
 from ..joint_progress import ProgressSink, phase
 from .aggregate import Cut, Plan
@@ -181,7 +182,7 @@ def verify(checker: Checker, plan: Plan) -> tuple[Parts | None, list[Cut]]:
     problem = checker.problem
     days = sorted({slot.scheduled_date for slot in problem.slots})
     exams_on = by_day(problem, plan.choice)
-    portfolio = tuple(room for room in problem.rooms if room.room_id in plan.owned)
+    portfolio = portfolio_rooms(problem, plan.owned)
     cap = plan.pool if problem.staffing.annual_cost_kr_per_staff > 0 else None
     parts: Parts = {}
     failed: list[date] = []
@@ -250,7 +251,7 @@ def prefer_history(checker: Checker, parts: Parts, economic: Plan, history: Plan
     old_day = {exam: day for day, exams in old.items() for exam in exams}
     new_day = {exam: day for day, exams in new.items() for exam in exams}
     groups = _linked_days([(old_day[exam], new_day[exam]) for exam in old_day if old_day[exam] != new_day[exam]])
-    portfolio = tuple(room for room in problem.rooms if room.room_id in economic.owned)
+    portfolio = portfolio_rooms(problem, economic.owned)
     cap = economic.pool if problem.staffing.annual_cost_kr_per_staff > 0 else None
     swapped = 0
     open_groups = [group for group in groups if not any(key & group and len(key) > 1 for key in parts)]  # repaired blocks stay
@@ -331,6 +332,9 @@ def cost(problem: JointOptimizationInput, parts: list[Part]) -> tuple[int, int, 
     pool = peak_staff(problem, sessions)
     room_cost = sum(to_units(rooms[room].annual_fixed_cost_kr) for room in used)
     external = sum(to_units(rooms[row["room_id"]].external_session_cost_kr) for row in sessions)
+    # whole-facility hires: a window is paid once if any of its halls has a session, or a fixed booking, in it
+    days = {slot.slot_id: slot.scheduled_date for slot in problem.slots}
+    external += to_units(hire_cost(problem.hire_windows, [*((row["room_id"], days[row["slot_id"]]) for row in sessions), *reserved_room_days(problem)]))
     pool_cost = to_units(problem.staffing.annual_cost_kr_per_staff) * pool
     session_cost = to_units(problem.staffing.cost_kr_per_staff_session) * sum(row["required_staff"] for row in sessions)
     paid = to_units(paid_cost_kr(problem, sessions)) if problem.staffing.paid_minute_cost_kr else 0

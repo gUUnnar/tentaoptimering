@@ -546,3 +546,14 @@ Förbehåll:
 6. **Automatiskt val av startkörning gör att två körningar med samma indata kan skilja sig** i antal flyttade tentor och tid. Beslutet sparas i körningen, och `--warm-start none` ger den kalla vägen. Optimum påverkas inte.
 7. **En vy i gränssnittet saknas.** Endast ändpunkterna är förberedda.
 8. **Mätningarna är enstaka körningar** på en bärbar dator och ska läsas som storleksordning.
+
+## Förhyrning av hel anläggning i den dekomponerade strategin
+
+Ett förhyrningsfönster (Fyrishov) är en tredje koppling mellan dagarna vid sidan av salsportfölj och vaktpool: hyran betalas en gång för fönstret, inte per dag. Den dekomponerade strategin bär den som en del av portföljen (`joint_hire.hire_owner_id`, `hire:<fönster-id>` bredvid sal-id:n):
+
+- **Relaxationen** får en variabel per fönster, en hall används bara en dag i ett hyrt fönster, en fast bokning i en hall tvingar fönstret och fönstrets kostnad ingår i målet.
+- **Dagkontrollerna** får portföljens salar med de dagar tagna bort där ett ohyrt fönster stänger hallen (`joint_hire.portfolio_rooms`); en hall utan begränsad tillgänglighet räknas som tillgänglig alla pass.
+- **Snitt** från bevisade omöjliga dagar gäller portföljen inklusive fönstren: antingen ett rum eller ett fönster utöver snittets måste tas med.
+- **Kostnaden** för en hopsatt lösning räknar fönstret efter salstillfällen och fasta bokningar, så den stämmer med prissättningen och den oberoende valideraren.
+
+Handräknade fall och 16 slumpfall (`tests/test_joint_hire_windows.py`) ger samma kostnad som den monolitiska strategin där den dekomponerade bevisar optimum, aldrig lägre, och relaxationens gräns ligger aldrig över optimum. På riktiga data (12 januari–11 juni, fasta bokningar avstängda, 420 s) gav den dekomponerade strategin en verifierad, eftervaliderad lösning med en av de två veckorna hyrda, medan en veckokörning på 90 s inte hann ge någon lösning med någondera strategin.

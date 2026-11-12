@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 import math
 import time
 from typing import Any
@@ -66,12 +66,6 @@ def _solve(
     if blocked:
         return _blocked_result(problem, blocked)
     seed = start_placement(start)
-    if problem.hire_windows and problem.solver.strategy == "decomposed":
-        # The decomposed strategy couples the days only through room portfolio and pool; a whole-facility hire is a third
-        # coupling that it does not model, so such a problem is solved as one model.
-        problem = replace(problem, solver=replace(problem.solver, strategy="monolithic"))
-        if report is not None:
-            report.notes.append("Förhyrning av hel anläggning finns i problemet; den monolitiska strategin användes i stället för den dekomponerade.")
     if problem.solver.strategy == "decomposed":
         from .joint_strategy import solve_decomposed  # the strategy builds on this module
 
